@@ -208,7 +208,7 @@ export async function GET() {
         veteran_owned_business: false,
         small_business_only: false,
         cfda_number: opp.alnlist?.[0] || opp.cfdaList?.[0] || null,
-        source_url: `https://www.grants.gov/view-opportunity.html?oppId=${opp.id}`,
+        source_url: `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${opp.number}`,
         application_process: null,
         required_documents: ['application_form'],
         contact_email: null,

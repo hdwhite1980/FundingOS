@@ -6,7 +6,7 @@ import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
 import CreateProjectModal from './CreateProjectModal'
 import { projectService, opportunityService, projectOpportunityService } from '../lib/supabase'
-import { Plus, Target, Clock, TrendingUp, DollarSign, RefreshCw, Zap, Database } from 'lucide-react'
+import { Plus, Target, Clock, TrendingUp, DollarSign, RefreshCw, Zap, Database, CheckCircle2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Dashboard({ user, userProfile, onProfileUpdate }) {
@@ -18,6 +18,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState(null)
+  const [syncProgress, setSyncProgress] = useState(0)
   const [stats, setStats] = useState({
     totalProjects: 0,
     activeOpportunities: 0,
@@ -83,22 +84,67 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
 
   const handleSyncOpportunities = async () => {
     setSyncing(true)
+    setSyncProgress(0)
     const startTime = Date.now()
     
     try {
-      toast.loading('Fetching latest opportunities from Grants.gov...', { id: 'sync' })
+      // Show initial loading toast
+      const toastId = toast.loading('🔄 Connecting to Grants.gov...', {
+        style: {
+          background: '#1e293b',
+          color: '#f8fafc',
+          border: '1px solid #334155',
+        },
+      })
+      
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setSyncProgress(prev => Math.min(prev + 15, 85))
+      }, 500)
       
       const response = await fetch('/api/sync/grants-gov')
       const result = await response.json()
+      
+      clearInterval(progressInterval)
+      setSyncProgress(100)
       
       if (result.success) {
         const syncTime = Math.round((Date.now() - startTime) / 1000)
         setLastSyncTime(new Date())
         
-        toast.success(
-          `Successfully imported ${result.imported} opportunities in ${syncTime}s!`, 
-          { id: 'sync', duration: 4000 }
+        // Show detailed success notification
+        toast.dismiss(toastId)
+        
+        // Custom success notification with details
+        const successMessage = (
+          <div className="flex items-start space-x-3">
+            <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="font-semibold text-gray-900">
+                ✅ Sync Complete!
+              </div>
+              <div className="text-sm text-gray-600">
+                <strong>{result.imported}</strong> new opportunities imported in <strong>{syncTime}s</strong>
+              </div>
+              {result.summary?.agencies && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Sources: {result.summary.agencies.slice(0, 3).join(', ')}
+                  {result.summary.agencies.length > 3 && ` +${result.summary.agencies.length - 3} more`}
+                </div>
+              )}
+            </div>
+          </div>
         )
+        
+        toast.success(successMessage, {
+          duration: 6000,
+          style: {
+            background: '#f0fdf4',
+            color: '#166534',
+            border: '1px solid #bbf7d0',
+            minWidth: '320px',
+          },
+        })
         
         // Reload opportunities to show new data
         const newOpportunities = await opportunityService.getOpportunities({
@@ -109,14 +155,65 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
         // Recalculate stats with new data
         calculateStats(projects, newOpportunities)
         
+        // Show additional notification about AI matching if applicable
+        if (selectedProject && result.imported > 0) {
+          setTimeout(() => {
+            toast.success(
+              `🤖 AI is now analyzing ${result.imported} new opportunities for "${selectedProject.name}"`,
+              {
+                duration: 4000,
+                style: {
+                  background: '#eff6ff',
+                  color: '#1e40af',
+                  border: '1px solid #bfdbfe',
+                },
+              }
+            )
+          }, 1000)
+        }
+        
       } else {
-        toast.error('Sync failed: ' + result.error, { id: 'sync' })
+        toast.dismiss(toastId)
+        toast.error(
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="font-semibold">Sync Failed</div>
+              <div className="text-sm">{result.error || 'Unknown error occurred'}</div>
+            </div>
+          </div>,
+          {
+            duration: 5000,
+            style: {
+              background: '#fef2f2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+            },
+          }
+        )
       }
     } catch (error) {
       console.error('Sync error:', error)
-      toast.error('Sync failed: ' + error.message, { id: 'sync' })
+      toast.error(
+        <div className="flex items-start space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <div className="font-semibold">Connection Failed</div>
+            <div className="text-sm">Could not connect to Grants.gov</div>
+          </div>
+        </div>,
+        {
+          duration: 5000,
+          style: {
+            background: '#fef2f2',
+            color: '#dc2626',
+            border: '1px solid #fecaca',
+          },
+        }
+      )
     } finally {
       setSyncing(false)
+      setSyncProgress(0)
     }
   }
 
@@ -139,7 +236,9 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     
     // Trigger AI opportunity matching in the background
     setTimeout(() => {
-      toast.success('AI is analyzing opportunities for your new project...')
+      toast.success('AI is analyzing opportunities for your new project...', {
+        icon: '🤖',
+      })
     }, 1000)
   }
 
@@ -245,18 +344,18 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                       : 'text-green-600 hover:text-green-700 cursor-pointer'
                   }`}
                 >
-                  {syncing ? 'Syncing...' : 'Sync Now'}
+                  {syncing ? `Syncing... ${syncProgress}%` : 'Sync Now'}
                 </button>
               </div>
             </div>
             {syncing && (
-              <div className="absolute bottom-0 left-0 h-1 bg-blue-500 animate-pulse" 
-                   style={{width: '100%'}} />
+              <div className="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-300" 
+                   style={{width: `${syncProgress}%`}} />
             )}
           </motion.div>
         </div>
 
-        {/* Sync Control Panel */}
+        {/* Enhanced Sync Control Panel */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -285,12 +384,12 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                       ? 'bg-blue-500 animate-pulse' 
                       : 'bg-green-500'
                   }`} />
-                  {syncing ? 'Syncing data...' : 'Live data ready'}
+                  {syncing ? `Syncing data... ${syncProgress}%` : 'Live data ready'}
                 </div>
                 <button
                   onClick={handleSyncOpportunities}
                   disabled={syncing}
-                  className="btn-primary btn-sm flex items-center"
+                  className="btn-primary btn-sm flex items-center disabled:opacity-50"
                 >
                   {syncing ? (
                     <>

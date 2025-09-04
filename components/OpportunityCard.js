@@ -33,7 +33,7 @@ export default function OpportunityCard({
       transition={{ duration: 0.4, delay: index * 0.05 }}
       className="card hover:shadow-soft-lg transition-all duration-300"
     >
-      <div className="card-body">
+      <div className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -142,7 +142,7 @@ export default function OpportunityCard({
         )}
 
         {/* Certification Badges */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-6">
           {opportunity.minority_business && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-50 text-purple-700 border border-purple-200">
               Minority Business
@@ -165,12 +165,12 @@ export default function OpportunityCard({
           )}
         </div>
 
-        {/* Actions */}
+        {/* Enhanced Actions Section */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-3">
             <button
               onClick={onAnalyze}
-              className="btn-primary text-sm flex items-center"
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <Zap className="w-4 h-4 mr-2" />
               AI Analysis
@@ -181,7 +181,7 @@ export default function OpportunityCard({
                 href={opportunity.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-secondary text-sm flex items-center"
+                className="inline-flex items-center px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View Details
@@ -191,7 +191,10 @@ export default function OpportunityCard({
 
           <div className="flex items-center space-x-4 text-xs text-gray-500">
             {opportunity.contact_email && (
-              <span>Contact available</span>
+              <span className="flex items-center">
+                <div className="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
+                Contact available
+              </span>
             )}
             {opportunity.required_documents && (
               <span>{opportunity.required_documents.length} documents required</span>
