@@ -2,13 +2,11 @@
   "crons": [
     {
       "path": "/api/sync/grants-gov",
-      "schedule": "0 11 * * *",
-      "description": "Daily sync of federal grant opportunities at 6 AM EST (11 UTC)"
+      "schedule": "0 11 * * *"
     },
     {
       "path": "/api/data/sync-opportunities",
-      "schedule": "0 2 * * *",
-      "description": "Legacy sync endpoint - keep for backward compatibility"
+      "schedule": "0 2 * * *"
     }
   ],
   "functions": {
