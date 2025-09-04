@@ -17,7 +17,6 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
-  const [clearing, setClearing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState(null)
   const [stats, setStats] = useState({
     totalProjects: 0,
@@ -32,18 +31,6 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
       loadDashboardData()
     }
   }, [user, userProfile])
-
-  // Debug opportunities URLs
-  useEffect(() => {
-    if (opportunities.length > 0) {
-      console.log('Sample opportunity URLs:', opportunities.slice(0, 3).map(opp => ({
-        title: opp.title,
-        source_url: opp.source_url,
-        external_id: opp.external_id,
-        source: opp.source
-      })))
-    }
-  }, [opportunities])
 
   const loadDashboardData = async () => {
     try {
@@ -94,61 +81,13 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     })
   }
 
-  const handleClearAndResync = async () => {
-    if (!confirm('This will delete ALL opportunities and fetch fresh data from Grants.gov. Are you sure?')) {
-      return
-    }
-
-    setClearing(true)
-    
-    try {
-      // Clear existing opportunities
-      const clearToast = toast.loading('🗑️ Clearing existing opportunities...', {
-        style: {
-          background: '#1e293b',
-          color: '#f8fafc',
-          border: '1px solid #334155',
-        },
-      })
-
-      const clearResponse = await fetch('/api/admin/clear-opportunities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      if (!clearResponse.ok) {
-        throw new Error('Failed to clear opportunities')
-      }
-
-      toast.dismiss(clearToast)
-      toast.success('✅ Database cleared successfully', {
-        duration: 2000,
-        style: {
-          background: '#f0fdf4',
-          color: '#166534',
-          border: '1px solid #bbf7d0',
-        },
-      })
-
-      // Wait a moment then start fresh sync
-      setTimeout(() => {
-        handleSyncOpportunities()
-      }, 1000)
-
-    } catch (error) {
-      toast.error('Failed to clear opportunities: ' + error.message)
-    } finally {
-      setClearing(false)
-    }
-  }
-
   const handleSyncOpportunities = async () => {
     setSyncing(true)
     const startTime = Date.now()
     
     try {
       // Show initial loading toast with progress
-      const toastId = toast.loading('🔄 Connecting to Grants.gov...', {
+      const toastId = toast.loading('Connecting to Grants.gov...', {
         style: {
           background: '#1e293b',
           color: '#f8fafc',
@@ -201,11 +140,13 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
           },
         })
         
-        // Reload opportunities to show new data
+        // Reload opportunities to show new data immediately
+        console.log('Reloading opportunities after sync...')
         const newOpportunities = await opportunityService.getOpportunities({
           organizationType: userProfile.organization_type
         })
         setOpportunities(newOpportunities)
+        console.log(`Loaded ${newOpportunities.length} opportunities after sync`)
         
         // Recalculate stats with new data
         calculateStats(projects, newOpportunities)
@@ -214,7 +155,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
         if (selectedProject && result.imported > 0) {
           setTimeout(() => {
             toast.success(
-              `🤖 AI is analyzing ${result.imported} new opportunities for "${selectedProject.name}"`,
+              `AI is analyzing ${result.imported} new opportunities for "${selectedProject.name}"`,
               {
                 duration: 4000,
                 style: {
@@ -397,18 +338,18 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                 <p className="text-sm text-gray-600">Data Status</p>
                 <button
                   onClick={handleSyncOpportunities}
-                  disabled={syncing || clearing}
+                  disabled={syncing}
                   className={`text-sm font-semibold transition-colors ${
-                    syncing || clearing
+                    syncing
                       ? 'text-blue-600 cursor-not-allowed' 
                       : 'text-green-600 hover:text-green-700 cursor-pointer'
                   }`}
                 >
-                  {syncing ? 'Syncing...' : clearing ? 'Clearing...' : 'Sync Now'}
+                  {syncing ? 'Syncing...' : 'Sync Now'}
                 </button>
               </div>
             </div>
-            {(syncing || clearing) && (
+            {syncing && (
               <div className="absolute bottom-0 left-0 h-1 bg-blue-500 animate-pulse" 
                    style={{width: '100%'}} />
             )}
@@ -437,29 +378,19 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                   </p>
                 </div>
               </div>
-              <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+              <div className="mt-4 sm:mt-0 flex items-center space-x-4">
                 <div className="flex items-center text-sm text-gray-500">
                   <div className={`w-2 h-2 rounded-full mr-2 ${
-                    syncing || clearing
+                    syncing
                       ? 'bg-blue-500 animate-pulse' 
                       : 'bg-green-500'
                   }`} />
-                  {syncing ? 'Syncing data...' : clearing ? 'Clearing data...' : 'Live data ready'}
+                  {syncing ? 'Syncing data...' : 'Live data ready'}
                 </div>
                 
                 <button
-                  onClick={handleClearAndResync}
-                  disabled={syncing || clearing}
-                  className="btn-secondary btn-sm flex items-center disabled:opacity-50"
-                  title="Clear all opportunities and fetch fresh data"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Clear & Resync
-                </button>
-                
-                <button
                   onClick={handleSyncOpportunities}
-                  disabled={syncing || clearing}
+                  disabled={syncing}
                   className="btn-primary btn-sm flex items-center disabled:opacity-50"
                 >
                   {syncing ? (
