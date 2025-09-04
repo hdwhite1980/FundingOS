@@ -16,70 +16,148 @@ interface GrantsGovOpportunity {
 
 export async function GET() {
   try {
-    console.log('Starting Grants.gov search2 API sync (no auth required)...')
+    console.log('Starting Grants.gov search2 API sync with multiple search configurations...')
     
-    // Correct request body format based on documentation
-    const requestBody = {
-      rows: 100,
-      oppStatuses: "forecasted|posted", // String format, not array
-      sortBy: "openDate",
-      keyword: "", // Empty string, not undefined
-      oppNum: "",
-      eligibilities: "",
-      agencies: "",
-      aln: "",
-      fundingCategories: ""
-    }
-
-    console.log('Calling Grants.gov search2 API...')
-    const response = await fetch(
-      'https://api.grants.gov/v1/api/search2',
+    // Try multiple search approaches with known categories
+    const searchConfigurations = [
       {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-          // No Authorization header needed!
-        },
-        body: JSON.stringify(requestBody)
+        name: "Health & Life Sciences",
+        params: {
+          rows: 50,
+          oppStatuses: "posted",
+          fundingCategories: "HL", // Health & Life Sciences
+          keyword: "",
+          agencies: "",
+          eligibilities: "",
+          aln: "",
+        }
+      },
+      {
+        name: "Arts",
+        params: {
+          rows: 50,
+          oppStatuses: "posted",
+          fundingCategories: "AR", // Arts
+          keyword: "",
+          agencies: "",
+          eligibilities: "",
+          aln: "",
+        }
+      },
+      {
+        name: "Education",
+        params: {
+          rows: 50,
+          oppStatuses: "posted",
+          fundingCategories: "ED", // Education
+          keyword: "",
+          agencies: "",
+          eligibilities: "",
+          aln: "",
+        }
+      },
+      {
+        name: "HHS Agency",
+        params: {
+          rows: 50,
+          oppStatuses: "posted",
+          agencies: "HHS", // Health & Human Services
+          fundingCategories: "",
+          keyword: "",
+          eligibilities: "",
+          aln: "",
+        }
+      },
+      {
+        name: "Broad Search",
+        params: {
+          rows: 100,
+          oppStatuses: "posted",
+          keyword: "",
+          agencies: "",
+          eligibilities: "",
+          aln: "",
+          fundingCategories: ""
+        }
       }
-    )
+    ]
 
-    console.log(`Grants.gov API response status: ${response.status}`)
+    let allOpportunities: GrantsGovOpportunity[] = []
+    let searchResults: Array<{
+      name: string
+      count?: number
+      errorcode?: any
+      message?: any
+      error?: string
+    }> = []
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`API Error Response: ${errorText}`)
-      throw new Error(`Grants.gov API error: ${response.status} ${response.statusText}`)
+    console.log('Trying multiple search configurations...')
+
+    for (const config of searchConfigurations) {
+      try {
+        console.log(`Trying ${config.name} search...`)
+        
+        const response = await fetch(
+          'https://api.grants.gov/v1/api/search2',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config.params)
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const opportunities: GrantsGovOpportunity[] = data.data?.oppHits || []
+          
+          console.log(`${config.name} search: ${opportunities.length} opportunities found`)
+          searchResults.push({
+            name: config.name,
+            count: opportunities.length,
+            errorcode: data.errorcode,
+            message: data.msg
+          })
+
+          if (opportunities.length > 0) {
+            // Add unique opportunities (avoid duplicates)
+            const newOpportunities = opportunities.filter(opp => 
+              !allOpportunities.some(existing => existing.id === opp.id)
+            )
+            allOpportunities.push(...newOpportunities)
+            
+            console.log(`Added ${newOpportunities.length} new unique opportunities`)
+            
+            // Break after finding some opportunities
+            if (allOpportunities.length >= 10) break
+          }
+        }
+      } catch (error) {
+        console.error(`${config.name} search failed:`, error)
+        searchResults.push({
+          name: config.name,
+          error: error.message
+        })
+      }
     }
 
-    const data = await response.json()
-    console.log('API Response structure:', Object.keys(data))
-    console.log('API Response data keys:', data.data ? Object.keys(data.data) : 'No data object')
-    console.log('Hit count:', data.data?.hitCount)
-    console.log('Error code:', data.errorcode)
-    console.log('Message:', data.msg)
-    
-    // Extract opportunities from the response structure
-    const opportunities: GrantsGovOpportunity[] = data.data?.oppHits || []
-    
-    console.log(`Found ${opportunities.length} opportunities from Grants.gov`)
+    console.log(`Total unique opportunities found: ${allOpportunities.length}`)
 
-    if (opportunities.length === 0) {
+    if (allOpportunities.length === 0) {
       return NextResponse.json({
         success: true,
         imported: 0,
-        message: 'No opportunities available from Grants.gov at this time',
-        api_response: {
-          errorcode: data.errorcode,
-          message: data.msg,
-          hit_count: data.data?.hitCount || 0
+        message: 'No opportunities found across all search configurations',
+        search_results: searchResults,
+        debug_info: {
+          configurations_tried: searchConfigurations.length,
+          search_details: searchResults
         }
       })
     }
 
     // Transform data to match your exact schema
     console.log('Processing opportunities for database insertion...')
-    const processedOpportunities = opportunities.map((opp: GrantsGovOpportunity) => ({
+    const processedOpportunities = allOpportunities.map((opp: GrantsGovOpportunity) => ({
       external_id: opp.id,
       source: 'grants_gov',
       title: opp.title,
@@ -136,24 +214,19 @@ export async function GET() {
       imported: inserted?.length || 0,
       message: `Successfully imported ${inserted?.length || 0} federal grant opportunities from Grants.gov`,
       summary: {
-        total_fetched: opportunities.length,
+        total_fetched: allOpportunities.length,
         total_imported: inserted?.length || 0,
-        api_hit_count: data.data?.hitCount || 0,
         source: 'grants_gov',
         last_sync: new Date().toISOString(),
-        agencies: Array.from(new Set(opportunities.map(opp => opp.agencyName))).slice(0, 5),
-        statuses: opportunities.map(opp => opp.oppStatus)
+        agencies: Array.from(new Set(allOpportunities.map(opp => opp.agencyName))).slice(0, 5),
+        search_results: searchResults
       },
       sample_grants: inserted?.slice(0, 5).map(grant => ({
         title: grant.title,
         sponsor: grant.sponsor,
         deadline: grant.deadline_date
       })) || [],
-      api_response_info: {
-        errorcode: data.errorcode,
-        message: data.msg,
-        token_received: !!data.token
-      }
+      search_configurations_tried: searchConfigurations.map(config => config.name)
     })
 
   } catch (error: any) {
