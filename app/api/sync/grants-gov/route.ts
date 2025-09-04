@@ -7,11 +7,13 @@ interface GrantsGovOpportunity {
   title: string
   agencyCode: string
   agencyName: string
+  agency?: string // Add optional agency field
   openDate: string
   closeDate: string
   oppStatus: string
   docType: string
   alnlist?: string[]
+  cfdaList?: string[] // Alternative CFDA field name
 }
 
 export async function GET() {
@@ -116,7 +118,17 @@ export async function GET() {
           if (opportunities.length > 0) {
             console.log('Sample opportunity structure:', Object.keys(opportunities[0]))
             console.log('Sample opportunity data:', JSON.stringify(opportunities[0], null, 2))
+            
+            // Debug agency fields specifically
+            console.log('Agency field analysis:', opportunities.slice(0, 3).map(opp => ({
+              id: opp.id,
+              agencyName: opp.agencyName,
+              agencyCode: opp.agencyCode,
+              agency: opp.agency,
+              title: opp.title
+            })))
           }
+          
           searchResults.push({
             name: config.name,
             count: opportunities.length,
@@ -161,43 +173,73 @@ export async function GET() {
       })
     }
 
-    // Transform data to match your exact schema
+    // Transform data to match your exact schema with null handling
     console.log('Processing opportunities for database insertion...')
-    const processedOpportunities = allOpportunities.map((opp: GrantsGovOpportunity) => ({
-      external_id: opp.id,
-      source: 'grants_gov',
-      title: opp.title,
-      sponsor: opp.agencyName,
-      agency: opp.agencyName,
-      description: `Grant opportunity from ${opp.agencyName}`, // Limited description in search results
-      amount_min: null, // Not available in search2 results
-      amount_max: null, // Not available in search2 results
-      credit_percentage: null,
-      deadline_date: opp.closeDate || null,
-      deadline_type: opp.closeDate ? 'fixed' : 'rolling',
-      match_requirement_percentage: 0,
-      eligibility_criteria: ['general'], // Would need fetchOpportunity API for details
-      geography: ['nationwide'],
-      project_types: ['general'], // Would need fetchOpportunity API for details
-      organization_types: ['nonprofit', 'for_profit', 'government'],
-      industry_focus: ['general'],
-      minority_business: false,
-      woman_owned_business: false,
-      veteran_owned_business: false,
-      small_business_only: false,
-      cfda_number: opp.alnlist?.[0] || null,
-      source_url: `https://www.grants.gov/view-opportunity.html?oppId=${opp.id}`,
-      application_process: null,
-      required_documents: ['application_form'],
-      contact_email: null,
-      contact_phone: null,
-      competition_level: 'competitive',
-      funding_instrument: 'grant',
-      raw_data: opp,
-      last_updated: new Date().toISOString()
-    }))
+    const processedOpportunities = allOpportunities.map((opp: GrantsGovOpportunity) => {
+      // Handle null/undefined sponsor with multiple fallbacks
+      const sponsor = opp.agencyName || 
+                    opp.agencyCode || 
+                    opp.agency || 
+                    'Federal Agency'
+      
+      // Ensure we have valid required fields
+      const title = opp.title || 'Untitled Grant Opportunity'
+      
+      return {
+        external_id: opp.id,
+        source: 'grants_gov',
+        title: title,
+        sponsor: sponsor,
+        agency: sponsor, // Use same value for consistency
+        description: `Grant opportunity: ${title}`, // Better description
+        amount_min: null, // Not available in search2 results
+        amount_max: null, // Not available in search2 results
+        credit_percentage: null,
+        deadline_date: opp.closeDate || null,
+        deadline_type: opp.closeDate ? 'fixed' : 'rolling',
+        match_requirement_percentage: 0,
+        eligibility_criteria: ['general'], // Would need fetchOpportunity API for details
+        geography: ['nationwide'],
+        project_types: ['general'], // Would need fetchOpportunity API for details
+        organization_types: ['nonprofit', 'for_profit', 'government'],
+        industry_focus: ['general'],
+        minority_business: false,
+        woman_owned_business: false,
+        veteran_owned_business: false,
+        small_business_only: false,
+        cfda_number: opp.alnlist?.[0] || opp.cfdaList?.[0] || null,
+        source_url: `https://www.grants.gov/view-opportunity.html?oppId=${opp.id}`,
+        application_process: null,
+        required_documents: ['application_form'],
+        contact_email: null,
+        contact_phone: null,
+        competition_level: 'competitive',
+        funding_instrument: 'grant',
+        raw_data: opp,
+        last_updated: new Date().toISOString()
+      }
+    })
 
-    console.log(`Processing ${processedOpportunities.length} opportunities for database insert`)
+    // Filter out any opportunities that still have invalid data
+    const validOpportunities = processedOpportunities.filter(opp => {
+      const isValid = opp.external_id && 
+                     opp.title && 
+                     opp.sponsor && 
+                     opp.sponsor !== 'undefined' &&
+                     opp.sponsor.trim() !== ''
+      
+      if (!isValid) {
+        console.log('Filtering out invalid opportunity:', {
+          id: opp.external_id,
+          title: opp.title,
+          sponsor: opp.sponsor
+        })
+      }
+      
+      return isValid
+    })
+
+    console.log(`Processing ${processedOpportunities.length} opportunities, ${validOpportunities.length} valid for database insert`)
 
     // Test database connection first
     console.log('Testing database connection...')
@@ -215,7 +257,7 @@ export async function GET() {
     // Upsert into your opportunities table using service role client
     const { data: inserted, error } = await supabase
       .from('opportunities')
-      .upsert(processedOpportunities, { 
+      .upsert(validOpportunities, { 
         onConflict: 'external_id,source',
         ignoreDuplicates: false 
       })
@@ -234,10 +276,12 @@ export async function GET() {
       message: `Successfully imported ${inserted?.length || 0} federal grant opportunities from Grants.gov`,
       summary: {
         total_fetched: allOpportunities.length,
+        total_processed: processedOpportunities.length,
+        total_valid: validOpportunities.length,
         total_imported: inserted?.length || 0,
         source: 'grants_gov',
         last_sync: new Date().toISOString(),
-        agencies: Array.from(new Set(allOpportunities.map(opp => opp.agencyName))).slice(0, 5),
+        agencies: Array.from(new Set(validOpportunities.map(opp => opp.sponsor))).slice(0, 5),
         search_results: searchResults
       },
       sample_grants: inserted?.slice(0, 5).map(grant => ({
@@ -245,7 +289,13 @@ export async function GET() {
         sponsor: grant.sponsor,
         deadline: grant.deadline_date
       })) || [],
-      search_configurations_tried: searchConfigurations.map(config => config.name)
+      search_configurations_tried: searchConfigurations.map(config => config.name),
+      data_quality: {
+        opportunities_found: allOpportunities.length,
+        opportunities_processed: processedOpportunities.length,
+        opportunities_valid: validOpportunities.length,
+        opportunities_filtered_out: processedOpportunities.length - validOpportunities.length
+      }
     })
 
   } catch (error: any) {
