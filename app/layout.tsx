@@ -5,7 +5,11 @@ import { useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
-export default function RootLayout({ children }) {
+interface RootLayoutProps {
+  children: React.ReactNode
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   const [supabaseClient] = useState(() => createClientComponentClient())
 
   return (
@@ -15,7 +19,7 @@ export default function RootLayout({ children }) {
         <meta name="description" content="Streamline your grant applications with AI-powered assistance" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-sans antialiased">
