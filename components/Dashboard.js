@@ -6,7 +6,7 @@ import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
 import CreateProjectModal from './CreateProjectModal'
 import { projectService, opportunityService, projectOpportunityService } from '../lib/supabase'
-import { Plus, Target, Clock, TrendingUp, DollarSign, RefreshCw, Zap, Database, Trash2 } from 'lucide-react'
+import { Plus, Target, Clock, TrendingUp, DollarSign, RefreshCw, Zap, Database } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Dashboard({ user, userProfile, onProfileUpdate }) {
@@ -246,7 +246,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
             style: {
               background: '#fef2f2',
               color: '#dc2626',
-              border: '1px solid #fecaca',
+              border: '1px solid '#fecaca',
             },
           }
         )
@@ -298,9 +298,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     
     // Trigger AI opportunity matching in the background
     setTimeout(() => {
-      toast.success('AI is analyzing opportunities for your new project...', {
-        icon: '🤖',
-      })
+      toast.success('AI is analyzing opportunities for your new project...')
     }, 1000)
   }
 
