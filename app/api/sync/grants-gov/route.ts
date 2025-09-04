@@ -203,7 +203,7 @@ export async function GET() {
         upcoming_deadlines: upcomingDeadlines,
         source: 'grants_gov',
         last_sync: new Date().toISOString(),
-        agencies: [...new Set(opportunities.map(opp => opp.agencyName))].slice(0, 5)
+        agencies: Array.from(new Set(opportunities.map(opp => opp.agencyName))).slice(0, 5)
       },
       sample_grants: inserted?.slice(0, 5).map(grant => ({
         title: grant.title,
