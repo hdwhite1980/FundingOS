@@ -193,7 +193,7 @@ export async function GET() {
 
     console.log(`Processing ${processedOpportunities.length} opportunities for database insert`)
 
-    // Upsert into your opportunities table
+    // Upsert into your opportunities table using service role client
     const { data: inserted, error } = await supabase
       .from('opportunities')
       .upsert(processedOpportunities, { 
