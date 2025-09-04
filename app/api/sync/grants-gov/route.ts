@@ -54,7 +54,9 @@ export async function GET() {
     }
 
     const data = await response.json()
-    const opportunities: GrantsGovOpportunity[] = data.oppHits || []
+    
+    // The new API returns data in a different structure
+    const opportunities: GrantsGovOpportunity[] = data.opportunityHits || data.opportunities || data.oppHits || []
     
     console.log(`Found ${opportunities.length} opportunities from Grants.gov`)
 
