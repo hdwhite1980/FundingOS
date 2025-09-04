@@ -246,7 +246,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
             style: {
               background: '#fef2f2',
               color: '#dc2626',
-              border: '1px solid '#fecaca',
+              border: '1px solid #fecaca',
             },
           }
         )
