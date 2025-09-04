@@ -23,33 +23,40 @@ export async function GET() {
   try {
     console.log('Starting Grants.gov sync...')
     
-    const searchParams = new URLSearchParams({
-      format: 'json',
-      rows: '100',
-      startRecordNum: '0',
-      oppStatuses: 'forecasted|posted',
-      sortBy: 'openDate|desc'
-    })
+    // The Grants.gov API requires POST with JSON body, not GET with query params
+    const requestBody = {
+      startRecordNum: 0,
+      oppStatuses: "forecasted|posted",
+      rows: 100,
+      sortBy: "openDate|desc"
+    }
 
+    console.log('Calling Grants.gov API with POST method...')
     const response = await fetch(
-      `https://www.grants.gov/grantsws/rest/opportunities/search/?${searchParams}`,
+      'https://www.grants.gov/grantsws/rest/opportunities/search/',
       {
-        method: 'GET',
+        method: 'POST',
         headers: { 
           'Accept': 'application/json',
+          'Content-Type': 'application/json',
           'User-Agent': 'FundingPlatform/1.0'
-        }
+        },
+        body: JSON.stringify(requestBody)
       }
     )
 
+    console.log(`Grants.gov API response status: ${response.status}`)
+
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`API Error Response: ${errorText}`)
       throw new Error(`Grants.gov API error: ${response.status} ${response.statusText}`)
     }
 
     const data = await response.json()
     const opportunities: GrantsGovOpportunity[] = data.oppHits || []
-
-    console.log(`Fetched ${opportunities.length} opportunities from Grants.gov`)
+    
+    console.log(`Found ${opportunities.length} opportunities from Grants.gov`)
 
     if (opportunities.length === 0) {
       return NextResponse.json({
@@ -100,40 +107,64 @@ export async function GET() {
       return types.length > 0 ? types : ['general']
     }
 
+    const extractMatchRequirement = (description: string | undefined): number => {
+      if (!description) return 0
+      const matchRegex = /(\d+)%?\s*match|match.*?(\d+)%|(\d+)%.*?match/i
+      const match = description.match(matchRegex)
+      return match ? parseInt(match[1] || match[2] || match[3]) : 0
+    }
+
+    const detectCertificationRequirements = (text: string | undefined) => {
+      if (!text) return { minority: false, woman: false, veteran: false, small: false }
+      const lowerText = text.toLowerCase()
+      
+      return {
+        minority: lowerText.includes('minority') || lowerText.includes('mbe') || lowerText.includes('disadvantaged'),
+        woman: lowerText.includes('woman') || lowerText.includes('wbe') || lowerText.includes('women'),
+        veteran: lowerText.includes('veteran') || lowerText.includes('vosb') || lowerText.includes('sdvosb'),
+        small: lowerText.includes('small business') || lowerText.includes('sba') || lowerText.includes('hubzone')
+      }
+    }
+
     // Transform data to match your exact schema
-    const processedOpportunities = opportunities.map((opp: GrantsGovOpportunity) => ({
-      external_id: opp.oppId,
-      source: 'grants_gov',
-      title: opp.oppTitle,
-      sponsor: opp.agencyName,
-      agency: opp.agencyName,
-      description: opp.oppDescription || opp.synopsis || 'No description available',
-      amount_min: parseAmount(opp.awardFloor),
-      amount_max: parseAmount(opp.awardCeiling),
-      credit_percentage: null,
-      deadline_date: opp.closeDateLt ? opp.closeDateLt : null,
-      deadline_type: opp.closeDateLt ? 'fixed' : 'rolling',
-      match_requirement_percentage: 0,
-      eligibility_criteria: parseEligibility(opp.applicantEligibilityDesc),
-      geography: ['nationwide'],
-      project_types: inferProjectTypes(opp.eligibilityCategory),
-      organization_types: ['nonprofit', 'for_profit', 'government'],
-      industry_focus: opp.eligibilityCategory ? [opp.eligibilityCategory] : ['general'],
-      minority_business: false,
-      woman_owned_business: false,
-      veteran_owned_business: false,
-      small_business_only: false,
-      cfda_number: opp.cfdaNumbers?.[0] || null,
-      source_url: `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${opp.oppId}`,
-      application_process: null,
-      required_documents: ['application_form'],
-      contact_email: null,
-      contact_phone: null,
-      competition_level: opp.competitionId ? 'competitive' : 'formula',
-      funding_instrument: opp.fundingInstrumentDesc || 'grant',
-      raw_data: opp,
-      last_updated: new Date().toISOString()
-    }))
+    console.log('Processing opportunities for database insertion...')
+    const processedOpportunities = opportunities.map((opp: GrantsGovOpportunity) => {
+      const certReqs = detectCertificationRequirements(opp.applicantEligibilityDesc || opp.oppDescription)
+      
+      return {
+        external_id: opp.oppId,
+        source: 'grants_gov',
+        title: opp.oppTitle,
+        sponsor: opp.agencyName,
+        agency: opp.agencyName,
+        description: opp.oppDescription || opp.synopsis || 'No description available',
+        amount_min: parseAmount(opp.awardFloor),
+        amount_max: parseAmount(opp.awardCeiling),
+        credit_percentage: null,
+        deadline_date: opp.closeDateLt ? opp.closeDateLt : null,
+        deadline_type: opp.closeDateLt ? 'fixed' : 'rolling',
+        match_requirement_percentage: extractMatchRequirement(opp.oppDescription || opp.synopsis),
+        eligibility_criteria: parseEligibility(opp.applicantEligibilityDesc),
+        geography: ['nationwide'],
+        project_types: inferProjectTypes(opp.eligibilityCategory),
+        organization_types: ['nonprofit', 'for_profit', 'government'],
+        industry_focus: opp.eligibilityCategory ? [opp.eligibilityCategory] : ['general'],
+        minority_business: certReqs.minority,
+        woman_owned_business: certReqs.woman,
+        veteran_owned_business: certReqs.veteran,
+        small_business_only: certReqs.small,
+        cfda_number: opp.cfdaNumbers?.[0] || null,
+        source_url: `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${opp.oppId}`,
+        application_process: null,
+        required_documents: ['application_form'],
+        contact_email: null,
+        contact_phone: null,
+        competition_level: opp.competitionId ? 'competitive' : 'formula',
+        funding_instrument: opp.fundingInstrumentDesc || 'grant',
+        raw_data: opp,
+        last_updated: new Date().toISOString()
+      }
+    })
 
     console.log(`Processing ${processedOpportunities.length} opportunities for database insert`)
 
@@ -144,7 +175,7 @@ export async function GET() {
         onConflict: 'external_id,source',
         ignoreDuplicates: false 
       })
-      .select('id, title, sponsor, deadline_date')
+      .select('id, title, sponsor, deadline_date, amount_max')
 
     if (error) {
       console.error('Database upsert error:', error)
@@ -153,6 +184,14 @@ export async function GET() {
 
     console.log(`Successfully inserted ${inserted?.length || 0} opportunities`)
 
+    // Calculate some stats for the response
+    const totalFunding = processedOpportunities.reduce((sum, opp) => 
+      sum + (opp.amount_max || 0), 0
+    )
+    const upcomingDeadlines = processedOpportunities.filter(opp => 
+      opp.deadline_date && new Date(opp.deadline_date) > new Date()
+    ).length
+
     return NextResponse.json({
       success: true,
       imported: inserted?.length || 0,
@@ -160,13 +199,17 @@ export async function GET() {
       summary: {
         total_fetched: opportunities.length,
         total_imported: inserted?.length || 0,
+        total_potential_funding: totalFunding,
+        upcoming_deadlines: upcomingDeadlines,
         source: 'grants_gov',
-        last_sync: new Date().toISOString()
+        last_sync: new Date().toISOString(),
+        agencies: [...new Set(opportunities.map(opp => opp.agencyName))].slice(0, 5)
       },
-      sample_grants: inserted?.slice(0, 3).map(grant => ({
+      sample_grants: inserted?.slice(0, 5).map(grant => ({
         title: grant.title,
         sponsor: grant.sponsor,
-        deadline: grant.deadline_date
+        deadline: grant.deadline_date,
+        max_amount: grant.amount_max
       })) || []
     })
 
@@ -181,6 +224,7 @@ export async function GET() {
   }
 }
 
+// Support POST for cron jobs
 export async function POST() {
   return GET()
 }
