@@ -1,0 +1,272 @@
+'use client'
+import { useState } from 'react'
+import { useSupabaseClient } from '@supabase/auth-helpers-react'
+import { motion } from 'framer-motion'
+import { Mail, Lock, User, Building2, ArrowRight, CheckCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+export default function AuthPage() {
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    fullName: '',
+    organizationName: ''
+  })
+  
+  const supabase = useSupabaseClient()
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      if (isSignUp) {
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match')
+        }
+
+        if (formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters')
+        }
+
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.fullName,
+              organization_name: formData.organizationName
+            }
+          }
+        })
+
+        if (error) throw error
+
+        toast.success('Account created! Please check your email to verify your account.')
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password
+        })
+
+        if (error) throw error
+        toast.success('Welcome back!')
+      }
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const features = [
+    'AI-powered opportunity matching',
+    'Automated application drafting',
+    'Progress tracking & deadlines',
+    'Document management',
+    'Success analytics'
+  ]
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Left Side - Features */}
+      <div className="hidden lg:flex lg:w-1/2 bg-primary-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-900 via-primary-800 to-blue-900"></div>
+        <div className="relative z-10 flex flex-col justify-center px-12 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="text-4xl font-bold text-white mb-6">
+              Welcome to FundingOS
+            </h1>
+            <p className="text-xl text-gray-300 mb-8">
+              The AI-powered platform that streamlines your grant applications and maximizes your funding success.
+            </p>
+            
+            <div className="space-y-4">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={feature}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
+                  className="flex items-center text-gray-300"
+                >
+                  <CheckCircle className="w-5 h-5 text-accent-400 mr-3" />
+                  {feature}
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Right Side - Auth Form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-12 sm:px-12 lg:px-16">
+        <div className="w-full max-w-md mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
+            </h2>
+            <p className="text-gray-600">
+              {isSignUp 
+                ? 'Join thousands of organizations securing funding with AI'
+                : 'Sign in to your FundingOS account'
+              }
+            </p>
+          </motion.div>
+
+          <motion.form
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
+            {isSignUp && (
+              <>
+                <div>
+                  <label className="form-label">
+                    <User className="inline w-4 h-4 mr-2" />
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    className="form-input"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">
+                    <Building2 className="inline w-4 h-4 mr-2" />
+                    Organization Name
+                  </label>
+                  <input
+                    type="text"
+                    name="organizationName"
+                    className="form-input"
+                    value={formData.organizationName}
+                    onChange={handleInputChange}
+                    placeholder="Enter your organization name"
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className="form-label">
+                <Mail className="inline w-4 h-4 mr-2" />
+                Email Address
+              </label>
+              <input
+                type="email"
+                name="email"
+                className="form-input"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">
+                <Lock className="inline w-4 h-4 mr-2" />
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                className="form-input"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter your password"
+                required
+                minLength={6}
+              />
+            </div>
+
+            {isSignUp && (
+              <div>
+                <label className="form-label">
+                  <Lock className="inline w-4 h-4 mr-2" />
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  className="form-input"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Confirm your password"
+                  required
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full btn-primary flex items-center justify-center"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <>
+                  {isSignUp ? 'Create Account' : 'Sign In'}
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </>
+              )}
+            </button>
+          </motion.form>
+
+          <div className="text-center mt-6">
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {isSignUp
+                ? 'Already have an account? Sign in'
+                : "Don't have an account? Sign up"
+              }
+            </button>
+          </div>
+
+          {isSignUp && (
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                By creating an account, you agree to our{' '}
+                <a href="#" className="text-blue-600 hover:text-blue-700">Terms of Service</a>
+                {' '}and{' '}
+                <a href="#" className="text-blue-600 hover:text-blue-700">Privacy Policy</a>.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

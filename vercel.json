@@ -1,0 +1,19 @@
+{
+  "crons": [
+    {
+      "path": "/api/data/sync-opportunities",
+      "schedule": "0 2 * * *"
+    }
+  ],
+  "functions": {
+    "pages/api/data/sync-opportunities.js": {
+      "maxDuration": 300
+    },
+    "pages/api/ai/analyze-opportunity.js": {
+      "maxDuration": 60
+    },
+    "pages/api/ai/generate-application.js": {
+      "maxDuration": 120
+    }
+  }
+}
