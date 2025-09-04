@@ -54,11 +54,10 @@ export async function GET() {
 
     const data = await response.json()
     console.log('API Response structure:', Object.keys(data))
-    
-    // Check for API error within successful response
-    if (data.errorcode && data.errorcode !== 0) {
-      throw new Error(`Grants.gov API returned error: ${data.msg}`)
-    }
+    console.log('API Response data keys:', data.data ? Object.keys(data.data) : 'No data object')
+    console.log('Hit count:', data.data?.hitCount)
+    console.log('Error code:', data.errorcode)
+    console.log('Message:', data.msg)
     
     // Extract opportunities from the response structure
     const opportunities: GrantsGovOpportunity[] = data.data?.oppHits || []
