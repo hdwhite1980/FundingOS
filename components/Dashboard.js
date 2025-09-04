@@ -24,8 +24,11 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   })
 
   useEffect(() => {
-    loadDashboardData()
-  }, [user])
+    // Only load dashboard data if we have a valid userProfile
+    if (userProfile) {
+      loadDashboardData()
+    }
+  }, [user, userProfile])
 
   const loadDashboardData = async () => {
     try {
