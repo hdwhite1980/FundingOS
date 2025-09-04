@@ -1,21 +1,15 @@
 'use client'
-import { useState } from 'react'
 import { useSupabaseClient } from '@supabase/auth-helpers-react'
-import { motion } from 'framer-motion'
-import { LogOut, Settings, User, Bell, HelpCircle } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Bell, Search, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { useState } from 'react'
 
 export default function Header({ user, userProfile, onProfileUpdate }) {
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
   const supabase = useSupabaseClient()
 
   const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      toast.success('Signed out successfully')
-    } catch (error) {
-      toast.error('Error signing out')
-    }
+    await supabase.auth.signOut()
   }
 
   const getInitials = (name) => {
@@ -29,104 +23,148 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
   }
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center"
-          >
-            <h1 className="text-2xl font-bold text-gradient">FundingOS</h1>
+    <header className="glass border-b border-white/20 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo & Brand */}
+          <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-sm">F</span>
+              </div>
+              <h1 className="text-xl font-bold gradient-text">FundingOS</h1>
+            </div>
+            
             {userProfile?.organization_name && (
-              <span className="ml-4 text-sm text-gray-500 border-l border-gray-300 pl-4">
-                {userProfile.organization_name}
-              </span>
+              <div className="hidden md:block">
+                <span className="text-sm text-slate-500 font-medium">
+                  {userProfile.organization_name}
+                </span>
+              </div>
             )}
-          </motion.div>
+          </div>
 
-          {/* Right Side */}
+          {/* Search Bar */}
+          <div className="hidden md:flex flex-1 max-w-lg mx-8">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search opportunities, projects..."
+                className="w-full pl-10 pr-4 py-2 bg-white/60 border border-white/40 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:bg-white transition-all duration-200"
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-              <Bell className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-white/60 rounded-lg transition-all duration-200 relative"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 animate-scale-in">
+                  <div className="p-4 border-b border-slate-100">
+                    <h3 className="font-semibold text-slate-900">Notifications</h3>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="text-sm text-slate-900 font-medium">New opportunity matches</p>
+                        <p className="text-xs text-slate-600">3 new grants found for your projects</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="text-sm text-slate-900 font-medium">Deadline reminder</p>
+                        <p className="text-xs text-slate-600">CDBG application due in 5 days</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 border-t border-slate-100">
+                    <button className="text-sm text-pink-600 hover:text-pink-700 font-medium">
+                      View all notifications
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* Help */}
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-              <HelpCircle className="w-5 h-5" />
+            {/* Settings */}
+            <button className="p-2 text-slate-600 hover:text-slate-900 hover:bg-white/60 rounded-lg transition-all duration-200">
+              <Settings className="w-5 h-5" />
             </button>
 
             {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center space-x-3 p-2 hover:bg-white/60 rounded-lg transition-all duration-200"
               >
-                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                   {getInitials(userProfile?.full_name)}
                 </div>
                 <div className="hidden md:block text-left">
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-slate-900">
                     {userProfile?.full_name || 'User'}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-slate-500">
                     {user?.email}
                   </div>
                 </div>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
               </button>
 
-              {/* Dropdown Menu */}
               {showUserMenu && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-soft-lg border border-gray-200 z-50"
-                >
-                  <div className="py-1">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">
-                        {userProfile?.full_name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {userProfile?.organization_name}
-                      </p>
-                    </div>
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 z-50 animate-scale-in">
+                  <div className="p-4 border-b border-slate-100">
+                    <p className="text-sm font-medium text-slate-900">
+                      {userProfile?.full_name}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {userProfile?.organization_name}
+                    </p>
+                  </div>
 
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                      <User className="w-4 h-4 mr-3" />
-                      Profile Settings
-                    </button>
-
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                  <div className="py-2">
+                    <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center">
                       <Settings className="w-4 h-4 mr-3" />
                       Account Settings
                     </button>
-
-                    <div className="border-t border-gray-100">
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center"
-                      >
-                        <LogOut className="w-4 h-4 mr-3" />
-                        Sign Out
-                      </button>
-                    </div>
                   </div>
-                </motion.div>
+
+                  <div className="border-t border-slate-100">
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center"
+                    >
+                      <LogOut className="w-4 h-4 mr-3" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Click outside to close menu */}
-      {showUserMenu && (
+      {/* Click outside handlers */}
+      {(showUserMenu || showNotifications) && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setShowUserMenu(false)}
+          onClick={() => {
+            setShowUserMenu(false)
+            setShowNotifications(false)
+          }}
         ></div>
       )}
     </header>

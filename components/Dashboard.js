@@ -189,27 +189,24 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
           </motion.div>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Projects Sidebar */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-1"
-          >
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Modern Projects Sidebar */}
+          <div className="lg:col-span-1">
             <div className="card">
-              <div className="card-header flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-900">Projects</h2>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn-primary flex items-center text-sm px-3 py-2"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Project
-                </button>
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-slate-900">Projects</h2>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="btn-primary btn-sm interactive"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New
+                  </button>
+                </div>
               </div>
-              <div className="card-body">
+              <div className="p-4 max-h-96 overflow-y-auto space-y-3">
                 <ProjectList
                   projects={projects}
                   selectedProject={selectedProject}
@@ -217,21 +214,16 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                 />
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Opportunities */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-2"
-          >
+          {/* Modern Opportunities Section */}
+          <div className="lg:col-span-3">
             <OpportunityList
               opportunities={opportunities}
               selectedProject={selectedProject}
               userProfile={userProfile}
             />
-          </motion.div>
+          </div>
         </div>
 
         {/* Create Project Modal */}
