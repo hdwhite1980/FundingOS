@@ -111,6 +111,12 @@ export async function GET() {
           const opportunities: GrantsGovOpportunity[] = data.data?.oppHits || []
           
           console.log(`${config.name} search: ${opportunities.length} opportunities found`)
+          
+          // Debug: Log first opportunity structure
+          if (opportunities.length > 0) {
+            console.log('Sample opportunity structure:', Object.keys(opportunities[0]))
+            console.log('Sample opportunity data:', JSON.stringify(opportunities[0], null, 2))
+          }
           searchResults.push({
             name: config.name,
             count: opportunities.length,
@@ -192,6 +198,19 @@ export async function GET() {
     }))
 
     console.log(`Processing ${processedOpportunities.length} opportunities for database insert`)
+
+    // Test database connection first
+    console.log('Testing database connection...')
+    const { count, error: countError } = await supabase
+      .from('opportunities')
+      .select('*', { count: 'exact', head: true })
+    
+    if (countError) {
+      console.error('Database connection test failed:', countError)
+      throw new Error(`Database connection failed: ${countError.message}`)
+    }
+    
+    console.log(`Database connection successful. Current opportunities count: ${count}`)
 
     // Upsert into your opportunities table using service role client
     const { data: inserted, error } = await supabase
