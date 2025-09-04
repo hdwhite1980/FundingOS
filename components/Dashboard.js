@@ -6,7 +6,7 @@ import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
 import CreateProjectModal from './CreateProjectModal'
 import { projectService, opportunityService, projectOpportunityService } from '../lib/supabase'
-import { Plus, Target, Clock, TrendingUp, DollarSign, RefreshCw, Zap, Database, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Plus, Target, Clock, TrendingUp, DollarSign, RefreshCw, Zap, Database, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Dashboard({ user, userProfile, onProfileUpdate }) {
@@ -17,8 +17,8 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [clearing, setClearing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState(null)
-  const [syncProgress, setSyncProgress] = useState(0)
   const [stats, setStats] = useState({
     totalProjects: 0,
     activeOpportunities: 0,
@@ -32,6 +32,18 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
       loadDashboardData()
     }
   }, [user, userProfile])
+
+  // Debug opportunities URLs
+  useEffect(() => {
+    if (opportunities.length > 0) {
+      console.log('Sample opportunity URLs:', opportunities.slice(0, 3).map(opp => ({
+        title: opp.title,
+        source_url: opp.source_url,
+        external_id: opp.external_id,
+        source: opp.source
+      })))
+    }
+  }, [opportunities])
 
   const loadDashboardData = async () => {
     try {
@@ -82,13 +94,60 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     })
   }
 
+  const handleClearAndResync = async () => {
+    if (!confirm('This will delete ALL opportunities and fetch fresh data from Grants.gov. Are you sure?')) {
+      return
+    }
+
+    setClearing(true)
+    
+    try {
+      // Clear existing opportunities
+      const clearToast = toast.loading('🗑️ Clearing existing opportunities...', {
+        style: {
+          background: '#1e293b',
+          color: '#f8fafc',
+          border: '1px solid #334155',
+        },
+      })
+
+      const clearResponse = await fetch('/api/admin/clear-opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!clearResponse.ok) {
+        throw new Error('Failed to clear opportunities')
+      }
+
+      toast.dismiss(clearToast)
+      toast.success('✅ Database cleared successfully', {
+        duration: 2000,
+        style: {
+          background: '#f0fdf4',
+          color: '#166534',
+          border: '1px solid #bbf7d0',
+        },
+      })
+
+      // Wait a moment then start fresh sync
+      setTimeout(() => {
+        handleSyncOpportunities()
+      }, 1000)
+
+    } catch (error) {
+      toast.error('Failed to clear opportunities: ' + error.message)
+    } finally {
+      setClearing(false)
+    }
+  }
+
   const handleSyncOpportunities = async () => {
     setSyncing(true)
-    setSyncProgress(0)
     const startTime = Date.now()
     
     try {
-      // Show initial loading toast
+      // Show initial loading toast with progress
       const toastId = toast.loading('🔄 Connecting to Grants.gov...', {
         style: {
           background: '#1e293b',
@@ -97,31 +156,27 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
         },
       })
       
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setSyncProgress(prev => Math.min(prev + 15, 85))
-      }, 500)
-      
       const response = await fetch('/api/sync/grants-gov')
       const result = await response.json()
-      
-      clearInterval(progressInterval)
-      setSyncProgress(100)
       
       if (result.success) {
         const syncTime = Math.round((Date.now() - startTime) / 1000)
         setLastSyncTime(new Date())
         
-        // Show detailed success notification
+        // Dismiss loading toast
         toast.dismiss(toastId)
         
-        // Custom success notification with details
+        // Show detailed success notification
         const successMessage = (
           <div className="flex items-start space-x-3">
-            <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-shrink-0">
+              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+            </div>
             <div>
               <div className="font-semibold text-gray-900">
-                ✅ Sync Complete!
+                Sync Complete!
               </div>
               <div className="text-sm text-gray-600">
                 <strong>{result.imported}</strong> new opportunities imported in <strong>{syncTime}s</strong>
@@ -155,11 +210,11 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
         // Recalculate stats with new data
         calculateStats(projects, newOpportunities)
         
-        // Show additional notification about AI matching if applicable
+        // Show AI matching notification for selected project
         if (selectedProject && result.imported > 0) {
           setTimeout(() => {
             toast.success(
-              `🤖 AI is now analyzing ${result.imported} new opportunities for "${selectedProject.name}"`,
+              `🤖 AI is analyzing ${result.imported} new opportunities for "${selectedProject.name}"`,
               {
                 duration: 4000,
                 style: {
@@ -176,7 +231,11 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
         toast.dismiss(toastId)
         toast.error(
           <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-shrink-0">
+              <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">✕</span>
+              </div>
+            </div>
             <div>
               <div className="font-semibold">Sync Failed</div>
               <div className="text-sm">{result.error || 'Unknown error occurred'}</div>
@@ -187,7 +246,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
             style: {
               background: '#fef2f2',
               color: '#dc2626',
-              border: '1px solid #fecaca',
+              border: '1px solid '#fecaca',
             },
           }
         )
@@ -196,7 +255,11 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
       console.error('Sync error:', error)
       toast.error(
         <div className="flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+          <div className="flex-shrink-0">
+            <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">✕</span>
+            </div>
+          </div>
           <div>
             <div className="font-semibold">Connection Failed</div>
             <div className="text-sm">Could not connect to Grants.gov</div>
@@ -213,7 +276,6 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
       )
     } finally {
       setSyncing(false)
-      setSyncProgress(0)
     }
   }
 
@@ -337,20 +399,20 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                 <p className="text-sm text-gray-600">Data Status</p>
                 <button
                   onClick={handleSyncOpportunities}
-                  disabled={syncing}
+                  disabled={syncing || clearing}
                   className={`text-sm font-semibold transition-colors ${
-                    syncing 
+                    syncing || clearing
                       ? 'text-blue-600 cursor-not-allowed' 
                       : 'text-green-600 hover:text-green-700 cursor-pointer'
                   }`}
                 >
-                  {syncing ? `Syncing... ${syncProgress}%` : 'Sync Now'}
+                  {syncing ? 'Syncing...' : clearing ? 'Clearing...' : 'Sync Now'}
                 </button>
               </div>
             </div>
-            {syncing && (
-              <div className="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-300" 
-                   style={{width: `${syncProgress}%`}} />
+            {(syncing || clearing) && (
+              <div className="absolute bottom-0 left-0 h-1 bg-blue-500 animate-pulse" 
+                   style={{width: '100%'}} />
             )}
           </motion.div>
         </div>
@@ -377,18 +439,29 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                   </p>
                 </div>
               </div>
-              <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+              <div className="mt-4 sm:mt-0 flex items-center space-x-3">
                 <div className="flex items-center text-sm text-gray-500">
                   <div className={`w-2 h-2 rounded-full mr-2 ${
-                    syncing 
+                    syncing || clearing
                       ? 'bg-blue-500 animate-pulse' 
                       : 'bg-green-500'
                   }`} />
-                  {syncing ? `Syncing data... ${syncProgress}%` : 'Live data ready'}
+                  {syncing ? 'Syncing data...' : clearing ? 'Clearing data...' : 'Live data ready'}
                 </div>
+                
+                <button
+                  onClick={handleClearAndResync}
+                  disabled={syncing || clearing}
+                  className="btn-secondary btn-sm flex items-center disabled:opacity-50"
+                  title="Clear all opportunities and fetch fresh data"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear & Resync
+                </button>
+                
                 <button
                   onClick={handleSyncOpportunities}
-                  disabled={syncing}
+                  disabled={syncing || clearing}
                   className="btn-primary btn-sm flex items-center disabled:opacity-50"
                 >
                   {syncing ? (
