@@ -343,7 +343,7 @@ Respond helpfully and specifically based on their context. Keep responses concis
   }
 }
 
-async function createInitialGoals(userId) {
+async function createInitialGoals(userId, supabaseAdmin) {
   const goals = [
     {
       user_id: userId,
