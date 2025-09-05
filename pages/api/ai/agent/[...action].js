@@ -2,7 +2,6 @@
 // Production-optimized version that works with serverless functions
 
 import { supabase } from '../../../../lib/supabase'
-import { AIService } from '../../../../lib/aiService'
 
 export default async function handler(req, res) {
   const { action } = req.query
