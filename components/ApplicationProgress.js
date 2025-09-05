@@ -90,20 +90,25 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
     }
   }
 
-  const handleUploadDocument = async (submissionId, file, documentType) => {
+  const handleUploadDocument = async (submissionId, files, documentType) => {
     try {
-      // In a real implementation, you'd upload to storage first
-      const document = {
-        document_type: documentType,
-        document_name: file.name,
-        file_size: file.size,
-        mime_type: file.type,
-        uploaded_by: user.id
+      // Handle both single file and multiple files
+      const filesToUpload = Array.isArray(files) ? files : [files]
+      
+      for (const file of filesToUpload) {
+        const document = {
+          document_type: documentType,
+          document_name: file.name,
+          file_size: file.size,
+          mime_type: file.type,
+          uploaded_by: user.id
+        }
+        
+        await applicationProgressService.uploadDocument(submissionId, document)
       }
       
-      await applicationProgressService.uploadDocument(submissionId, document)
       loadSubmissions()
-      toast.success('Document uploaded successfully!')
+      toast.success(`${filesToUpload.length} document(s) uploaded successfully!`)
     } catch (error) {
       toast.error('Failed to upload document: ' + error.message)
     }
@@ -372,7 +377,7 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
         )}
       </div>
 
-      {/* Create Submission Modal */}
+      {/* Modals */}
       {showCreateModal && (
         <CreateSubmissionModal
           projects={projects}
@@ -381,7 +386,6 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
         />
       )}
 
-      {/* Document Upload Modal */}
       {showDocumentModal && (
         <DocumentUploadModal
           submission={showDocumentModal}
@@ -390,7 +394,6 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
         />
       )}
 
-      {/* Submission Detail Modal */}
       {selectedSubmission && (
         <SubmissionDetailModal
           submission={selectedSubmission}
@@ -411,7 +414,8 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
     application_id: '',
     submitted_amount: '',
     requested_amount: '',
-    notes: ''
+    notes: '',
+    documents: []
   })
 
   const handleSubmit = (e) => {
@@ -428,7 +432,7 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+        className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6">
           <h3 className="text-lg font-semibold mb-4">Track New Application</h3>
@@ -497,6 +501,23 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
               </div>
             </div>
 
+            {/* File Upload Section */}
+            <div>
+              <label className="form-label">Upload Application Documents</label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  onChange={(e) => setFormData({...formData, documents: Array.from(e.target.files)})}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Supported formats: PDF, Word, Excel, Text. You can select multiple files.
+                </p>
+              </div>
+            </div>
+
             <div>
               <label className="form-label">Notes</label>
               <textarea
@@ -523,25 +544,33 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
   )
 }
 
-// Modal for uploading documents
+// Enhanced modal for uploading documents
 function DocumentUploadModal({ submission, onClose, onUpload }) {
-  const [file, setFile] = useState(null)
+  const [files, setFiles] = useState([])
   const [documentType, setDocumentType] = useState('proposal')
   const [uploading, setUploading] = useState(false)
 
+  const handleFileSelect = (e) => {
+    setFiles(Array.from(e.target.files))
+  }
+
   const handleUpload = async (e) => {
     e.preventDefault()
-    if (!file) return
+    if (files.length === 0) return
 
     setUploading(true)
     try {
-      await onUpload(submission.id, file, documentType)
+      await onUpload(submission.id, files, documentType)
       onClose()
     } catch (error) {
       console.error('Upload error:', error)
     } finally {
       setUploading(false)
     }
+  }
+
+  const removeFile = (index) => {
+    setFiles(files.filter((_, i) => i !== index))
   }
 
   return (
@@ -552,7 +581,7 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
         className="bg-white rounded-lg shadow-lg max-w-md w-full"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Upload Document</h3>
+          <h3 className="text-lg font-semibold mb-4">Upload Documents</h3>
           
           <form onSubmit={handleUpload} className="space-y-4">
             <div>
@@ -562,28 +591,58 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
               >
-                <option value="proposal">Proposal</option>
+                <option value="application">Application Form</option>
+                <option value="proposal">Project Proposal</option>
                 <option value="budget">Budget</option>
                 <option value="narrative">Project Narrative</option>
                 <option value="correspondence">Correspondence</option>
                 <option value="award_letter">Award Letter</option>
                 <option value="report">Progress Report</option>
+                <option value="supporting_documents">Supporting Documents</option>
                 <option value="other">Other</option>
               </select>
             </div>
 
             <div>
-              <label className="form-label">File</label>
-              <input
-                type="file"
-                className="form-input"
-                onChange={(e) => setFile(e.target.files[0])}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Supported formats: PDF, Word, Excel, Text
-              </p>
+              <label className="form-label">Files</label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Supported formats: PDF, Word, Excel, Text, Images. Multiple files allowed.
+                </p>
+              </div>
             </div>
+
+            {/* File Preview */}
+            {files.length > 0 && (
+              <div className="space-y-2">
+                <label className="form-label">Selected Files:</label>
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div className="flex items-center">
+                      <Paperclip className="w-4 h-4 mr-2 text-gray-500" />
+                      <span className="text-sm">{file.name}</span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex justify-end space-x-3 pt-4">
               <button type="button" onClick={onClose} className="btn-secondary">
@@ -592,7 +651,7 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
               <button 
                 type="submit" 
                 className="btn-primary"
-                disabled={!file || uploading}
+                disabled={files.length === 0 || uploading}
               >
                 {uploading ? (
                   <div className="flex items-center">
@@ -600,7 +659,7 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
                     Uploading...
                   </div>
                 ) : (
-                  'Upload Document'
+                  'Upload Documents'
                 )}
               </button>
             </div>

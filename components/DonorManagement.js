@@ -19,7 +19,9 @@ import {
   Phone,
   MapPin,
   Calendar,
-  Star
+  Star,
+  Eye,
+  RefreshCw
 } from 'lucide-react'
 import { donorService, donationService, crowdfundingService } from '../lib/supabase'
 import toast from 'react-hot-toast'
@@ -215,6 +217,12 @@ export default function DonorManagement({ user, userProfile, projects }) {
                   {donor.city}, {donor.state}
                 </div>
               )}
+              {donor.last_donation_date && (
+                <div className="flex items-center text-sm text-gray-600">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Last: {new Date(donor.last_donation_date).toLocaleDateString()}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between mt-4">
@@ -277,13 +285,21 @@ export default function DonorManagement({ user, userProfile, projects }) {
                 <p className="text-xs text-gray-500">{campaign.project.name}</p>
               )}
             </div>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              campaign.status === 'active' ? 'bg-green-100 text-green-800' :
-              campaign.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {campaign.status}
-            </span>
+            <div className="flex items-center space-x-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                campaign.status === 'active' ? 'bg-green-100 text-green-800' :
+                campaign.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {campaign.status}
+              </span>
+              <button
+                onClick={() => syncCampaign(campaign.id)}
+                className="btn-secondary btn-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -318,13 +334,6 @@ export default function DonorManagement({ user, userProfile, projects }) {
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View Campaign
               </a>
-              
-              <button
-                onClick={() => syncCampaign(campaign.id)}
-                className="btn-primary btn-sm"
-              >
-                Sync Data
-              </button>
             </div>
 
             {campaign.last_sync && (
@@ -361,12 +370,14 @@ export default function DonorManagement({ user, userProfile, projects }) {
             icon={Users}
             title="Total Donors"
             value={stats.totalDonors || 0}
+            subtitle={`${stats.majorDonors || 0} major donors`}
             color="blue"
           />
           <StatCard
             icon={DollarSign}
             title="Total Raised"
             value={formatCurrency(stats.totalRaised)}
+            subtitle={`${formatCurrency(stats.thisYearRaised)} this year`}
             color="green"
           />
           <StatCard
@@ -469,6 +480,133 @@ export default function DonorManagement({ user, userProfile, projects }) {
           </div>
         )}
 
+        {activeTab === 'donations' && (
+          <div className="space-y-6">
+            {/* Donation Controls */}
+            <div className="flex items-center justify-between">
+              <div className="flex space-x-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search donations..."
+                    className="form-input pl-10 w-64"
+                  />
+                </div>
+                
+                <select className="form-input">
+                  <option value="">All Projects</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button className="btn-secondary flex items-center">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </button>
+                <button
+                  onClick={() => setShowDonationModal(true)}
+                  className="btn-primary flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Record Donation
+                </button>
+              </div>
+            </div>
+
+            {/* Donations Table */}
+            {donations.length > 0 ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Donor
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Project
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Method
+                      </th>
+                      <th className="relative px-6 py-3">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {donations.map((donation) => (
+                      <tr key={donation.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-semibold">
+                                {donation.donor?.name?.charAt(0)?.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {donation.donor?.name || 'Unknown Donor'}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {donation.donor?.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-green-600">
+                            {formatCurrency(donation.amount)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {new Date(donation.donation_date).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {donation.project?.name || 'General'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 capitalize">
+                            {donation.payment_method?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button className="text-indigo-600 hover:text-indigo-900">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
+                <h3 className="mt-2 text-lg font-medium text-gray-900">No donations yet</h3>
+                <p className="mt-1 text-gray-500">Start recording donations to track your fundraising progress.</p>
+                <button
+                  onClick={() => setShowDonationModal(true)}
+                  className="btn-primary mt-4"
+                >
+                  Record First Donation
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'campaigns' && (
           <div className="space-y-6">
             {/* Campaign Controls */}
@@ -541,3 +679,416 @@ export default function DonorManagement({ user, userProfile, projects }) {
   )
 }
 
+// Modal Components
+function CreateDonorModal({ onClose, onSubmit }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address_line1: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    donor_type: 'individual',
+    notes: '',
+    tags: []
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSubmit(formData)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+      >
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Add New Donor</h3>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="form-label">Name *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Email</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="form-label">Phone</label>
+                <input
+                  type="tel"
+                  className="form-input"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Type</label>
+              <select
+                className="form-input"
+                value={formData.donor_type}
+                onChange={(e) => setFormData({...formData, donor_type: e.target.value})}
+              >
+                <option value="individual">Individual</option>
+                <option value="foundation">Foundation</option>
+                <option value="corporation">Corporation</option>
+                <option value="government">Government</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label">Address</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Street address"
+                value={formData.address_line1}
+                onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="City"
+                  value={formData.city}
+                  onChange={(e) => setFormData({...formData, city: e.target.value})}
+                />
+              </div>
+              <div>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="State"
+                  value={formData.state}
+                  onChange={(e) => setFormData({...formData, state: e.target.value})}
+                />
+              </div>
+              <div>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="ZIP"
+                  value={formData.zip_code}
+                  onChange={(e) => setFormData({...formData, zip_code: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Notes</label>
+              <textarea
+                className="form-input"
+                rows="3"
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                placeholder="Additional notes about this donor..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button type="button" onClick={onClose} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary">
+                Add Donor
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmit }) {
+  const [formData, setFormData] = useState({
+    donor_id: selectedDonor?.id || '',
+    project_id: '',
+    amount: '',
+    donation_date: new Date().toISOString().split('T')[0],
+    payment_method: 'credit_card',
+    external_platform: '',
+    notes: ''
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSubmit({
+      ...formData,
+      amount: parseFloat(formData.amount),
+      net_amount: parseFloat(formData.amount) // Simplified for now
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+      >
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Record Donation</h3>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="form-label">Donor *</label>
+              <select
+                className="form-input"
+                value={formData.donor_id}
+                onChange={(e) => setFormData({...formData, donor_id: e.target.value})}
+                required
+              >
+                <option value="">Select donor</option>
+                {donors.map(donor => (
+                  <option key={donor.id} value={donor.id}>
+                    {donor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label">Project</label>
+              <select
+                className="form-input"
+                value={formData.project_id}
+                onChange={(e) => setFormData({...formData, project_id: e.target.value})}
+              >
+                <option value="">General donation</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Amount *</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div>
+                <label className="form-label">Date *</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={formData.donation_date}
+                  onChange={(e) => setFormData({...formData, donation_date: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Payment Method</label>
+              <select
+                className="form-input"
+                value={formData.payment_method}
+                onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
+              >
+                <option value="credit_card">Credit Card</option>
+                <option value="check">Check</option>
+                <option value="cash">Cash</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="crowdfunding">Crowdfunding</option>
+              </select>
+            </div>
+
+            {formData.payment_method === 'crowdfunding' && (
+              <div>
+                <label className="form-label">Platform</label>
+                <select
+                  className="form-input"
+                  value={formData.external_platform}
+                  onChange={(e) => setFormData({...formData, external_platform: e.target.value})}
+                >
+                  <option value="">Select platform</option>
+                  <option value="gofundme">GoFundMe</option>
+                  <option value="kickstarter">Kickstarter</option>
+                  <option value="indiegogo">Indiegogo</option>
+                  <option value="paypal">PayPal</option>
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="form-label">Notes</label>
+              <textarea
+                className="form-input"
+                rows="3"
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                placeholder="Additional notes about this donation..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button type="button" onClick={onClose} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary">
+                Record Donation
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function LinkCampaignModal({ projects, onClose, onSubmit }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    platform: 'gofundme',
+    campaign_url: '',
+    project_id: '',
+    goal_amount: '',
+    description: ''
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSubmit({
+      ...formData,
+      goal_amount: formData.goal_amount ? parseFloat(formData.goal_amount) : null
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+      >
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Link Campaign</h3>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="form-label">Campaign Title *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">Platform *</label>
+              <select
+                className="form-input"
+                value={formData.platform}
+                onChange={(e) => setFormData({...formData, platform: e.target.value})}
+                required
+              >
+                <option value="gofundme">GoFundMe</option>
+                <option value="kickstarter">Kickstarter</option>
+                <option value="indiegogo">Indiegogo</option>
+                <option value="fundrazr">FundRazr</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label">Campaign URL *</label>
+              <input
+                type="url"
+                className="form-input"
+                value={formData.campaign_url}
+                onChange={(e) => setFormData({...formData, campaign_url: e.target.value})}
+                placeholder="https://..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">Associated Project</label>
+              <select
+                className="form-input"
+                value={formData.project_id}
+                onChange={(e) => setFormData({...formData, project_id: e.target.value})}
+              >
+                <option value="">Select project</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label">Goal Amount</label>
+              <input
+                type="number"
+                className="form-input"
+                value={formData.goal_amount}
+                onChange={(e) => setFormData({...formData, goal_amount: e.target.value})}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-input"
+                rows="3"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="Brief description of the campaign..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button type="button" onClick={onClose} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary">
+                Link Campaign
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
