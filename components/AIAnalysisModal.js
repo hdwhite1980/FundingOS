@@ -45,6 +45,10 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       
       if (existing) {
         setProjectOpportunity(existing)
+        // If there's already a draft, load it
+        if (existing.application_draft) {
+          setApplicationDraft(existing.application_draft)
+        }
       }
 
     } catch (error) {
