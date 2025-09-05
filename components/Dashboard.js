@@ -1,6 +1,6 @@
-// Integrated Dashboard.js with full feature set including donor tracking and application progress
+// Fixed Dashboard.js with better state management
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Header from './Header'
 import ProjectList from './ProjectList'
@@ -43,6 +43,9 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   const [lastSyncTime, setLastSyncTime] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
   
+  // FIXED: Add ref to track if initial load is complete
+  const initialLoadComplete = useRef(false)
+  
   // Enhanced stats for all features
   const [stats, setStats] = useState({
     // Project stats
@@ -69,15 +72,19 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     { id: 'applications', label: 'Applications', icon: FileText }
   ]
 
+  // FIXED: Only load data once on initial mount
   useEffect(() => {
-    if (userProfile) {
+    if (userProfile && !initialLoadComplete.current) {
+      console.log('Initial dashboard data load')
       loadDashboardData()
+      initialLoadComplete.current = true
     }
-  }, [user, userProfile])
+  }, [userProfile]) // Only depend on userProfile for initial load
 
   const loadDashboardData = async () => {
     try {
       setLoading(true)
+      console.log('Loading dashboard data...')
       
       // Load core data
       const [userProjects, allOpportunities] = await Promise.all([
@@ -103,6 +110,25 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
       console.error('Dashboard load error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // FIXED: Separate function for refreshing data after sync
+  const refreshDataAfterSync = async () => {
+    try {
+      console.log('Refreshing data after sync...')
+      
+      // Only reload opportunities, keep other data intact
+      const newOpportunities = await opportunityService.getOpportunities({
+        organizationType: userProfile.organization_type
+      })
+      setOpportunities(newOpportunities)
+      
+      // Recalculate stats with new opportunities
+      await loadEnhancedStats(projects, newOpportunities)
+      
+    } catch (error) {
+      console.error('Error refreshing data after sync:', error)
     }
   }
 
@@ -199,14 +225,8 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
           },
         })
         
-        // Reload opportunities
-        const newOpportunities = await opportunityService.getOpportunities({
-          organizationType: userProfile.organization_type
-        })
-        setOpportunities(newOpportunities)
-        
-        // Recalculate stats
-        await loadEnhancedStats(projects, newOpportunities)
+        // FIXED: Only refresh data after successful sync
+        await refreshDataAfterSync()
         
         // Show AI matching notification for selected project
         if (selectedProject && result.imported > 0) {
