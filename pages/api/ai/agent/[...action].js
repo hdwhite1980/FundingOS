@@ -40,7 +40,7 @@ export default async function handler(req, res) {
           // Get user context from database
           const userContext = await getUserContext(userId)
           
-          // Use AI service for chat response (stateless)
+          // Use AI service for chat response (stateless) with enhanced validation and rate limiting
           const response = await generateAgentResponse(message, {
             userId,
             userContext,
@@ -61,7 +61,15 @@ export default async function handler(req, res) {
           res.json({ message: response })
         } catch (error) {
           console.error('Chat error:', error)
-          res.status(500).json({ error: 'Chat service unavailable' })
+          
+          // Return appropriate error based on error type
+          if (error.message.includes('rate limit')) {
+            res.status(429).json({ error: error.message })
+          } else if (error.message.includes('Message too long') || error.message.includes('Invalid message')) {
+            res.status(400).json({ error: error.message })
+          } else {
+            res.status(500).json({ error: 'Chat service unavailable' })
+          }
         }
         break
 
@@ -177,7 +185,7 @@ export default async function handler(req, res) {
       case 'status':
         try {
           // Check database for agent status
-          const { data: lastActivity } = await supabase
+          const { data: lastActivity, error } = await supabase
             .from('agent_activity_log')
             .select('*')
             .eq('user_id', userId)
@@ -185,13 +193,18 @@ export default async function handler(req, res) {
             .limit(1)
             .single()
           
+          if (error && error.code !== 'PGRST116') {
+            throw error
+          }
+          
           res.json({
             exists: !!lastActivity,
-            status: lastActivity ? 'active' : 'not_initialized',
+            status: lastActivity ? (lastActivity.data?.new_status || 'active') : 'not_initialized',
             lastActivity: lastActivity?.created_at,
             message: lastActivity ? 'Agent active' : 'Agent not initialized'
           })
         } catch (error) {
+          console.error('Status check error:', error)
           res.json({
             exists: false,
             status: 'unknown',
@@ -212,29 +225,61 @@ export default async function handler(req, res) {
 // Helper functions for production
 
 async function initializeAgentInDatabase(userId) {
-  // Create initial agent state in database
-  await supabase
-    .from('agent_activity_log')
-    .insert([{
-      user_id: userId,
-      activity_type: 'initialized',
-      data: { timestamp: new Date().toISOString() }
-    }])
+  try {
+    // Check if agent already exists
+    const { data: existingAgent } = await supabase
+      .from('agent_activity_log')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('activity_type', 'initialized')
+      .single()
+    
+    if (existingAgent) {
+      // Just update the timestamp if already exists
+      await supabase
+        .from('agent_activity_log')
+        .insert([{
+          user_id: userId,
+          activity_type: 'reinitialized',
+          data: { timestamp: new Date().toISOString() }
+        }])
+    } else {
+      // Create initial agent state in database
+      await supabase
+        .from('agent_activity_log')
+        .insert([{
+          user_id: userId,
+          activity_type: 'initialized',
+          data: { timestamp: new Date().toISOString() }
+        }])
+    }
+  } catch (error) {
+    console.error('Error in initializeAgentInDatabase:', error)
+    throw error
+  }
 }
 
 async function getUserContext(userId) {
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
-  
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('user_id', userId)
-  
-  return { profile, projects: projects || [] }
+  try {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('user_id', userId)
+    
+    return { 
+      profile: profile || {}, 
+      projects: projects || [] 
+    }
+  } catch (error) {
+    console.error('Error getting user context:', error)
+    return { profile: {}, projects: [] }
+  }
 }
 
 async function generateAgentResponse(message, context) {
@@ -245,16 +290,22 @@ async function generateAgentResponse(message, context) {
     throw new Error('AI service not configured')
   }
   
-  // You can use your existing AIService here
-  // or implement a simple OpenAI call for chat
-  
-  const prompt = `You are an AI funding agent. The user said: "${message}"
-  
-User context: ${JSON.stringify(context.userContext)}
-Projects: ${context.projects.length} projects
-Opportunities: ${context.opportunities.length} opportunities
+  const prompt = `You are an AI funding agent helping users find and manage funding opportunities. 
 
-Respond helpfully about funding strategy, opportunities, and grants.`
+User message: "${message}"
+
+User context:
+- Profile: ${JSON.stringify(context.userContext.profile, null, 2)}
+- Projects: ${context.projects.length} active projects
+- Opportunities: ${context.opportunities.length} tracked opportunities
+
+Your role is to:
+1. Help identify relevant funding opportunities
+2. Provide strategic advice on grant applications
+3. Track deadlines and requirements
+4. Offer insights on funding trends
+
+Respond helpfully and specifically based on their context. Keep responses concise but actionable.`
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -265,11 +316,24 @@ Respond helpfully about funding strategy, opportunities, and grants.`
       },
       body: JSON.stringify({
         model: 'gpt-4',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful AI funding agent. Provide concise, actionable advice about grants, funding opportunities, and application strategies.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
         max_tokens: 500,
         temperature: 0.7
       })
     })
+    
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`)
+    }
     
     const data = await response.json()
     return data.choices[0].message.content
@@ -287,7 +351,8 @@ async function createInitialGoals(userId) {
       type: 'opportunity_discovery',
       priority: 8,
       status: 'active',
-      progress: 30
+      progress: 30,
+      created_at: new Date().toISOString()
     },
     {
       user_id: userId,
@@ -295,15 +360,30 @@ async function createInitialGoals(userId) {
       type: 'deadline_management',
       priority: 9,
       status: 'active',
-      progress: 50
+      progress: 50,
+      created_at: new Date().toISOString()
+    },
+    {
+      user_id: userId,
+      description: 'Track funding application status',
+      type: 'application_tracking',
+      priority: 7,
+      status: 'active',
+      progress: 20,
+      created_at: new Date().toISOString()
     }
   ]
   
-  const { data, error } = await supabase
-    .from('agent_goals')
-    .insert(goals)
-    .select()
-  
-  if (error) throw error
-  return data
+  try {
+    const { data, error } = await supabase
+      .from('agent_goals')
+      .insert(goals)
+      .select()
+    
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error creating initial goals:', error)
+    throw error
+  }
 }
