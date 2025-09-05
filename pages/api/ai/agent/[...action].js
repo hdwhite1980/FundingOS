@@ -330,6 +330,55 @@ INSTRUCTIONS:
 Respond with specific, personalized advice based on their actual data.`
 
   try {
+    // Detect simple data queries for direct answers
+    const isSimpleQuery = detectSimpleDataQuery(message)
+    console.log(`Simple query detected: ${isSimpleQuery} for message: "${message}"`)
+    
+    let prompt, maxTokens = 1200
+
+    if (isSimpleQuery) {
+      maxTokens = 300 // Shorter responses for simple queries
+      prompt = `Answer this specific question directly and concisely using the user's actual data:
+
+QUESTION: "${message}"
+
+FUNDING DATA:
+- Individual donations: ${fundingStats?.totalRaised?.toLocaleString() || '0'} from ${fundingStats?.totalDonors || 0} donors
+- Grant funding awarded: ${fundingStats?.totalAwarded?.toLocaleString() || '0'} from ${fundingStats?.approvedApplications || 0} approved applications  
+- Crowdfunding raised: ${fundingStats?.totalCampaignRaised?.toLocaleString() || '0'} from ${fundingStats?.activeCampaigns || 0} active campaigns
+- Total funding secured: ${summary?.totalSecured?.toLocaleString() || '0'}
+- Total funding needed: ${summary?.totalFundingNeeded?.toLocaleString() || '0'}
+- Funding gap: ${summary?.fundingGap?.toLocaleString() || '0'}
+
+Give a direct, factual answer. Be brief and specific. Do not provide strategy advice unless asked.`
+    } else {
+      prompt = `You are an AI funding strategist providing specific, actionable advice.
+
+USER MESSAGE: "${message}"
+
+ORGANIZATION: ${profile?.organization_name || 'Organization'} (${profile?.organization_type || 'Type not specified'})
+LOCATION: ${profile?.city && profile?.state ? `${profile.city}, ${profile.state}` : 'Location not specified'}
+
+PROJECTS:
+${projectSummary}
+
+FUNDING STATUS:
+${fundingOverview}
+
+AVAILABLE OPPORTUNITIES:
+${opportunitySummary}
+
+INSTRUCTIONS:
+- Be specific and use actual data from their profile
+- Reference real opportunity titles, deadlines, and amounts
+- Provide actionable recommendations based on their funding gap and project needs
+- If discussing deadlines, use the actual dates provided
+- Be conversational but data-driven
+- Use line breaks for readability
+
+Respond with specific, personalized advice based on their actual data.`
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -341,15 +390,17 @@ Respond with specific, personalized advice based on their actual data.`
         messages: [
           {
             role: 'system',
-            content: 'You are an expert funding strategist. Provide specific, actionable advice using the user\'s actual data. Reference real opportunity titles, amounts, and deadlines. Be conversational and helpful. Never use placeholder text like "[Insert Deadline]" - always use the actual data provided.'
+            content: isSimpleQuery ? 
+              'You are a data assistant. Provide direct, factual answers using only the data provided. Be concise and specific. Do not give advice unless requested.' :
+              'You are an expert funding strategist. Provide specific, actionable advice using the user\'s actual data. Reference real opportunity titles, amounts, and deadlines. Be conversational and helpful. Never use placeholder text like "[Insert Deadline]" - always use the actual data provided.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 1200,
-        temperature: 0.7
+        max_tokens: maxTokens,
+        temperature: isSimpleQuery ? 0.3 : 0.7
       })
     })
     
