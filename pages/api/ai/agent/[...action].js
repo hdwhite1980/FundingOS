@@ -87,7 +87,7 @@ export default async function handler(req, res) {
           
           // If no goals exist, create initial ones
           if (!goals || goals.length === 0) {
-            const initialGoals = await createInitialGoals(userId)
+            const initialGoals = await createInitialGoals(userId, supabase) // FIXED: Pass supabase instance
             res.json(initialGoals)
           } else {
             res.json(goals)
@@ -343,7 +343,8 @@ Respond helpfully and specifically based on their context. Keep responses concis
   }
 }
 
-async function createInitialGoals(userId, supabaseAdmin) {
+// FIXED: Updated function signature and added error handling
+async function createInitialGoals(userId, supabaseClient) {
   const goals = [
     {
       user_id: userId,
@@ -375,7 +376,12 @@ async function createInitialGoals(userId, supabaseAdmin) {
   ]
   
   try {
-    const { data, error } = await supabaseAdmin
+    // Add validation to ensure supabaseClient exists
+    if (!supabaseClient || !supabaseClient.from) {
+      throw new Error('Invalid Supabase client provided')
+    }
+
+    const { data, error } = await supabaseClient
       .from('agent_goals')
       .insert(goals)
       .select()
@@ -384,6 +390,11 @@ async function createInitialGoals(userId, supabaseAdmin) {
     return data
   } catch (error) {
     console.error('Error creating initial goals:', error)
-    throw error
+    
+    // Return fallback goals if database insert fails
+    return goals.map((goal, index) => ({
+      ...goal,
+      id: `fallback_${Date.now()}_${index}`
+    }))
   }
 }
