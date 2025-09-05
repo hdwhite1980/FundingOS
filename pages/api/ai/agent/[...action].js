@@ -621,35 +621,59 @@ function detectSimpleDataQuery(message) {
   const lowerMessage = message.toLowerCase()
   
   const simpleQueries = [
-    // Donation queries
+    // Donation queries - broader patterns
+    /do i have.*donations?/,
+    /any donations?/,
     /how much.*donations?/,
     /total.*donations?/,
     /donation.*amount/,
     /how many.*donors?/,
+    /donations.*received/,
     
     // Campaign queries  
     /how much.*raised/,
     /campaign.*raised/,
     /crowdfunding.*amount/,
+    /any.*campaigns?/,
     
     // Grant queries
     /how much.*grants?/,
     /grant.*funding/,
     /total.*awarded/,
+    /any.*grants?/,
     
     // General funding queries
     /how much.*funding/,
     /total.*secured/,
     /funding.*gap/,
     /how much.*need/,
+    /do i have.*funding/,
     
     // Status queries
     /funding.*status/,
     /current.*funding/,
-    /progress.*funding/
+    /progress.*funding/,
+    
+    // Simple yes/no questions
+    /do i have any/,
+    /have i received/
   ]
   
-  return simpleQueries.some(pattern => pattern.test(lowerMessage))
+  // Also check for key phrases
+  const keyPhrases = [
+    'how much in donations',
+    'do i have donations',
+    'any donations',
+    'total donations',
+    'how much funding',
+    'funding secured',
+    'how many donors'
+  ]
+  
+  const hasPattern = simpleQueries.some(pattern => pattern.test(lowerMessage))
+  const hasPhrase = keyPhrases.some(phrase => lowerMessage.includes(phrase))
+  
+  return hasPattern || hasPhrase
 }
 
 // Message Intent Analysis
