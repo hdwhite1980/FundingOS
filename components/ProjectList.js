@@ -5,62 +5,37 @@ import { Building, MapPin, DollarSign, Calendar, ChevronRight, Target, Edit3, Mo
 export default function ProjectList({ projects, selectedProject, onProjectSelect, onProjectEdit, onProjectDelete }) {
   const [showActionsFor, setShowActionsFor] = useState(null)
 
-  // Debug: Log when functions are passed
-  useEffect(() => {
-    console.log('ProjectList props:', {
-      onProjectEdit: typeof onProjectEdit,
-      onProjectDelete: typeof onProjectDelete,
-      onProjectSelect: typeof onProjectSelect,
-      projectsCount: projects?.length
-    })
-  }, [onProjectEdit, onProjectDelete, onProjectSelect, projects])
-
   const handleActionClick = (e, projectId) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Action button clicked for project:', projectId)
     setShowActionsFor(showActionsFor === projectId ? null : projectId)
   }
 
   const handleEdit = (e, project) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Edit clicked for project:', project)
-    console.log('onProjectEdit function:', onProjectEdit)
-    
     setShowActionsFor(null)
     
     if (typeof onProjectEdit === 'function') {
-      console.log('Calling onProjectEdit...')
       onProjectEdit(project)
-    } else {
-      console.error('onProjectEdit is not a function:', typeof onProjectEdit)
     }
   }
 
   const handleDelete = (e, project) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Delete clicked for project:', project)
-    console.log('onProjectDelete function:', onProjectDelete)
-    
     setShowActionsFor(null)
     
     if (typeof onProjectDelete === 'function') {
       const confirmed = window.confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)
-      console.log('Delete confirmed:', confirmed)
       
       if (confirmed) {
-        console.log('Calling onProjectDelete...')
         onProjectDelete(project.id)
       }
-    } else {
-      console.error('onProjectDelete is not a function:', typeof onProjectDelete)
     }
   }
 
   const handleProjectClick = (project) => {
-    console.log('Project selected:', project)
     if (typeof onProjectSelect === 'function') {
       onProjectSelect(project)
     }
@@ -70,7 +45,6 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
   useEffect(() => {
     const handleClickOutside = () => {
       if (showActionsFor) {
-        console.log('Closing dropdown')
         setShowActionsFor(null)
       }
     }
@@ -172,7 +146,7 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
                 {showActionsFor === project.id && (
                   <div 
                     className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-xl border border-slate-200 z-[9999]"
-                    style={{ position: 'absolute', zIndex: 9999 }}
+                    style={{ zIndex: 9999 }}
                   >
                     <div className="py-1">
                       <button
