@@ -15,6 +15,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   const [projectOpportunities, setProjectOpportunities] = useState([])
   const [selectedProject, setSelectedProject] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingProject, setEditingProject] = useState(null) // Added for edit functionality
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState(null)
@@ -235,12 +236,63 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     setProjects([newProject, ...projects])
     setSelectedProject(newProject)
     setShowCreateModal(false)
+    setEditingProject(null) // Clear editing state
     toast.success('Project created successfully!')
     
     // Trigger AI opportunity matching in the background
     setTimeout(() => {
       toast.success('AI is analyzing opportunities for your new project...')
     }, 1000)
+  }
+
+  const handleProjectUpdated = async (updatedProject) => {
+    // Update the project in the list
+    setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p))
+    
+    // Update selected project if it's the one being edited
+    if (selectedProject?.id === updatedProject.id) {
+      setSelectedProject(updatedProject)
+    }
+    
+    setEditingProject(null)
+    setShowCreateModal(false)
+    
+    toast.success('Project updated successfully!')
+    
+    // Trigger AI re-analysis since project details changed
+    setTimeout(() => {
+      toast.success('AI is re-analyzing opportunities based on your project updates...')
+    }, 1000)
+  }
+
+  const handleProjectEdit = (project) => {
+    setEditingProject(project)
+    setShowCreateModal(true)
+  }
+
+  const handleProjectDelete = async (projectId) => {
+    try {
+      // Delete from database
+      await projectService.deleteProject(projectId)
+      
+      // Update local state
+      setProjects(projects.filter(p => p.id !== projectId))
+      
+      // Clear selection if deleted project was selected
+      if (selectedProject?.id === projectId) {
+        const remainingProjects = projects.filter(p => p.id !== projectId)
+        setSelectedProject(remainingProjects.length > 0 ? remainingProjects[0] : null)
+      }
+      
+      toast.success('Project deleted successfully')
+    } catch (error) {
+      toast.error('Failed to delete project: ' + error.message)
+    }
+  }
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false)
+    setEditingProject(null)
   }
 
   const handleProjectSelected = async (project) => {
@@ -456,6 +508,8 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                   projects={projects}
                   selectedProject={selectedProject}
                   onProjectSelect={handleProjectSelected}
+                  onProjectEdit={handleProjectEdit}
+                  onProjectDelete={handleProjectDelete}
                 />
               </div>
             </div>
@@ -471,12 +525,14 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
           </div>
         </div>
 
-        {/* Create Project Modal */}
+        {/* Create/Edit Project Modal */}
         {showCreateModal && (
           <CreateProjectModal
             userProfile={userProfile}
-            onClose={() => setShowCreateModal(false)}
+            onClose={handleCloseModal}
             onProjectCreated={handleProjectCreated}
+            onProjectUpdated={handleProjectUpdated}
+            editProject={editingProject}
           />
         )}
       </main>

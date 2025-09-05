@@ -16,7 +16,52 @@ interface GrantsGovOpportunity {
   cfdaList?: string[]
 }
 
-// Smart category mapping based on user profile
+interface SearchConfiguration {
+  name: string;
+  params: {
+    rows: number;
+    oppStatuses: string;
+    fundingCategories?: string;
+    keyword?: string;
+    agencies?: string;
+    eligibilities?: string;
+    aln?: string;
+  };
+  metadata?: {
+    projectId?: string;
+    strategy?: string;
+    targetCategory?: string;
+    targetAgency?: string;
+    targetKeyword?: string;
+  };
+}
+
+// AI categorization function
+async function getAIProjectCategories(project: any, userProfile: any) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const response = await fetch(`${baseUrl}/api/ai/categorize-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project, userProfile })
+    })
+    
+    if (response.ok) {
+      const aiCategories = await response.json()
+      console.log(`AI categories for ${project.name}:`, aiCategories)
+      return aiCategories
+    } else {
+      console.warn(`AI categorization failed for project ${project.name}:`, response.status)
+    }
+  } catch (error) {
+    console.error('AI categorization failed:', error)
+  }
+  
+  // Fallback to null - will use existing rule-based logic
+  return null
+}
+
+// Enhanced smart category mapping with fallback logic
 function getRelevantCategories(userProfile: any, userProjects: any[] = []) {
   const categories = new Set<string>()
   const agencies = new Set<string>()
@@ -70,16 +115,22 @@ function getRelevantCategories(userProfile: any, userProjects: any[] = []) {
     }
   }
 
-  // Based on user projects
+  // Enhanced project type mappings
   userProjects.forEach(project => {
     if (project.project_type) {
       const projectMappings = {
-        'community_development': { cats: ['CD', 'HL'], keywords: ['community', 'development'] },
-        'infrastructure': { cats: ['CD', 'EN'], keywords: ['infrastructure', 'transportation'] },
-        'healthcare': { cats: ['HL'], keywords: ['health', 'medical'] },
-        'education': { cats: ['ED'], keywords: ['education', 'training'] },
-        'environmental': { cats: ['EN', 'AG'], keywords: ['environment', 'energy'] },
-        'research': { cats: ['ST', 'HL'], keywords: ['research', 'innovation'] }
+        'community_development': { cats: ['CD', 'HL'], keywords: ['community', 'development', 'revitalization'] },
+        'infrastructure': { cats: ['CD', 'EN', 'T'], keywords: ['infrastructure', 'transportation', 'utilities'] },
+        'healthcare': { cats: ['HL'], keywords: ['health', 'medical', 'clinic'] },
+        'education': { cats: ['ED'], keywords: ['education', 'training', 'workforce'] },
+        'environmental': { cats: ['EN', 'AG'], keywords: ['environment', 'energy', 'sustainability'] },
+        'research': { cats: ['ST', 'HL'], keywords: ['research', 'innovation', 'development'] },
+        'nonprofit_program': { cats: ['CD', 'HL'], keywords: ['nonprofit', 'services', 'program'] },
+        'small_business': { cats: ['BC'], keywords: ['small business', 'entrepreneur', 'commercial'] },
+        'commercial_development': { cats: ['BC', 'RD'], keywords: ['commercial', 'business', 'economic'] },
+        'residential_development': { cats: ['HO', 'CD'], keywords: ['housing', 'residential', 'affordable'] },
+        'agriculture': { cats: ['AG'], keywords: ['agriculture', 'farming', 'rural'] },
+        'technology': { cats: ['ST'], keywords: ['technology', 'innovation', 'digital'] }
       }
 
       const mapping = projectMappings[project.project_type]
@@ -108,6 +159,7 @@ function getRelevantCategories(userProfile: any, userProjects: any[] = []) {
   if (userProfile.minority_owned) {
     keywords.add('minority')
     keywords.add('disadvantaged')
+    agencies.add('MBDA')
   }
   if (userProfile.woman_owned) {
     keywords.add('women')
@@ -131,33 +183,54 @@ function getRelevantCategories(userProfile: any, userProjects: any[] = []) {
 
 export async function GET(request: Request) {
   try {
-    console.log('Starting smart Grants.gov sync based on user profiles...')
+    console.log('Starting AI-enhanced Grants.gov sync...')
 
-    // Get user profiles to understand what opportunities are relevant
+    // Get user profiles and projects
     const { data: userProfiles, error: profileError } = await supabase
       .from('user_profiles')
+      .select('*')
+
+    const { data: userProjects, error: projectError } = await supabase
+      .from('projects')
       .select('*')
 
     if (profileError) {
       console.error('Error fetching user profiles:', profileError)
     }
-
-    // Get user projects to understand project types
-    const { data: userProjects, error: projectError } = await supabase
-      .from('projects')
-      .select('*')
-
     if (projectError) {
       console.error('Error fetching user projects:', projectError)
     }
 
-    // Analyze all users to determine smart search strategy
-    const allRelevantData = new Set<string>()
+    // Use AI to determine search strategies for each project
+    const aiSearchStrategies: Array<{ project: any; userProfile: any; aiCategories: any }> = []
+    
+    if (userProjects && userProfiles) {
+      for (const project of userProjects) {
+        const userProfile = userProfiles.find(p => p.id === project.user_id)
+        if (userProfile) {
+          console.log(`Getting AI categories for project: ${project.name}`)
+          
+          const aiCategories = await getAIProjectCategories(project, userProfile)
+          
+          if (aiCategories) {
+            aiSearchStrategies.push({
+              project,
+              userProfile,
+              aiCategories
+            })
+          }
+        }
+      }
+    }
+
+    console.log(`AI strategies generated: ${aiSearchStrategies.length}`)
+
+    // Fallback: Analyze all users to determine smart search strategy
     const smartCategories = new Set<string>()
     const smartAgencies = new Set<string>()
     const smartKeywords = new Set<string>()
 
-    // Process each user's profile and projects
+    // Process each user's profile and projects for fallback strategy
     if (userProfiles) {
       for (const profile of userProfiles) {
         const userProjectsForProfile = userProjects?.filter(p => p.user_id === profile.id) || []
@@ -169,79 +242,151 @@ export async function GET(request: Request) {
       }
     }
 
-    console.log('Smart search strategy:', {
+    console.log('Fallback smart search strategy:', {
       categories: Array.from(smartCategories),
       agencies: Array.from(smartAgencies).slice(0, 5),
       keywords: Array.from(smartKeywords).slice(0, 10)
     })
 
-    // Create smart search configurations based on user data
-    interface SearchConfiguration {
-      name: string;
-      params: {
-        rows: number;
-        oppStatuses: string;
-        fundingCategories?: string;
-        keyword?: string;
-        agencies?: string;
-        eligibilities?: string;
-        aln?: string;
-      };
-    }
+    // Create search configurations combining AI and rule-based approaches
     const searchConfigurations: SearchConfiguration[] = []
 
-    // Category-based searches
-    Array.from(smartCategories).forEach(category => {
-      searchConfigurations.push({
-        name: `Category: ${category}`,
-        params: {
-          rows: 100,
-          oppStatuses: "posted",
-          fundingCategories: category,
-          keyword: "",
-          agencies: "",
-          eligibilities: "",
-          aln: "",
-        }
+    // AI-driven searches (priority)
+    aiSearchStrategies.forEach(({ project, aiCategories }) => {
+      // Primary category searches
+      aiCategories.primary_categories?.forEach((category: string) => {
+        searchConfigurations.push({
+          name: `AI-Primary: ${category} for ${project.name}`,
+          params: {
+            rows: 50,
+            oppStatuses: "posted",
+            fundingCategories: category,
+            keyword: "",
+            agencies: "",
+            eligibilities: "",
+            aln: "",
+          },
+          metadata: {
+            projectId: project.id,
+            strategy: 'ai-primary',
+            targetCategory: category
+          }
+        })
+      })
+
+      // Agency-specific searches
+      aiCategories.priority_agencies?.slice(0, 3).forEach((agency: string) => {
+        searchConfigurations.push({
+          name: `AI-Agency: ${agency} for ${project.name}`,
+          params: {
+            rows: 30,
+            oppStatuses: "posted",
+            agencies: agency,
+            fundingCategories: "",
+            keyword: "",
+            eligibilities: "",
+            aln: "",
+          },
+          metadata: {
+            projectId: project.id,
+            strategy: 'ai-agency',
+            targetAgency: agency
+          }
+        })
+      })
+
+      // Keyword-driven searches
+      const topKeywords = aiCategories.search_keywords?.slice(0, 2) || []
+      topKeywords.forEach((keyword: string) => {
+        searchConfigurations.push({
+          name: `AI-Keyword: ${keyword} for ${project.name}`,
+          params: {
+            rows: 25,
+            oppStatuses: "posted",
+            keyword: keyword,
+            agencies: "",
+            eligibilities: "",
+            aln: "",
+            fundingCategories: ""
+          },
+          metadata: {
+            projectId: project.id,
+            strategy: 'ai-keyword',
+            targetKeyword: keyword
+          }
+        })
       })
     })
 
-    // Agency-based searches
-    Array.from(smartAgencies).slice(0, 5).forEach(agency => {
-      searchConfigurations.push({
-        name: `Agency: ${agency}`,
-        params: {
-          rows: 100,
-          oppStatuses: "posted",
-          agencies: agency,
-          fundingCategories: "",
-          keyword: "",
-          eligibilities: "",
-          aln: "",
-        }
+    // Rule-based fallback searches (if AI didn't cover everything)
+    if (aiSearchStrategies.length === 0 || searchConfigurations.length < 5) {
+      console.log('Adding rule-based fallback searches...')
+      
+      // Category-based searches
+      Array.from(smartCategories).forEach(category => {
+        searchConfigurations.push({
+          name: `Fallback-Category: ${category}`,
+          params: {
+            rows: 100,
+            oppStatuses: "posted",
+            fundingCategories: category,
+            keyword: "",
+            agencies: "",
+            eligibilities: "",
+            aln: "",
+          },
+          metadata: {
+            strategy: 'fallback-category',
+            targetCategory: category
+          }
+        })
       })
-    })
 
-    // Keyword-based searches for top keywords
-    Array.from(smartKeywords).slice(0, 3).forEach(keyword => {
-      searchConfigurations.push({
-        name: `Keyword: ${keyword}`,
-        params: {
-          rows: 50,
-          oppStatuses: "posted",
-          keyword: keyword,
-          agencies: "",
-          eligibilities: "",
-          aln: "",
-          fundingCategories: ""
-        }
+      // Agency-based searches
+      Array.from(smartAgencies).slice(0, 5).forEach(agency => {
+        searchConfigurations.push({
+          name: `Fallback-Agency: ${agency}`,
+          params: {
+            rows: 100,
+            oppStatuses: "posted",
+            agencies: agency,
+            fundingCategories: "",
+            keyword: "",
+            eligibilities: "",
+            aln: "",
+          },
+          metadata: {
+            strategy: 'fallback-agency',
+            targetAgency: agency
+          }
+        })
       })
-    })
 
-    // Fallback broad search if no specific criteria
+      // Keyword-based searches for top keywords
+      Array.from(smartKeywords).slice(0, 3).forEach(keyword => {
+        searchConfigurations.push({
+          name: `Fallback-Keyword: ${keyword}`,
+          params: {
+            rows: 50,
+            oppStatuses: "posted",
+            keyword: keyword,
+            agencies: "",
+            eligibilities: "",
+            aln: "",
+            fundingCategories: ""
+          },
+          metadata: {
+            strategy: 'fallback-keyword',
+            targetKeyword: keyword
+          }
+        })
+      })
+    }
+
+    // Final fallback broad search if still no specific criteria
     if (searchConfigurations.length === 0) {
       searchConfigurations.push({
-        name: "Broad Search",
+        name: "Emergency Broad Search",
         params: {
           rows: 200,
           oppStatuses: "posted",
@@ -250,24 +395,30 @@ export async function GET(request: Request) {
           eligibilities: "",
           aln: "",
           fundingCategories: ""
+        },
+        metadata: {
+          strategy: 'emergency-fallback'
         }
       })
     }
 
-    let allOpportunities: GrantsGovOpportunity[] = []
+    console.log(`Executing ${searchConfigurations.length} search configurations (${aiSearchStrategies.length} AI-driven)...`)
+
+    let allOpportunities: (GrantsGovOpportunity & { _aiMetadata?: any })[] = []
     let searchResults: Array<{
       name: string
       count?: number
       errorcode?: any
       message?: any
       error?: string
+      strategy?: string
+      projectId?: string
     }> = []
 
-    console.log(`Executing ${searchConfigurations.length} smart search configurations...`)
-
+    // Execute all search configurations
     for (const config of searchConfigurations) {
       try {
-        console.log(`Trying ${config.name} search...`)
+        console.log(`Executing: ${config.name}`)
         
         const response = await fetch(
           'https://api.grants.gov/v1/api/search2',
@@ -282,30 +433,39 @@ export async function GET(request: Request) {
           const data = await response.json()
           const opportunities: GrantsGovOpportunity[] = data.data?.oppHits || []
           
-          console.log(`${config.name} search: ${opportunities.length} opportunities found`)
+          console.log(`${config.name}: ${opportunities.length} opportunities found`)
           
           searchResults.push({
             name: config.name,
             count: opportunities.length,
             errorcode: data.errorcode,
-            message: data.msg
+            message: data.msg,
+            strategy: config.metadata?.strategy,
+            projectId: config.metadata?.projectId
           })
 
           if (opportunities.length > 0) {
-            // Add unique opportunities (avoid duplicates)
-            const newOpportunities = opportunities.filter(opp => 
+            // Add metadata to opportunities for project tracking
+            const enhancedOpportunities = opportunities.map(opp => ({
+              ...opp,
+              _aiMetadata: config.metadata
+            }))
+
+            // Filter duplicates
+            const newOpportunities = enhancedOpportunities.filter(opp => 
               !allOpportunities.some(existing => existing.id === opp.id)
             )
-            allOpportunities.push(...newOpportunities)
             
+            allOpportunities.push(...newOpportunities)
             console.log(`Added ${newOpportunities.length} new unique opportunities`)
           }
         }
       } catch (error) {
-        console.error(`${config.name} search failed:`, error)
+        console.error(`Search failed for ${config.name}:`, error)
         searchResults.push({
           name: config.name,
-          error: error.message
+          error: (error as Error).message,
+          strategy: config.metadata?.strategy
         })
       }
     }
@@ -316,9 +476,10 @@ export async function GET(request: Request) {
       return NextResponse.json({
         success: true,
         imported: 0,
-        message: 'No opportunities found with smart search criteria',
+        message: 'No opportunities found with AI-enhanced search criteria',
         search_results: searchResults,
-        strategy: {
+        ai_strategies_used: aiSearchStrategies.length,
+        fallback_strategy: {
           categories: Array.from(smartCategories),
           agencies: Array.from(smartAgencies),
           keywords: Array.from(smartKeywords)
@@ -326,16 +487,10 @@ export async function GET(request: Request) {
       })
     }
 
-    // Transform data to match your exact schema with null handling
+    // Transform data to match your exact schema with AI metadata
     console.log('Processing opportunities for database insertion...')
-    const processedOpportunities = allOpportunities.map((opp: GrantsGovOpportunity) => {
-      // Handle null/undefined sponsor with multiple fallbacks
-      const sponsor = opp.agencyName || 
-                    opp.agencyCode || 
-                    opp.agency || 
-                    'Federal Agency'
-      
-      // Ensure we have valid required fields
+    const processedOpportunities = allOpportunities.map((opp) => {
+      const sponsor = opp.agencyName || opp.agencyCode || opp.agency || 'Federal Agency'
       const title = opp.title || 'Untitled Grant Opportunity'
       
       return {
@@ -343,17 +498,17 @@ export async function GET(request: Request) {
         source: 'grants_gov',
         title: title,
         sponsor: sponsor,
-        agency: sponsor, // Use same value for consistency
-        description: `Grant opportunity: ${title}`, // Better description
-        amount_min: null, // Not available in search2 results
-        amount_max: null, // Not available in search2 results
+        agency: sponsor,
+        description: `Grant opportunity: ${title}`,
+        amount_min: null,
+        amount_max: null,
         credit_percentage: null,
         deadline_date: opp.closeDate || null,
         deadline_type: opp.closeDate ? 'fixed' : 'rolling',
         match_requirement_percentage: 0,
-        eligibility_criteria: ['general'], // Would need fetchOpportunity API for details
+        eligibility_criteria: ['general'],
         geography: ['nationwide'],
-        project_types: ['general'], // Would need fetchOpportunity API for details
+        project_types: ['general'],
         organization_types: ['nonprofit', 'for_profit', 'government'],
         industry_focus: ['general'],
         minority_business: false,
@@ -369,11 +524,12 @@ export async function GET(request: Request) {
         competition_level: 'competitive',
         funding_instrument: 'grant',
         raw_data: opp,
+        ai_metadata: opp._aiMetadata || null, // Store AI search context
         last_updated: new Date().toISOString()
       }
     })
 
-    // Filter out any opportunities that still have invalid data
+    // Filter out invalid opportunities
     const validOpportunities = processedOpportunities.filter(opp => {
       const isValid = opp.external_id && 
                      opp.title && 
@@ -394,7 +550,7 @@ export async function GET(request: Request) {
 
     console.log(`Processing ${processedOpportunities.length} opportunities, ${validOpportunities.length} valid for database insert`)
 
-    // Test database connection first
+    // Test database connection
     console.log('Testing database connection...')
     const { count, error: countError } = await supabase
       .from('opportunities')
@@ -407,7 +563,7 @@ export async function GET(request: Request) {
     
     console.log(`Database connection successful. Current opportunities count: ${count}`)
 
-    // Upsert into your opportunities table using service role client
+    // Store in database
     const { data: inserted, error } = await supabase
       .from('opportunities')
       .upsert(validOpportunities, { 
@@ -426,38 +582,43 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       imported: inserted?.length || 0,
-      message: `Successfully imported ${inserted?.length || 0} targeted federal grant opportunities`,
+      message: `Successfully imported ${inserted?.length || 0} AI-enhanced federal grant opportunities`,
       summary: {
         total_fetched: allOpportunities.length,
         total_processed: processedOpportunities.length,
         total_valid: validOpportunities.length,
         total_imported: inserted?.length || 0,
+        ai_strategies_used: aiSearchStrategies.length,
+        total_search_configurations: searchConfigurations.length,
         source: 'grants_gov',
         last_sync: new Date().toISOString(),
-        agencies: Array.from(new Set(validOpportunities.map(opp => opp.sponsor))).slice(0, 5),
-        search_results: searchResults,
-        smart_strategy: {
-          categories_targeted: Array.from(smartCategories),
-          agencies_targeted: Array.from(smartAgencies),
-          keywords_used: Array.from(smartKeywords)
-        }
+        agencies: Array.from(new Set(validOpportunities.map(opp => opp.sponsor))).slice(0, 5)
       },
+      ai_insights: aiSearchStrategies.map(strategy => ({
+        project_name: strategy.project.name,
+        project_type: strategy.project.project_type,
+        primary_categories: strategy.aiCategories.primary_categories,
+        priority_agencies: strategy.aiCategories.priority_agencies,
+        search_keywords: strategy.aiCategories.search_keywords?.slice(0, 3),
+        reasoning: strategy.aiCategories.reasoning
+      })),
+      search_results: searchResults,
       sample_grants: inserted?.slice(0, 5).map(grant => ({
         title: grant.title,
         sponsor: grant.sponsor,
         deadline: grant.deadline_date
       })) || [],
-      search_configurations_tried: searchConfigurations.map(config => config.name),
       data_quality: {
         opportunities_found: allOpportunities.length,
         opportunities_processed: processedOpportunities.length,
         opportunities_valid: validOpportunities.length,
-        opportunities_filtered_out: processedOpportunities.length - validOpportunities.length
+        opportunities_filtered_out: processedOpportunities.length - validOpportunities.length,
+        ai_enhanced: aiSearchStrategies.length > 0
       }
     })
 
   } catch (error: any) {
-    console.error('Smart Grants.gov sync error:', error)
+    console.error('AI-enhanced Grants.gov sync error:', error)
     return NextResponse.json({ 
       success: false,
       error: 'Failed to sync with Grants.gov API',

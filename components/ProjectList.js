@@ -1,7 +1,29 @@
 'use client'
-import { Building, MapPin, DollarSign, Calendar, ChevronRight, Target } from 'lucide-react'
+import { useState } from 'react'
+import { Building, MapPin, DollarSign, Calendar, ChevronRight, Target, Edit3, MoreVertical, Trash2 } from 'lucide-react'
 
-export default function ProjectList({ projects, selectedProject, onProjectSelect }) {
+export default function ProjectList({ projects, selectedProject, onProjectSelect, onProjectEdit, onProjectDelete }) {
+  const [showActionsFor, setShowActionsFor] = useState(null)
+
+  const handleActionClick = (e, projectId) => {
+    e.stopPropagation() // Prevent project selection when clicking actions
+    setShowActionsFor(showActionsFor === projectId ? null : projectId)
+  }
+
+  const handleEdit = (e, project) => {
+    e.stopPropagation()
+    setShowActionsFor(null)
+    onProjectEdit(project)
+  }
+
+  const handleDelete = (e, project) => {
+    e.stopPropagation()
+    setShowActionsFor(null)
+    if (window.confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
+      onProjectDelete(project.id)
+    }
+  }
+
   if (projects.length === 0) {
     return (
       <div className="empty-state">
@@ -21,15 +43,15 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
       {projects.map((project, index) => (
         <div
           key={project.id}
-          onClick={() => onProjectSelect(project)}
           className={`
-            group p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 animate-fade-in
+            group relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 animate-fade-in
             ${selectedProject?.id === project.id
               ? 'border-pink-300 bg-gradient-to-r from-pink-50 to-purple-50 shadow-md'
               : 'border-slate-200 hover:border-pink-300 hover:bg-gradient-to-r hover:from-pink-25 hover:to-purple-25 hover:shadow-sm'
             }
           `}
           style={{ animationDelay: `${index * 50}ms` }}
+          onClick={() => onProjectSelect(project)}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
@@ -74,11 +96,50 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
               </div>
             </div>
             
-            <ChevronRight className={`w-4 h-4 transition-all duration-200 flex-shrink-0 ml-2 ${
-              selectedProject?.id === project.id 
-                ? 'text-pink-600 transform rotate-90' 
-                : 'text-slate-400 group-hover:text-pink-500 group-hover:transform group-hover:translate-x-1'
-            }`} />
+            <div className="flex items-center space-x-1 ml-2">
+              {/* Actions Menu */}
+              <div className="relative">
+                <button
+                  onClick={(e) => handleActionClick(e, project.id)}
+                  className={`p-1.5 rounded-lg transition-all duration-200 ${
+                    showActionsFor === project.id 
+                      ? 'bg-pink-100 text-pink-600' 
+                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {/* Actions Dropdown */}
+                {showActionsFor === project.id && (
+                  <div className="absolute right-0 top-8 mt-1 w-40 bg-white rounded-lg shadow-lg border border-slate-200 z-50 animate-scale-in">
+                    <div className="py-1">
+                      <button
+                        onClick={(e) => handleEdit(e, project)}
+                        className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center"
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Edit Project
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, project)}
+                        className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Project
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Selection Indicator */}
+              <ChevronRight className={`w-4 h-4 transition-all duration-200 flex-shrink-0 ${
+                selectedProject?.id === project.id 
+                  ? 'text-pink-600 transform rotate-90' 
+                  : 'text-slate-400 group-hover:text-pink-500 group-hover:transform group-hover:translate-x-1'
+              }`} />
+            </div>
           </div>
 
           {/* Progress indicator */}
@@ -94,6 +155,14 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
           </div>
         </div>
       ))}
+
+      {/* Click outside handler */}
+      {showActionsFor && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowActionsFor(null)}
+        ></div>
+      )}
     </div>
   )
 }

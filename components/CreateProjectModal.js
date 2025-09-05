@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Building, MapPin, DollarSign, Calendar, FileText, Users, Leaf } from 'lucide-react'
 import { projectService } from '../lib/supabase'
@@ -26,24 +26,32 @@ const INDUSTRIES = [
   'Tourism', 'Arts & Culture', 'Environmental', 'Social Services', 'Other'
 ]
 
-export default function CreateProjectModal({ userProfile, onClose, onProjectCreated }) {
+export default function CreateProjectModal({ 
+  userProfile, 
+  onClose, 
+  onProjectCreated, 
+  onProjectUpdated,
+  editProject = null // Pass project data when editing
+}) {
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
+  const [isEditMode] = useState(!!editProject)
+  
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    location: userProfile?.city && userProfile?.state ? `${userProfile.city}, ${userProfile.state}` : '',
-    project_type: '',
-    funding_needed: '',
-    timeline: '',
-    industry: '',
-    target_population: '',
-    expected_jobs_created: '',
-    environmental_impact: '',
-    community_benefit: '',
-    matching_funds_available: '',
-    matching_funds_source: '',
-    previous_funding: ''
+    name: editProject?.name || '',
+    description: editProject?.description || '',
+    location: editProject?.location || (userProfile?.city && userProfile?.state ? `${userProfile.city}, ${userProfile.state}` : ''),
+    project_type: editProject?.project_type || '',
+    funding_needed: editProject?.funding_needed?.toString() || '',
+    timeline: editProject?.timeline || '',
+    industry: editProject?.industry || '',
+    target_population: editProject?.target_population || '',
+    expected_jobs_created: editProject?.expected_jobs_created?.toString() || '',
+    environmental_impact: editProject?.environmental_impact || '',
+    community_benefit: editProject?.community_benefit || '',
+    matching_funds_available: editProject?.matching_funds_available?.toString() || '',
+    matching_funds_source: editProject?.matching_funds_source || '',
+    previous_funding: editProject?.previous_funding || ''
   })
 
   const handleInputChange = (e) => {
@@ -67,10 +75,19 @@ export default function CreateProjectModal({ userProfile, onClose, onProjectCrea
         matching_funds_available: formData.matching_funds_available ? parseFloat(formData.matching_funds_available) : 0
       }
 
-      const newProject = await projectService.createProject(projectData)
-      onProjectCreated(newProject)
+      if (isEditMode) {
+        // Update existing project
+        const updatedProject = await projectService.updateProject(editProject.id, projectData)
+        onProjectUpdated(updatedProject)
+        toast.success('Project updated successfully!')
+      } else {
+        // Create new project
+        const newProject = await projectService.createProject(projectData)
+        onProjectCreated(newProject)
+        toast.success('Project created successfully!')
+      }
     } catch (error) {
-      toast.error('Failed to create project: ' + error.message)
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} project: ` + error.message)
     } finally {
       setLoading(false)
     }
@@ -86,8 +103,15 @@ export default function CreateProjectModal({ userProfile, onClose, onProjectCrea
   const renderStep1 = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Project Basics</h3>
-        <p className="text-gray-600">Tell us about your project to help us find the best funding opportunities.</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          {isEditMode ? 'Edit Project Details' : 'Project Basics'}
+        </h3>
+        <p className="text-gray-600">
+          {isEditMode 
+            ? 'Update your project information to help us find better funding opportunities.'
+            : 'Tell us about your project to help us find the best funding opportunities.'
+          }
+        </p>
       </div>
 
       <div>
@@ -216,7 +240,7 @@ export default function CreateProjectModal({ userProfile, onClose, onProjectCrea
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Project Impact</h3>
         <p className="text-gray-600">Help us understand the broader impact of your project.</p>
       </div>
-
+      
       <div>
         <label className="form-label flex items-center">
           <Users className="w-4 h-4 mr-2" />
@@ -324,9 +348,14 @@ export default function CreateProjectModal({ userProfile, onClose, onProjectCrea
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="font-medium text-blue-800 mb-2">Ready to find opportunities!</h4>
+        <h4 className="font-medium text-blue-800 mb-2">
+          {isEditMode ? 'Update complete!' : 'Ready to find opportunities!'}
+        </h4>
         <p className="text-sm text-blue-700">
-          Once created, our AI will analyze your project and match it with the most relevant funding opportunities. You'll get personalized recommendations with fit scores and application assistance.
+          {isEditMode 
+            ? 'Your project updates will help our AI find even better funding opportunities that match your specific needs.'
+            : 'Once created, our AI will analyze your project and match it with the most relevant funding opportunities. You\'ll get personalized recommendations with fit scores and application assistance.'
+          }
         </p>
       </div>
     </div>
@@ -342,7 +371,9 @@ export default function CreateProjectModal({ userProfile, onClose, onProjectCrea
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Create New Project</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {isEditMode ? 'Edit Project' : 'Create New Project'}
+            </h2>
             <p className="text-sm text-gray-600">Step {currentStep} of 3</p>
           </div>
           <button
@@ -412,10 +443,10 @@ export default function CreateProjectModal({ userProfile, onClose, onProjectCrea
                   {loading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creating...
+                      {isEditMode ? 'Updating...' : 'Creating...'}
                     </>
                   ) : (
-                    'Create Project'
+                    isEditMode ? 'Update Project' : 'Create Project'
                   )}
                 </button>
               )}
