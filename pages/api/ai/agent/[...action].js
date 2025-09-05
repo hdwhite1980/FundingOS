@@ -1,5 +1,5 @@
 // pages/api/ai/agent/[...action].js
-// Production-optimized AI agent with comprehensive opportunity analysis
+// Production-optimized AI agent with comprehensive user context and opportunity analysis
 
 import { supabase } from '../../../../lib/supabase'
 
@@ -36,19 +36,28 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Message is required' })
           }
 
-          // Get user context from database
+          console.log(`Processing chat message: "${message}"`)
+          console.log(`Context: ${projects?.length || 0} projects, ${opportunities?.length || 0} opportunities`)
+
+          // Get enhanced user context from database
           const userContext = await getUserContext(userId)
           
           // Analyze message intent
           const messageIntent = analyzeMessageIntent(message)
+          console.log('Message intent:', messageIntent)
           
-          // Handle specific intents
-          if (messageIntent.includes('analyze_opportunities') && opportunities?.length > 0) {
+          // Handle opportunity analysis requests
+          if (messageIntent.includes('analyze_opportunities') && opportunities?.length > 0 && projects?.length > 0) {
+            console.log('Performing comprehensive opportunity analysis...')
+            
             // Trigger comprehensive opportunity analysis
             const analysis = await analyzeAllOpportunities(userId, projects, opportunities, userContext.profile)
             
             // Create decisions for top opportunities
-            await createOpportunityDecisions(userId, analysis.topMatches)
+            if (analysis.topMatches.length > 0) {
+              await createOpportunityDecisions(userId, analysis.topMatches)
+              console.log(`Created ${analysis.topMatches.length} opportunity decisions`)
+            }
             
             // Generate response with analysis
             const response = await generateOpportunityAnalysisResponse(analysis, projects)
@@ -67,13 +76,27 @@ export default async function handler(req, res) {
             return
           }
           
-          // Generate regular chat response
-          const response = await generateAgentResponse(message, {
+          // Enhanced context for regular chat
+          const enhancedContext = {
             userId,
             userContext,
             projects: projects || [],
-            opportunities: opportunities || []
-          })
+            opportunities: opportunities || [],
+            // Add formatted opportunity details for better AI understanding
+            opportunityDetails: opportunities?.map(opp => ({
+              title: opp.title,
+              sponsor: opp.sponsor,
+              amount_max: opp.amount_max,
+              deadline_date: opp.deadline_date,
+              project_types: opp.project_types,
+              organization_types: opp.organization_types,
+              geography: opp.geography,
+              description: opp.description
+            })) || []
+          }
+          
+          // Generate enhanced chat response
+          const response = await generateEnhancedAgentResponse(message, enhancedContext)
           
           // Store conversation in database
           await supabase.from('agent_conversations').insert([{
@@ -240,42 +263,71 @@ export default async function handler(req, res) {
   }
 }
 
-// Core AI Response Function
-async function generateAgentResponse(message, context) {
+// NEW: Enhanced response generator with better opportunity formatting
+async function generateEnhancedAgentResponse(message, context) {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('AI service not configured')
   }
   
-  // Get project and opportunity context for better responses
-  const projectContext = context.projects.length > 0 ? 
-    `Active Projects: ${context.projects.map(p => `"${p.name}" (${p.project_type}, $${p.funding_needed?.toLocaleString()} needed)`).join(', ')}` : 
+  const { userContext, projects, opportunities, opportunityDetails } = context
+  const { profile, fundingStats, summary } = userContext
+  
+  // Format projects clearly
+  const projectSummary = projects.length > 0 ? 
+    projects.map(p => `• "${p.name}" - ${p.project_type?.replace('_', ' ')} project needing $${p.funding_needed?.toLocaleString() || 'TBD'} in ${p.location || 'location TBD'}`).join('\n') : 
     'No active projects'
   
-  const opportunityContext = context.opportunities.length > 0 ? 
-    `Available Opportunities: ${context.opportunities.length} funding opportunities found, including: ${context.opportunities.slice(0, 3).map(o => `"${o.title}" from ${o.sponsor}`).join(', ')}${context.opportunities.length > 3 ? ` and ${context.opportunities.length - 3} more` : ''}` : 
-    'No opportunities currently tracked'
+  // Format opportunities with REAL data
+  const opportunitySummary = opportunityDetails.length > 0 ? 
+    opportunityDetails.slice(0, 5).map(opp => {
+      const deadline = opp.deadline_date ? 
+        `Deadline: ${new Date(opp.deadline_date).toLocaleDateString()}` : 
+        'Rolling deadline'
+      const amount = opp.amount_max ? 
+        `Up to $${opp.amount_max.toLocaleString()}` : 
+        'Amount varies'
+      return `• "${opp.title}" from ${opp.sponsor} - ${amount}, ${deadline}`
+    }).join('\n') : 
+    'No opportunities currently available'
 
-  const prompt = `You are an AI funding agent helping users find and manage funding opportunities. 
+  // Format funding status clearly
+  const fundingOverview = `
+Current Funding Status:
+- Total funding needed: $${summary?.totalFundingNeeded?.toLocaleString() || '0'}
+- Amount secured: $${summary?.totalSecured?.toLocaleString() || '0'}
+- Remaining gap: $${summary?.fundingGap?.toLocaleString() || '0'}
+- Progress: ${summary?.fundingProgress || 0}%
 
-User message: "${message}"
+Recent Activity:
+- Individual donations: $${fundingStats?.totalRaised?.toLocaleString() || '0'} from ${fundingStats?.totalDonors || 0} donors
+- Grant applications: ${fundingStats?.totalApplications || 0} submitted, ${fundingStats?.approvedApplications || 0} approved
+- Active campaigns: ${fundingStats?.activeCampaigns || 0} crowdfunding campaigns`
 
-User context:
-- Organization: ${context.userContext.profile?.organization_name || 'Not specified'}
-- Type: ${context.userContext.profile?.organization_type || 'Not specified'}
-- Location: ${context.userContext.profile?.city && context.userContext.profile?.state ? `${context.userContext.profile.city}, ${context.userContext.profile.state}` : 'Not specified'}
-- ${projectContext}
-- ${opportunityContext}
+  const prompt = `You are an AI funding strategist providing specific, actionable advice.
 
-Your capabilities include:
-1. **Opportunity Discovery**: Search and analyze funding opportunities
-2. **Strategic Advice**: Provide guidance on grant applications and strategy
-3. **Deadline Tracking**: Monitor application deadlines and requirements
-4. **Opportunity Analysis**: Evaluate which opportunities best match user projects
-5. **Application Guidance**: Help structure and improve grant applications
+USER MESSAGE: "${message}"
 
-If asked about opportunities, analyze them against the user's projects and provide specific recommendations about which ones to pursue and why.
+ORGANIZATION: ${profile?.organization_name || 'Organization'} (${profile?.organization_type || 'Type not specified'})
+LOCATION: ${profile?.city && profile?.state ? `${profile.city}, ${profile.state}` : 'Location not specified'}
 
-Respond in a helpful, conversational way with clear formatting. Use line breaks and bullet points where appropriate for readability. Keep responses focused and actionable.`
+PROJECTS:
+${projectSummary}
+
+FUNDING STATUS:
+${fundingOverview}
+
+AVAILABLE OPPORTUNITIES:
+${opportunitySummary}
+
+INSTRUCTIONS:
+- Be specific and use actual data from their profile
+- Reference real opportunity titles, deadlines, and amounts
+- Provide actionable recommendations based on their funding gap and project needs
+- If discussing deadlines, use the actual dates provided
+- Be conversational but data-driven
+- Use line breaks for readability
+
+Respond with specific, personalized advice based on their actual data.`
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -289,14 +341,14 @@ Respond in a helpful, conversational way with clear formatting. Use line breaks 
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful AI funding agent. Provide well-formatted, conversational responses with proper line breaks and structure. Use bullet points and clear sections when helpful. Be specific and actionable in your advice.'
+            content: 'You are an expert funding strategist. Provide specific, actionable advice using the user\'s actual data. Reference real opportunity titles, amounts, and deadlines. Be conversational and helpful. Never use placeholder text like "[Insert Deadline]" - always use the actual data provided.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        max_tokens: 800,
+        max_tokens: 1200,
         temperature: 0.7
       })
     })
@@ -308,7 +360,119 @@ Respond in a helpful, conversational way with clear formatting. Use line breaks 
     const data = await response.json()
     let agentResponse = data.choices[0].message.content
 
-    // Clean up formatting for better display
+    // Clean up formatting
+    agentResponse = agentResponse
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove markdown bold
+      .replace(/\n{3,}/g, '\n\n') // Limit excessive line breaks
+      .replace(/\[Insert.*?\]/g, 'TBD') // Replace any placeholder text
+      .trim()
+
+    return agentResponse
+  } catch (error) {
+    console.error('AI response error:', error)
+    return `I'm analyzing your funding situation. I can see you have ${projects.length} project(s) and ${opportunities.length} opportunity(ies) to review. Let me continue processing this information and get back to you with specific recommendations.`
+  }
+}
+
+// Enhanced AI Response Function with Data-Driven Context
+async function generateAgentResponse(message, context) {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('AI service not configured')
+  }
+  
+  const { userContext, projects, opportunities } = context
+  const { profile, fundingStats, summary, donations, campaigns, applications } = userContext
+  
+  // Build comprehensive context string
+  const projectContext = projects.length > 0 ? 
+    `Active Projects: ${projects.map(p => `"${p.name}" (${p.project_type}, ${p.funding_needed?.toLocaleString()} needed)`).join(', ')}` : 
+    'No active projects'
+  
+  const opportunityContext = opportunities.length > 0 ? 
+    `Available Opportunities: ${opportunities.length} funding opportunities tracked` : 
+    'No opportunities currently tracked'
+
+  // Comprehensive funding status context
+  const fundingContext = `
+Funding Status:
+- Total needed across all projects: ${summary.totalFundingNeeded?.toLocaleString() || '0'}
+- Total secured so far: ${summary.totalSecured?.toLocaleString() || '0'}
+- Remaining funding gap: ${summary.fundingGap?.toLocaleString() || '0'}
+- Funding progress: ${summary.fundingProgress || 0}%
+- Diversification score: ${summary.diversificationScore || 0}/100
+
+Fundraising Activity:
+- Individual donations: ${fundingStats.totalRaised ? `${fundingStats.totalRaised.toLocaleString()}` : '$0'} from ${fundingStats.totalDonors || 0} donors
+- Crowdfunding campaigns: ${campaigns?.length || 0} campaigns (${fundingStats.activeCampaigns || 0} active)
+- Grant applications: ${applications?.length || 0} submitted (${fundingStats.approvedApplications || 0} approved, ${fundingStats.pendingApplications || 0} pending)
+- Total grant funding awarded: ${fundingStats.totalAwarded?.toLocaleString() || '0'}`.trim()
+
+  const prompt = `You are an AI funding agent with comprehensive knowledge of the user's funding ecosystem.
+
+User message: "${message}"
+
+ORGANIZATION PROFILE:
+- Name: ${profile?.organization_name || 'Not specified'}
+- Type: ${profile?.organization_type || 'Not specified'}
+- Location: ${profile?.city && profile?.state ? `${profile.city}, ${profile.state}` : 'Not specified'}
+- Certifications: ${formatCertifications(profile)}
+
+PROJECTS:
+${projectContext}
+
+FUNDING LANDSCAPE:
+${fundingContext}
+
+OPPORTUNITIES:
+${opportunityContext}
+
+Your capabilities include:
+1. **Comprehensive Funding Strategy**: Analyze across donations, crowdfunding, and grants
+2. **Funding Gap Analysis**: Identify priorities based on project needs vs. secured funding
+3. **Diversification Advice**: Recommend optimal funding mix based on current portfolio
+4. **Performance Insights**: Evaluate success rates and suggest improvements
+5. **Strategic Planning**: Connect funding activities to achieve project goals
+
+When providing advice:
+- Consider their current funding mix and suggest optimizations
+- Highlight funding gaps and recommend specific actions
+- Reference their actual performance data when relevant
+- Provide actionable next steps based on their complete funding picture
+
+Respond conversationally with specific, data-driven insights. Use their actual numbers and achievements to provide personalized guidance.`
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert funding strategist and AI agent. Provide specific, actionable advice based on the user\'s complete funding data. Reference their actual numbers, performance, and funding mix. Be conversational but data-driven. Use line breaks for readability.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      })
+    })
+    
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    let agentResponse = data.choices[0].message.content
+
+    // Clean up formatting
     agentResponse = agentResponse
       .replace(/\*\*(.*?)\*\*/g, '$1') // Remove markdown bold
       .replace(/\n{3,}/g, '\n\n') // Limit excessive line breaks
@@ -317,8 +481,88 @@ Respond in a helpful, conversational way with clear formatting. Use line breaks 
     return agentResponse
   } catch (error) {
     console.error('AI response error:', error)
-    return "I'm having trouble processing your request right now. Let me continue monitoring your funding opportunities in the background. Please try again in a moment."
+    return "I'm having trouble processing your request right now. Let me continue monitoring your funding opportunities and analyzing your funding performance in the background."
   }
+}
+
+// Improved opportunity analysis response function
+async function generateOpportunityAnalysisResponse(analysis, projects) {
+  const { topMatches, summary } = analysis
+  
+  if (!topMatches || topMatches.length === 0) {
+    return `I've analyzed ${summary.totalAnalyzed} opportunities against your ${projects.length} project(s), but didn't find any strong matches above 70%.
+
+This could mean:
+• The current opportunities don't align well with your project types
+• You might need to adjust your project descriptions for better matching
+• New opportunities may be coming soon
+
+I'll continue monitoring for better matches. Would you like me to analyze what types of opportunities would be ideal for your projects?`
+  }
+  
+  let response = `I've completed my analysis of ${summary.totalAnalyzed} opportunities for your ${projects.length} project(s). Here's what I found:\n\n`
+  
+  // Top recommendations with real data
+  response += `🎯 **Top Recommendations:**\n\n`
+  
+  topMatches.slice(0, 3).forEach((match, index) => {
+    const deadline = match.opportunity.deadline_date ? 
+      `Deadline: ${new Date(match.opportunity.deadline_date).toLocaleDateString()}` : 
+      'Rolling deadline'
+    
+    const amount = match.opportunity.amount_max ? 
+      `Up to $${match.opportunity.amount_max.toLocaleString()}` : 
+      'Amount varies'
+    
+    const daysLeft = match.daysUntilDeadline ? 
+      ` (${match.daysUntilDeadline} days remaining)` : 
+      ''
+    
+    response += `${index + 1}. **${match.opportunity.title}** - ${match.fitScore}% match
+   • Sponsor: ${match.opportunity.sponsor}
+   • For project: "${match.project.name}"
+   • Funding: ${amount}
+   • ${deadline}${daysLeft}
+   • Recommendation: ${match.recommendation.replace(/_/g, ' ').toLowerCase()}
+   • Why it's a good fit: ${match.reasoning || 'Strong alignment with your project goals'}
+
+`
+  })
+  
+  // Urgency alerts
+  if (summary.urgentDeadlines > 0) {
+    response += `⚠️ **Urgent Action Needed:**\n`
+    response += `${summary.urgentDeadlines} opportunities have deadlines within 2 weeks. I recommend prioritizing these for immediate review.\n\n`
+  }
+  
+  // Summary statistics
+  response += `**Analysis Summary:**\n`
+  response += `• ${summary.highMatches} high-quality matches (70%+ fit score)\n`
+  response += `• ${summary.mediumMatches} moderate matches (50-69% fit score)\n`
+  response += `• ${summary.urgentDeadlines} opportunities with urgent deadlines\n\n`
+  
+  // Next steps
+  response += `**Recommended Next Steps:**\n`
+  response += `1. Review the top ${Math.min(3, topMatches.length)} recommendations above\n`
+  response += `2. Check application requirements for your priority opportunities\n`
+  response += `3. Start preparing application materials for urgent deadlines\n\n`
+  
+  response += `Would you like me to provide detailed analysis for any specific opportunity, or help you prioritize based on your funding timeline?`
+  
+  return response
+}
+
+// Helper function for certifications
+function formatCertifications(profile) {
+  if (!profile) return 'None'
+  
+  const certs = []
+  if (profile.small_business) certs.push('Small Business')
+  if (profile.minority_owned) certs.push('Minority-Owned')
+  if (profile.woman_owned) certs.push('Woman-Owned')
+  if (profile.veteran_owned) certs.push('Veteran-Owned')
+  
+  return certs.length > 0 ? certs.join(', ') : 'None'
 }
 
 // Message Intent Analysis
@@ -332,8 +576,11 @@ function analyzeMessageIntent(message) {
   if (lowerMessage.includes('deadline') || lowerMessage.includes('due')) {
     intents.push('check_deadlines')
   }
-  if (lowerMessage.includes('status') || lowerMessage.includes('progress')) {
+  if (lowerMessage.includes('status') || lowerMessage.includes('progress') || lowerMessage.includes('portfolio')) {
     intents.push('check_status')
+  }
+  if (lowerMessage.includes('diversif') || lowerMessage.includes('balance') || lowerMessage.includes('spread')) {
+    intents.push('diversification_analysis')
   }
   
   return intents
@@ -455,39 +702,6 @@ function generateReasoning(project, opportunity, fitScore) {
   return reasons.join('. ')
 }
 
-// Generate Analysis Response
-async function generateOpportunityAnalysisResponse(analysis, projects) {
-  const { topMatches, summary } = analysis
-  
-  let response = `I've analyzed ${summary.totalAnalyzed} opportunities against your ${projects.length} project(s).\n\n`
-  
-  if (topMatches.length > 0) {
-    response += `🎯 Top Recommendations:\n\n`
-    
-    topMatches.slice(0, 3).forEach((match, index) => {
-      response += `${index + 1}. ${match.opportunity.title} (${match.fitScore}% match)\n`
-      response += `   • Sponsor: ${match.opportunity.sponsor}\n`
-      response += `   • Project: ${match.project.name}\n`
-      response += `   • Amount: ${match.opportunity.amount_max ? `Up to $${match.opportunity.amount_max.toLocaleString()}` : 'Varies'}\n`
-      
-      if (match.daysUntilDeadline) {
-        response += `   • Deadline: ${match.daysUntilDeadline} days remaining\n`
-      }
-      
-      response += `   • Recommendation: ${match.recommendation.replace('_', ' ')}\n\n`
-    })
-  }
-  
-  if (summary.urgentDeadlines > 0) {
-    response += `⚠️ Urgent: ${summary.urgentDeadlines} opportunities have deadlines within 2 weeks.\n\n`
-  }
-  
-  response += `Summary: ${summary.highMatches} high matches, ${summary.mediumMatches} medium matches found.\n\n`
-  response += `Would you like me to provide detailed analysis for any specific opportunity?`
-  
-  return response
-}
-
 // Create Agent Decisions
 async function createAgentDecision(userId, decisionData) {
   try {
@@ -570,27 +784,121 @@ async function initializeAgentInDatabase(userId) {
   }
 }
 
+// Enhanced User Context Function with Comprehensive Data
 async function getUserContext(userId) {
   try {
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    
-    const { data: projects } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('user_id', userId)
-    
+    // Get all user data in parallel for better performance
+    const [
+      profileResult,
+      projectsResult,
+      donorsResult,
+      donationsResult,
+      campaignsResult,
+      applicationsResult
+    ] = await Promise.allSettled([
+      supabase.from('user_profiles').select('*').eq('id', userId).single(),
+      supabase.from('projects').select('*').eq('user_id', userId),
+      supabase.from('donors').select('*').eq('user_id', userId).limit(10),
+      supabase.from('donations').select(`
+        *,
+        donor:donors(name, donor_type),
+        project:projects(name)
+      `).eq('user_id', userId).order('donation_date', { ascending: false }).limit(20),
+      supabase.from('crowdfunding_campaigns').select(`
+        *,
+        project:projects(name)
+      `).eq('user_id', userId),
+      supabase.from('application_submissions').select(`
+        *,
+        project:projects(name),
+        opportunity:opportunities(title, sponsor)
+      `).eq('user_id', userId).order('submission_date', { ascending: false })
+    ])
+
+    // Safely extract data from results
+    const profile = profileResult.status === 'fulfilled' ? profileResult.value.data : {}
+    const projects = projectsResult.status === 'fulfilled' ? projectsResult.value.data || [] : []
+    const donors = donorsResult.status === 'fulfilled' ? donorsResult.value.data || [] : []
+    const donations = donationsResult.status === 'fulfilled' ? donationsResult.value.data || [] : []
+    const campaigns = campaignsResult.status === 'fulfilled' ? campaignsResult.value.data || [] : []
+    const applications = applicationsResult.status === 'fulfilled' ? applicationsResult.value.data || [] : []
+
+    // Calculate comprehensive funding statistics
+    const fundingStats = {
+      totalRaised: donations.reduce((sum, d) => sum + (d.amount || 0), 0),
+      totalDonors: donors.length,
+      activeCampaigns: campaigns.filter(c => c.status === 'active').length,
+      totalCampaignGoal: campaigns.reduce((sum, c) => sum + (c.goal_amount || 0), 0),
+      totalCampaignRaised: campaigns.reduce((sum, c) => sum + (c.raised_amount || 0), 0),
+      
+      // Application statistics
+      totalApplications: applications.length,
+      pendingApplications: applications.filter(a => a.status === 'submitted' || a.status === 'under_review').length,
+      approvedApplications: applications.filter(a => a.status === 'approved').length,
+      totalRequested: applications.reduce((sum, a) => sum + (a.requested_amount || 0), 0),
+      totalAwarded: applications.reduce((sum, a) => sum + (a.award_amount || 0), 0),
+      
+      // Recent activity
+      recentDonations: donations.slice(0, 5),
+      recentApplications: applications.slice(0, 5),
+      
+      // Funding gap analysis
+      totalProjectNeeds: projects.reduce((sum, p) => sum + (p.funding_needed || 0), 0),
+      totalSecured: donations.reduce((sum, d) => sum + (d.amount || 0), 0) + 
+                   campaigns.reduce((sum, c) => sum + (c.raised_amount || 0), 0) +
+                   applications.filter(a => a.status === 'approved').reduce((sum, a) => sum + (a.award_amount || 0), 0),
+    }
+
+    // Calculate remaining funding gap
+    fundingStats.fundingGap = Math.max(0, fundingStats.totalProjectNeeds - fundingStats.totalSecured)
+    fundingStats.fundingProgress = fundingStats.totalProjectNeeds > 0 ? 
+      (fundingStats.totalSecured / fundingStats.totalProjectNeeds * 100) : 0
+
     return { 
-      profile: profile || {}, 
-      projects: projects || [] 
+      profile,
+      projects,
+      donors,
+      donations,
+      campaigns,
+      applications,
+      fundingStats,
+      summary: {
+        totalProjects: projects.length,
+        totalFundingNeeded: fundingStats.totalProjectNeeds,
+        totalSecured: fundingStats.totalSecured,
+        fundingGap: fundingStats.fundingGap,
+        fundingProgress: Math.round(fundingStats.fundingProgress),
+        diversificationScore: calculateDiversificationScore(donations, campaigns, applications)
+      }
     }
   } catch (error) {
-    console.error('Error getting user context:', error)
-    return { profile: {}, projects: [] }
+    console.error('Error getting enhanced user context:', error)
+    return { 
+      profile: {}, 
+      projects: [],
+      donors: [],
+      donations: [],
+      campaigns: [],
+      applications: [],
+      fundingStats: {},
+      summary: {}
+    }
   }
+}
+
+// Helper function to calculate funding diversification score
+function calculateDiversificationScore(donations, campaigns, applications) {
+  const sources = []
+  
+  if (donations.length > 0) sources.push('individual_donations')
+  if (campaigns.length > 0) sources.push('crowdfunding')
+  if (applications.filter(a => a.status === 'approved').length > 0) sources.push('grants')
+  
+  // Score based on diversity: 0-100
+  const diversityPoints = sources.length * 30 // Max 90 for 3 sources
+  const volumeBonus = Math.min(10, donations.length + campaigns.length + applications.length) // Max 10
+  
+  return Math.min(100, diversityPoints + volumeBonus)
 }
 
 async function createInitialGoals(userId, supabaseClient) {
@@ -620,6 +928,15 @@ async function createInitialGoals(userId, supabaseClient) {
       priority: 7,
       status: 'active',
       progress: 20,
+      created_at: new Date().toISOString()
+    },
+    {
+      user_id: userId,
+      description: 'Optimize funding portfolio diversification',
+      type: 'portfolio_optimization',
+      priority: 6,
+      status: 'active',
+      progress: 15,
       created_at: new Date().toISOString()
     }
   ]
