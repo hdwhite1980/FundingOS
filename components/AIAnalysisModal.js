@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, FileText, Clock } from 'lucide-react'
+import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, FileText, Clock, Copy, RotateCcw } from 'lucide-react'
 import { projectOpportunityService } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
@@ -11,6 +11,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
   const [activeTab, setActiveTab] = useState('analysis')
   const [projectOpportunity, setProjectOpportunity] = useState(null)
   const [generating, setGenerating] = useState(false)
+  const [applicationDraft, setApplicationDraft] = useState(null) // Fixed: Declared at the top
 
   useEffect(() => {
     performAnalysis()
@@ -131,14 +132,17 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
         throw new Error(errorData.message || 'Application generation failed')
       }
       
-      const applicationDraft = await response.json()
+      const applicationDraftResponse = await response.json()
+      
+      // Store the content locally for display
+      setApplicationDraft(applicationDraftResponse.content)
       
       // Update project opportunity with draft
       await projectOpportunityService.updateProjectOpportunity(
         currentProjectOpportunity.id,
         {
           status: 'draft_generated',
-          application_draft: applicationDraft.content
+          application_draft: applicationDraftResponse.content
         }
       )
 
@@ -148,6 +152,15 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       toast.error('Failed to generate application: ' + error.message)
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleCopyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(applicationDraft)
+      toast.success('Application draft copied to clipboard!')
+    } catch (error) {
+      toast.error('Failed to copy to clipboard')
     }
   }
 
@@ -304,6 +317,40 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                       <p className="text-gray-600">AI is generating your application draft...</p>
                       <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
+                    </div>
+                  ) : applicationDraft ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900">Application Draft</h3>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={handleCopyToClipboard}
+                            className="btn-secondary btn-sm flex items-center"
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy to Clipboard
+                          </button>
+                          <button
+                            onClick={() => setApplicationDraft(null)}
+                            className="btn-secondary btn-sm flex items-center"
+                          >
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Generate New
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50 rounded-lg p-6 max-h-96 overflow-y-auto">
+                        <div className="prose prose-sm max-w-none">
+                          <div className="whitespace-pre-wrap font-sans text-sm text-gray-800 leading-relaxed">
+                            {applicationDraft}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-gray-500 p-3 bg-blue-50 rounded-lg">
+                        <strong>Note:</strong> This is an AI-generated draft. Please review and customize it according to the specific requirements of the funding opportunity. Always verify all information and add your organization's specific details.
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-12">
