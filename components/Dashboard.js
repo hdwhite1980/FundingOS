@@ -374,6 +374,17 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     </motion.div>
   )
 
+  // FIXED: Create a simple AI Agent Status Card component
+  const AgentStatusCard = ({ userId }) => (
+    <StatCard
+      icon={Brain}
+      title="AI Agent"
+      value="Active"
+      subtitle="Monitoring opportunities"
+      color="purple"
+    />
+  )
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -446,7 +457,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                 color="emerald"
               />
               
-              {/* AI Agent Status Card */}
+              {/* FIXED: AI Agent Status Card */}
               <AgentStatusCard userId={user.id} />
             </div>
 
