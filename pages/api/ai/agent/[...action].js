@@ -1,4 +1,5 @@
-import { agentManager } from '../../../../lib/ai-agent/manager.js'
+// pages/api/ai/agent/[...action].js
+import { supabase } from '../../../../lib/supabase'
 
 export default async function handler(req, res) {
   const { action } = req.query
@@ -11,14 +12,14 @@ export default async function handler(req, res) {
   try {
     switch (action[0]) {
       case 'initialize':
-        const agent = await agentManager.startAgent(userId)
-        res.json({ success: true, agentId: agent.userId })
+        // For now, just return a success response
+        // The AI agent functionality can be implemented later
+        res.json({ success: true, agentId: userId })
         break
 
       case 'chat':
-        const chatAgent = await agentManager.getAgent(userId)
-        const response = await chatAgent.chat(req.body.message)
-        res.json({ message: response })
+        // Placeholder for chat functionality
+        res.json({ message: "AI agent is being initialized. This feature will be available soon." })
         break
 
       case 'goals':
@@ -51,24 +52,27 @@ export default async function handler(req, res) {
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
-        res.json(thoughts?.action_results || null)
+        res.json(thoughts?.data || null)
         break
 
       case 'toggle':
         const { status } = req.body
-        const toggleAgent = await agentManager.getAgent(userId)
-        if (status === 'paused') {
-          await agentManager.stopAgent(userId)
-        } else {
-          await agentManager.startAgent(userId)
-        }
+        // For now, just return success
+        // The actual agent toggling will be implemented later
         res.json({ success: true, status })
         break
 
       case 'decision-feedback':
         const { decisionId, feedback } = req.body
-        const feedbackAgent = await agentManager.getAgent(userId)
-        await feedbackAgent.handleUserFeedback(decisionId, feedback)
+        // Store feedback in database
+        await supabase
+          .from('agent_decision_feedback')
+          .insert([{
+            decision_id: decisionId,
+            user_id: userId,
+            feedback: feedback,
+            created_at: new Date().toISOString()
+          }])
         res.json({ success: true })
         break
 

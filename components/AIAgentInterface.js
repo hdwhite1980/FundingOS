@@ -31,12 +31,11 @@ export default function AIAgentInterface({ user, userProfile }) {
 
   useEffect(() => {
     initializeAgent()
-    loadAgentState()
     
-    // Set up real-time updates
+    // Set up periodic updates (less frequent for now)
     const interval = setInterval(() => {
       loadAgentState()
-    }, 30000) // Every 30 seconds
+    }, 60000) // Every minute
 
     return () => clearInterval(interval)
   }, [user.id])
@@ -47,6 +46,8 @@ export default function AIAgentInterface({ user, userProfile }) {
 
   const initializeAgent = async () => {
     try {
+      console.log(`🤖 Initializing AI Funding Agent for user ${user.id}`)
+      
       const response = await fetch('/api/ai/agent/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,6 +57,14 @@ export default function AIAgentInterface({ user, userProfile }) {
       const agentData = await response.json()
       setAgent(agentData)
       setAgentStatus('active')
+      
+      // Add welcome message
+      setChatMessages([{
+        type: 'agent',
+        content: 'Hello! I\'m your AI Funding Agent. I\'m here to help you discover opportunities, track deadlines, and optimize your funding strategy. How can I assist you today?',
+        timestamp: new Date()
+      }])
+      
     } catch (error) {
       console.error('Error initializing agent:', error)
       setAgentStatus('error')
@@ -64,21 +73,28 @@ export default function AIAgentInterface({ user, userProfile }) {
 
   const loadAgentState = async () => {
     try {
+      // Load goals, decisions, and thoughts from API
       const [goalsRes, decisionsRes, thoughtsRes] = await Promise.all([
         fetch(`/api/ai/agent/goals?userId=${user.id}`),
         fetch(`/api/ai/agent/decisions?userId=${user.id}&limit=5`),
         fetch(`/api/ai/agent/thoughts?userId=${user.id}&latest=true`)
       ])
 
-      const [goals, decisions, thoughts] = await Promise.all([
-        goalsRes.json(),
-        decisionsRes.json(),
-        thoughtsRes.json()
-      ])
-
-      setCurrentGoals(goals)
-      setRecentDecisions(decisions)
-      setAgentThoughts(thoughts)
+      if (goalsRes.ok) {
+        const goals = await goalsRes.json()
+        setCurrentGoals(goals)
+      }
+      
+      if (decisionsRes.ok) {
+        const decisions = await decisionsRes.json()
+        setRecentDecisions(decisions)
+      }
+      
+      if (thoughtsRes.ok) {
+        const thoughts = await thoughtsRes.json()
+        setAgentThoughts(thoughts)
+      }
+      
     } catch (error) {
       console.error('Error loading agent state:', error)
     }
@@ -104,14 +120,19 @@ export default function AIAgentInterface({ user, userProfile }) {
       const agentResponse = await response.json()
       const agentMessage = { 
         type: 'agent', 
-        content: agentResponse.message, 
-        context: agentResponse.context,
+        content: agentResponse.message || 'I\'m processing your request. This feature is being enhanced.',
         timestamp: new Date() 
       }
       
       setChatMessages(prev => [...prev, agentMessage])
     } catch (error) {
       console.error('Error sending message:', error)
+      const errorMessage = {
+        type: 'agent',
+        content: 'I apologize, but I\'m having trouble processing your message right now. Please try again later.',
+        timestamp: new Date()
+      }
+      setChatMessages(prev => [...prev, errorMessage])
     }
   }
 
@@ -179,7 +200,7 @@ export default function AIAgentInterface({ user, userProfile }) {
               <h2 className="text-2xl font-bold">AI Funding Agent</h2>
               <p className="text-blue-100">
                 {agentStatus === 'active' 
-                  ? `Actively working on ${currentGoals.length} goals` 
+                  ? `Working on ${currentGoals.length} goals` 
                   : 'Agent paused'
                 }
               </p>
@@ -188,12 +209,9 @@ export default function AIAgentInterface({ user, userProfile }) {
           
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <div className="text-sm text-blue-200">Last thought cycle</div>
-              <div className="text-lg font-semibold">
-                {agentThoughts?.timestamp 
-                  ? new Date(agentThoughts.timestamp).toLocaleTimeString()
-                  : 'Initializing...'
-                }
+              <div className="text-sm text-blue-200">Status</div>
+              <div className="text-lg font-semibold capitalize">
+                {agentStatus}
               </div>
             </div>
             
@@ -225,10 +243,9 @@ export default function AIAgentInterface({ user, userProfile }) {
               </h3>
             </div>
             <div className="card-body space-y-3">
-              {currentGoals.map(goal => (
+              {currentGoals.length > 0 ? currentGoals.map(goal => (
                 <AgentGoalCard key={goal.id} goal={goal} />
-              ))}
-              {currentGoals.length === 0 && (
+              )) : (
                 <p className="text-gray-500 text-center py-4">
                   Agent is analyzing your situation to set goals...
                 </p>
@@ -245,36 +262,25 @@ export default function AIAgentInterface({ user, userProfile }) {
               </h3>
             </div>
             <div className="card-body space-y-3">
-              {recentDecisions.map(decision => (
+              {recentDecisions.length > 0 ? recentDecisions.map(decision => (
                 <AgentDecisionCard 
                   key={decision.id} 
                   decision={decision}
                   onRespond={respondToDecision}
                 />
-              ))}
+              )) : (
+                <p className="text-gray-500 text-center py-4">
+                  No recent decisions to review.
+                </p>
+              )}
             </div>
           </div>
 
         </div>
 
-        {/* Agent Thoughts and Analysis */}
+        {/* Chat Interface */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Current Thinking */}
-          {agentThoughts && (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <Brain className="w-5 h-5 mr-2" />
-                  Agent's Current Analysis
-                </h3>
-              </div>
-              <div className="card-body">
-                <AgentThoughtsDisplay thoughts={agentThoughts} />
-              </div>
-            </div>
-          )}
-
           {/* Chat Interface */}
           <div className="card">
             <div className="card-header">
@@ -337,169 +343,33 @@ export default function AIAgentInterface({ user, userProfile }) {
   )
 }
 
-// Individual Components
-
+// Simplified goal card component
 function AgentGoalCard({ goal }) {
-  const getGoalIcon = (type) => {
-    switch (type) {
-      case 'funding_acquisition': return Target
-      case 'deadline_management': return Clock
-      case 'opportunity_exploration': return Zap
-      default: return CheckCircle
-    }
-  }
-
-  const getPriorityColor = (priority) => {
-    if (priority >= 8) return 'text-red-600 bg-red-100'
-    if (priority >= 6) return 'text-orange-600 bg-orange-100'
-    if (priority >= 4) return 'text-yellow-600 bg-yellow-100'
-    return 'text-green-600 bg-green-100'
-  }
-
-  const Icon = getGoalIcon(goal.goal_type)
-
   return (
     <div className="border rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <Icon className="w-4 h-4 mr-2 text-blue-600" />
+          <Target className="w-4 h-4 mr-2 text-blue-600" />
           <span className="font-medium text-sm">{goal.description}</span>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(goal.priority)}`}>
-          P{goal.priority}
+        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          Active
         </span>
       </div>
-      
-      {goal.progress_percentage > 0 && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span>Progress</span>
-            <span>{Math.round(goal.progress_percentage)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-1">
-            <div 
-              className="bg-blue-600 h-1 rounded-full transition-all duration-300"
-              style={{ width: `${goal.progress_percentage}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-      
-      {goal.target_date && (
-        <div className="text-xs text-gray-500">
-          Target: {new Date(goal.target_date).toLocaleDateString()}
-        </div>
-      )}
     </div>
   )
 }
 
+// Simplified decision card component  
 function AgentDecisionCard({ decision, onRespond }) {
-  const [responding, setResponding] = useState(false)
-
-  const handleResponse = async (approved, rating = null) => {
-    setResponding(true)
-    try {
-      await onRespond(decision.id, { approved, rating })
-    } finally {
-      setResponding(false)
-    }
-  }
-
-  const getDecisionIcon = (type) => {
-    switch (type) {
-      case 'opportunity_pursuit': return Target
-      case 'emergency_action': return AlertTriangle
-      case 'goal_update': return RotateCcw
-      default: return Lightbulb
-    }
-  }
-
-  const Icon = getDecisionIcon(decision.decision_type)
-
   return (
     <div className="border rounded-lg p-3 space-y-3">
       <div className="flex items-start space-x-2">
-        <Icon className="w-4 h-4 mt-0.5 text-blue-600" />
+        <Lightbulb className="w-4 h-4 mt-0.5 text-blue-600" />
         <div className="flex-1">
-          <p className="font-medium text-sm">{decision.decision_data?.title || 'Agent Decision'}</p>
-          <p className="text-xs text-gray-600 mt-1">{decision.reasoning}</p>
+          <p className="font-medium text-sm">{decision.title || 'Agent Decision'}</p>
+          <p className="text-xs text-gray-600 mt-1">{decision.description}</p>
         </div>
-      </div>
-      
-      {decision.confidence_score && (
-        <div className="text-xs text-gray-500">
-          Confidence: {Math.round(decision.confidence_score * 100)}%
-        </div>
-      )}
-
-      {decision.requires_approval && !decision.responded_at && (
-        <div className="flex space-x-2 pt-2 border-t">
-          <button
-            onClick={() => handleResponse(true)}
-            disabled={responding}
-            className="btn-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-          >
-            Approve
-          </button>
-          <button
-            onClick={() => handleResponse(false)}
-            disabled={responding}
-            className="btn-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-          >
-            Reject
-          </button>
-        </div>
-      )}
-
-      {decision.responded_at && (
-        <div className="text-xs text-gray-500 pt-2 border-t">
-          Responded {new Date(decision.responded_at).toLocaleDateString()}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AgentThoughtsDisplay({ thoughts }) {
-  return (
-    <div className="space-y-4">
-      <div className="bg-blue-50 p-4 rounded-lg">
-        <h4 className="font-medium text-blue-800 mb-2">Current Reasoning</h4>
-        <p className="text-sm text-blue-700">{thoughts.reasoning}</p>
-      </div>
-
-      {thoughts.actions_taken && thoughts.actions_taken.length > 0 && (
-        <div>
-          <h4 className="font-medium text-gray-800 mb-2">Recent Actions</h4>
-          <div className="space-y-1">
-            {thoughts.actions_taken.map((action, idx) => (
-              <div key={idx} className="text-sm text-gray-600 flex items-center">
-                <CheckCircle className="w-3 h-3 mr-2 text-green-600" />
-                {action.description || action}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {thoughts.insights && thoughts.insights.length > 0 && (
-        <div>
-          <h4 className="font-medium text-gray-800 mb-2">Key Insights</h4>
-          <div className="space-y-1">
-            {thoughts.insights.map((insight, idx) => (
-              <div key={idx} className="text-sm text-gray-600 flex items-start">
-                <Lightbulb className="w-3 h-3 mr-2 mt-0.5 text-yellow-600" />
-                {insight}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <h4 className="font-medium text-gray-800 mb-1">Next Focus</h4>
-        <p className="text-sm text-gray-600">{thoughts.next_focus}</p>
       </div>
     </div>
   )
