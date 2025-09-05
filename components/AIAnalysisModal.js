@@ -50,7 +50,6 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
     } catch (error) {
       console.error('AI Analysis error:', error)
       toast.error('Failed to analyze opportunity: ' + error.message)
-      // Don't show mock data in production
     } finally {
       setLoading(false)
     }
@@ -58,30 +57,60 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
 
   const handleAddToProject = async () => {
     try {
+      // First, check if this combination already exists
+      const existingOpportunities = await projectOpportunityService.getProjectOpportunities(project.id)
+      const existing = existingOpportunities.find(po => po.opportunity_id === opportunity.id)
+      
+      if (existing) {
+        setProjectOpportunity(existing)
+        toast.success('Opportunity is already in your project!')
+        return existing
+      }
+
+      // If not existing, create new one
       const newProjectOpportunity = await projectOpportunityService.createProjectOpportunity({
         project_id: project.id,
         opportunity_id: opportunity.id,
         status: 'ai_analyzing',
-        fit_score: analysis.fitScore,
-        ai_analysis: JSON.stringify(analysis)
+        fit_score: analysis?.fitScore || 0,
+        ai_analysis: analysis ? JSON.stringify(analysis) : null
       })
       
       setProjectOpportunity(newProjectOpportunity)
       toast.success('Opportunity added to your project!')
+      return newProjectOpportunity
     } catch (error) {
-      toast.error('Failed to add opportunity: ' + error.message)
+      console.error('Add to project error:', error)
+      
+      // Handle the specific duplicate key error
+      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        toast.error('This opportunity is already in your project!')
+      } else {
+        toast.error('Failed to add opportunity: ' + error.message)
+      }
+      return null
     }
   }
 
   const handleGenerateApplication = async () => {
-    if (!projectOpportunity) {
-      await handleAddToProject()
-    }
-
     setGenerating(true)
     setActiveTab('application')
 
     try {
+      // Ensure we have a project opportunity first
+      let currentProjectOpportunity = projectOpportunity
+      
+      if (!currentProjectOpportunity) {
+        console.log('Creating project opportunity first...')
+        currentProjectOpportunity = await handleAddToProject()
+        
+        if (!currentProjectOpportunity) {
+          throw new Error('Failed to create project opportunity')
+        }
+      }
+
+      console.log('Generating application for project opportunity:', currentProjectOpportunity.id)
+
       const response = await fetch('/api/ai/generate-application', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,13 +122,16 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
         })
       })
 
-      if (!response.ok) throw new Error('Application generation failed')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Application generation failed')
+      }
       
       const applicationDraft = await response.json()
       
       // Update project opportunity with draft
       await projectOpportunityService.updateProjectOpportunity(
-        projectOpportunity?.id || (await handleAddToProject()).id,
+        currentProjectOpportunity.id,
         {
           status: 'draft_generated',
           application_draft: applicationDraft.content
@@ -108,6 +140,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
 
       toast.success('Application draft generated!')
     } catch (error) {
+      console.error('Application generation error:', error)
       toast.error('Failed to generate application: ' + error.message)
     } finally {
       setGenerating(false)
