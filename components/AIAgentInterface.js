@@ -28,6 +28,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
   const [newMessage, setNewMessage] = useState('')
   const [agentThoughts, setAgentThoughts] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isTyping, setIsTyping] = useState(false)
   const chatEndRef = useRef(null)
 
   useEffect(() => {
@@ -136,6 +137,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
     setChatMessages(prev => [...prev, userMessage])
     const messageContent = newMessage
     setNewMessage('')
+    setIsTyping(true)
 
     try {
       const response = await fetch('/api/ai/agent/chat', {
@@ -157,6 +159,9 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
           timestamp: new Date() 
         }
         setChatMessages(prev => [...prev, agentMessage])
+        
+        // Reload agent state in case the conversation created new decisions
+        setTimeout(() => loadAgentState(), 1000)
       } else {
         throw new Error('Failed to get agent response')
       }
@@ -168,6 +173,8 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
         timestamp: new Date()
       }
       setChatMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsTyping(false)
     }
   }
 
@@ -213,6 +220,16 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
       
       // Remove the decision from the list after responding
       setRecentDecisions(prev => prev.filter(d => d.id !== decisionId))
+      
+      // Add confirmation message to chat
+      const confirmationMessage = {
+        type: 'agent',
+        content: response === 'approve' 
+          ? "Thanks for the approval! I'll proceed with this recommendation." 
+          : "Understood, I've noted your preference for future recommendations.",
+        timestamp: new Date()
+      }
+      setChatMessages(prev => [...prev, confirmationMessage])
       
       // Reload agent state to get updated data
       loadAgentState()
@@ -380,11 +397,14 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
               <h3 className="text-lg font-semibold flex items-center">
                 <MessageSquare className="w-5 h-5 mr-2" />
                 Chat with Your Agent
+                {isTyping && (
+                  <span className="ml-2 text-sm text-gray-500">Agent is typing...</span>
+                )}
               </h3>
             </div>
             <div className="card-body">
               
-              {/* Chat Messages */}
+              {/* Enhanced Chat Messages */}
               <div className="h-64 overflow-y-auto mb-4 space-y-3 p-3 bg-gray-50 rounded-lg">
                 <AnimatePresence>
                   {chatMessages.map((message, index) => (
@@ -394,18 +414,42 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                       animate={{ opacity: 1, y: 0 }}
                       className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                      <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
                         message.type === 'user'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white border'
+                          : 'bg-white border shadow-sm'
                       }`}>
-                        <p className="text-sm">{message.content}</p>
-                        <p className="text-xs opacity-70 mt-1">
+                        {/* Enhanced message content rendering with proper formatting */}
+                        <div className={`text-sm whitespace-pre-line ${
+                          message.type === 'user' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {message.content}
+                        </div>
+                        <p className={`text-xs mt-2 ${
+                          message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                        }`}>
                           {message.timestamp.toLocaleTimeString()}
                         </p>
                       </div>
                     </motion.div>
                   ))}
+                  
+                  {/* Typing indicator */}
+                  {isTyping && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex justify-start"
+                    >
+                      <div className="bg-white border shadow-sm px-4 py-3 rounded-lg">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
                 <div ref={chatEndRef} />
               </div>
@@ -416,20 +460,21 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder="Ask your agent anything..."
+                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                  placeholder="Ask your agent anything... (try 'analyze opportunities')"
                   className="flex-1 form-input"
-                  disabled={agentStatus !== 'active'}
+                  disabled={agentStatus !== 'active' || isTyping}
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={agentStatus !== 'active' || !newMessage.trim()}
+                  disabled={agentStatus !== 'active' || !newMessage.trim() || isTyping}
                   className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" />
                 </button>
               </div>
               
+              {/* Status messages */}
               {agentStatus !== 'active' && (
                 <p className="text-sm text-gray-500 mt-2">
                   {agentStatus === 'error' 
@@ -437,6 +482,30 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                     : 'Agent is paused. Activate it to continue chatting.'
                   }
                 </p>
+              )}
+              
+              {/* Quick action suggestions */}
+              {chatMessages.length === 1 && agentStatus === 'active' && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button 
+                    onClick={() => setNewMessage('Analyze my opportunities')}
+                    className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                  >
+                    Analyze opportunities
+                  </button>
+                  <button 
+                    onClick={() => setNewMessage('What deadlines are coming up?')}
+                    className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                  >
+                    Check deadlines
+                  </button>
+                  <button 
+                    onClick={() => setNewMessage('Show me my best matches')}
+                    className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                  >
+                    Best matches
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -447,17 +516,34 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
   )
 }
 
-// Goal card component - only renders real data
+// Enhanced Goal card component with better visual design
 function AgentGoalCard({ goal }) {
+  const getGoalIcon = (type) => {
+    switch (type) {
+      case 'opportunity_discovery': return <Zap className="w-4 h-4" />
+      case 'deadline_management': return <Clock className="w-4 h-4" />
+      case 'application_tracking': return <TrendingUp className="w-4 h-4" />
+      default: return <Target className="w-4 h-4" />
+    }
+  }
+
+  const getPriorityColor = (priority) => {
+    if (priority >= 8) return 'bg-red-100 text-red-800'
+    if (priority >= 6) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-green-100 text-green-800'
+  }
+
   return (
-    <div className="border rounded-lg p-3 space-y-2">
+    <div className="border rounded-lg p-3 space-y-2 hover:shadow-sm transition-shadow">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <Target className="w-4 h-4 mr-2 text-blue-600" />
+          <div className="text-blue-600 mr-2">
+            {getGoalIcon(goal.type)}
+          </div>
           <span className="font-medium text-sm">{goal.description}</span>
         </div>
         {goal.priority && (
-          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(goal.priority)}`}>
             {goal.priority}/10
           </span>
         )}
@@ -466,7 +552,10 @@ function AgentGoalCard({ goal }) {
         <>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+              className={`h-2 rounded-full transition-all duration-300 ${
+                goal.progress >= 80 ? 'bg-green-600' : 
+                goal.progress >= 50 ? 'bg-blue-600' : 'bg-yellow-600'
+              }`}
               style={{ width: `${goal.progress}%` }}
             ></div>
           </div>
@@ -477,30 +566,53 @@ function AgentGoalCard({ goal }) {
   )
 }
 
-// Decision card component - only renders real data
+// Enhanced Decision card component with better visual hierarchy
 function AgentDecisionCard({ decision, onRespond }) {
+  const getPriorityBadge = (priority) => {
+    switch (priority) {
+      case 'high': return <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">High Priority</span>
+      case 'medium': return <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Medium Priority</span>
+      case 'low': return <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Low Priority</span>
+      default: return null
+    }
+  }
+
   return (
-    <div className="border rounded-lg p-3 space-y-3">
-      <div className="flex items-start space-x-2">
-        <Lightbulb className="w-4 h-4 mt-0.5 text-blue-600" />
-        <div className="flex-1">
-          <p className="font-medium text-sm">{decision.title}</p>
-          <p className="text-xs text-gray-600 mt-1">{decision.description}</p>
-          {decision.confidence && (
-            <p className="text-xs text-green-600 mt-1">Confidence: {decision.confidence}%</p>
-          )}
+    <div className="border rounded-lg p-3 space-y-3 hover:shadow-sm transition-shadow">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start space-x-2">
+          <Lightbulb className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-sm">{decision.title}</p>
+            <p className="text-xs text-gray-600 mt-1">{decision.description}</p>
+          </div>
         </div>
+        {decision.priority && getPriorityBadge(decision.priority)}
       </div>
+      
+      {decision.confidence && (
+        <div className="flex items-center space-x-2">
+          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+            <div 
+              className="bg-green-600 h-1.5 rounded-full" 
+              style={{ width: `${decision.confidence}%` }}
+            ></div>
+          </div>
+          <span className="text-xs text-green-600">{decision.confidence}% confidence</span>
+        </div>
+      )}
+      
       <div className="flex space-x-2">
         <button
           onClick={() => onRespond(decision.id, 'approve')}
-          className="btn-sm bg-green-100 text-green-800 hover:bg-green-200"
+          className="btn-sm bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
         >
+          <CheckCircle className="w-3 h-3 mr-1" />
           Approve
         </button>
         <button
           onClick={() => onRespond(decision.id, 'decline')}
-          className="btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200"
+          className="btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
         >
           Decline
         </button>
