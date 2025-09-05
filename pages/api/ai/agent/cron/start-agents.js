@@ -1,5 +1,5 @@
 // pages/api/admin/start-agents.js
-import { agentManager } from '../../../lib/ai-agent/manager'
+import { agentManager } from '../../../../../lib/ai-agent/manager'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
