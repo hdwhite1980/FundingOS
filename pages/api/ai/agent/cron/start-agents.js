@@ -1,23 +1,29 @@
-// pages/api/ai/agent/cron/start-agents.js
+// pages/api/admin/start-agents.js
+import { agentManager } from '../../../lib/ai-agent/manager'
 
 export default async function handler(req, res) {
-  // Verify this is a cron request
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' })
   }
 
   try {
-    // For now, just return success
-    // The AI agent manager functionality will be implemented later
-    console.log('AI Agent cron job triggered')
+    console.log('🚀 Starting AI Agent Manager...')
+    
+    // Start the agent manager
+    await agentManager.startAllAgents()
+    
+    const status = await agentManager.getManagerStatus()
     
     res.json({ 
       success: true, 
-      timestamp: new Date().toISOString(),
-      message: 'AI agents initialization scheduled (feature coming soon)'
+      message: 'AI Agent Manager started successfully',
+      status: status
     })
   } catch (error) {
-    console.error('Cron error:', error)
-    res.status(500).json({ error: error.message })
+    console.error('Error starting agent manager:', error)
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    })
   }
 }
