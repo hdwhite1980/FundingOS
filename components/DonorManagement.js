@@ -72,7 +72,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
     try {
       const newDonor = await donorService.createDonor({
         ...donorData,
-        user_id: user.id
+        user_id: user.id  // Make sure this is included
       })
       setDonors([newDonor, ...donors])
       setShowCreateModal(false)
@@ -105,7 +105,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
     try {
       const newCampaign = await crowdfundingService.createCampaign({
         ...campaignData,
-        user_id: user.id
+        user_id: user.id  // Make sure this is included
       })
       setCampaigns([newCampaign, ...campaigns])
       setShowCampaignModal(false)
