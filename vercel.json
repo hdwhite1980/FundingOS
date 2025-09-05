@@ -7,6 +7,10 @@
     {
       "path": "/api/data/sync-opportunities",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/ai/agent/cron/start-agents",
+      "schedule": "0 */1 * * *"
     }
   ],
   "functions": {
@@ -21,6 +25,13 @@
     },
     "pages/api/ai/generate-application.js": {
       "maxDuration": 120
+    },
+    "pages/api/ai/agent/cron/start-agents.js": {
+      "maxDuration": 60
     }
-  }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "regions": ["iad1"]
 }

@@ -1,4 +1,4 @@
-// Fixed Dashboard.js with better state management
+// Fixed Dashboard.js with AI Agent integration
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -8,6 +8,7 @@ import OpportunityList from './OpportunityList'
 import DonorManagement from './DonorManagement'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
+import AIAgentInterface from './AIAgentInterface' // Add this import
 import { 
   projectService, 
   opportunityService, 
@@ -27,7 +28,8 @@ import {
   Users,
   FileText,
   Heart,
-  CheckCircle
+  CheckCircle,
+  Brain // Add Brain icon for AI Agent
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -65,8 +67,10 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     applicationSuccessRate: 0
   })
 
+  // Updated tabs array with AI Agent
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: Target },
+    { id: 'ai-agent', label: 'AI Agent', icon: Brain }, // Added AI Agent tab
     { id: 'opportunities', label: 'Opportunities', icon: Zap },
     { id: 'donors', label: 'Donors', icon: Users },
     { id: 'applications', label: 'Applications', icon: FileText }
@@ -412,19 +416,19 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
         {activeTab === 'dashboard' && (
           <>
             {/* Enhanced Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
               <StatCard
                 icon={Target}
                 title="Active Projects"
                 value={stats.totalProjects}
-                subtitle={`$${stats.totalFunding.toLocaleString()} needed`}
+                subtitle={`${stats.totalFunding.toLocaleString()} needed`}
                 color="blue"
               />
               <StatCard
                 icon={Users}
                 title="Total Donors"
                 value={stats.totalDonors}
-                subtitle={`$${stats.totalDonated.toLocaleString()} donated`}
+                subtitle={`${stats.totalDonated.toLocaleString()} donated`}
                 color="green"
               />
               <StatCard
@@ -437,10 +441,13 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
               <StatCard
                 icon={CheckCircle}
                 title="Total Awarded"
-                value={`$${stats.totalAwarded.toLocaleString()}`}
+                value={`${stats.totalAwarded.toLocaleString()}`}
                 subtitle={`from ${Math.round(stats.totalSubmissions * (stats.applicationSuccessRate / 100))} grants`}
                 color="emerald"
               />
+              
+              {/* AI Agent Status Card */}
+              <AgentStatusCard userId={user.id} />
             </div>
 
             {/* Sync Control Panel */}
@@ -555,6 +562,16 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
               </div>
             </div>
           </>
+        )}
+
+        {/* AI Agent Tab Content */}
+        {activeTab === 'ai-agent' && (
+          <AIAgentInterface 
+            user={user} 
+            userProfile={userProfile}
+            projects={projects}
+            opportunities={opportunities}
+          />
         )}
 
         {activeTab === 'opportunities' && (
