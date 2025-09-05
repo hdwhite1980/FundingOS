@@ -565,6 +565,42 @@ function formatCertifications(profile) {
   return certs.length > 0 ? certs.join(', ') : 'None'
 }
 
+// Detect simple data queries that need direct answers
+function detectSimpleDataQuery(message) {
+  const lowerMessage = message.toLowerCase()
+  
+  const simpleQueries = [
+    // Donation queries
+    /how much.*donations?/,
+    /total.*donations?/,
+    /donation.*amount/,
+    /how many.*donors?/,
+    
+    // Campaign queries  
+    /how much.*raised/,
+    /campaign.*raised/,
+    /crowdfunding.*amount/,
+    
+    // Grant queries
+    /how much.*grants?/,
+    /grant.*funding/,
+    /total.*awarded/,
+    
+    // General funding queries
+    /how much.*funding/,
+    /total.*secured/,
+    /funding.*gap/,
+    /how much.*need/,
+    
+    // Status queries
+    /funding.*status/,
+    /current.*funding/,
+    /progress.*funding/
+  ]
+  
+  return simpleQueries.some(pattern => pattern.test(lowerMessage))
+}
+
 // Message Intent Analysis
 function analyzeMessageIntent(message) {
   const intents = []
