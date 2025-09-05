@@ -375,7 +375,7 @@ async function createInitialGoals(userId) {
   ]
   
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('agent_goals')
       .insert(goals)
       .select()
