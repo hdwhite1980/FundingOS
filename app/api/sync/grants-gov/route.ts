@@ -1,4 +1,5 @@
 import { supabase } from '../../../../lib/supabase'
+import { AIService } from '../../../../lib/aiService' // Add this import
 import { NextResponse } from 'next/server'
 
 interface GrantsGovOpportunity {
@@ -36,29 +37,21 @@ interface SearchConfiguration {
   };
 }
 
-// AI categorization function
+// FIXED: Direct AI service call instead of HTTP fetch
 async function getAIProjectCategories(project: any, userProfile: any) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const response = await fetch(`${baseUrl}/api/ai/categorize-project`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project, userProfile })
-    })
+    console.log(`Getting AI categories for project: ${project.name}`)
     
-    if (response.ok) {
-      const aiCategories = await response.json()
-      console.log(`AI categories for ${project.name}:`, aiCategories)
-      return aiCategories
-    } else {
-      console.warn(`AI categorization failed for project ${project.name}:`, response.status)
-    }
+    // Direct method call instead of HTTP fetch
+    const aiCategories = await AIService.determineProjectCategories(project, userProfile)
+    
+    console.log(`AI categories for ${project.name}:`, aiCategories)
+    return aiCategories
   } catch (error) {
     console.error('AI categorization failed:', error)
+    // This will gracefully fall back to rule-based logic
+    return null
   }
-  
-  // Fallback to null - will use existing rule-based logic
-  return null
 }
 
 // Enhanced smart category mapping with fallback logic
@@ -208,8 +201,6 @@ export async function GET(request: Request) {
       for (const project of userProjects) {
         const userProfile = userProfiles.find(p => p.id === project.user_id)
         if (userProfile) {
-          console.log(`Getting AI categories for project: ${project.name}`)
-          
           const aiCategories = await getAIProjectCategories(project, userProfile)
           
           if (aiCategories) {
