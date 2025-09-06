@@ -1,4 +1,4 @@
-// Dashboard.js with integrated authentication pattern
+// Dashboard.js with integrated authentication pattern and direct user services
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -11,12 +11,7 @@ import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
 import AIAgentInterface from './AIAgentInterface'
 import { 
-  projectService, 
-  opportunityService, 
-  donorService, 
-  applicationProgressService,
-  projectOpportunityService,
-  userProfileService
+  directUserServices
 } from '../lib/supabase'
 import { 
   Plus, 
@@ -104,7 +99,7 @@ export default function Dashboard() {
   const loadProfile = async () => {
     setProfileLoading(true)
     try {
-      const profileData = await userProfileService.getOrCreateProfile()
+      const profileData = await directUserServices.profile.getOrCreateProfile(user.id, user.email)
       setUserProfile(profileData)
       console.log('Profile loaded:', profileData)
     } catch (error) {
@@ -127,8 +122,8 @@ export default function Dashboard() {
       
       // Load core data
       const [userProjects, allOpportunities] = await Promise.all([
-        projectService.getProjects(user.id),
-        opportunityService.getOpportunities({
+        directUserServices.projects.getProjects(user.id),
+        directUserServices.opportunities.getOpportunities({
           organizationType: userProfile.organization_type
         })
       ])
@@ -158,7 +153,7 @@ export default function Dashboard() {
       console.log('Refreshing data after sync...')
       
       // Only reload opportunities, keep other data intact
-      const newOpportunities = await opportunityService.getOpportunities({
+      const newOpportunities = await directUserServices.opportunities.getOpportunities({
         organizationType: userProfile.organization_type
       })
       setOpportunities(newOpportunities)
@@ -174,8 +169,8 @@ export default function Dashboard() {
   const loadEnhancedStats = async (userProjects, allOpportunities) => {
     try {
       const [donorStats, applicationStats] = await Promise.all([
-        donorService.getDonorStats(user.id),
-        applicationProgressService.getSubmissionStats(user.id)
+        directUserServices.donors.getDonorStats(user.id),
+        directUserServices.applications.getSubmissionStats(user.id)
       ])
 
       // Calculate project stats
@@ -352,7 +347,7 @@ export default function Dashboard() {
 
   const handleProjectDelete = async (projectId) => {
     try {
-      await projectService.deleteProject(projectId)
+      await directUserServices.projects.deleteProject(projectId, user.id)
       const updatedProjects = projects.filter(p => p.id !== projectId)
       setProjects(updatedProjects)
       
@@ -377,7 +372,7 @@ export default function Dashboard() {
     
     // Load project opportunities
     try {
-      const projOpportunities = await projectOpportunityService.getProjectOpportunities(project.id)
+      const projOpportunities = await directUserServices.projectOpportunities.getProjectOpportunities(project.id, user.id)
       setProjectOpportunities(projOpportunities)
     } catch (error) {
       console.error('Failed to load project opportunities:', error)
