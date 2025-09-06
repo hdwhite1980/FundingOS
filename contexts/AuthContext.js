@@ -307,7 +307,7 @@ const AuthenticatedDashboard = () => (
   </AuthGuard>
 )
 
-export default AuthenticatedDashboard
+export { AuthenticatedDashboard }
 
 // App.js - How to set up your main app
 import React from 'react'
@@ -424,7 +424,7 @@ const Projects = () => {
 }
 
 // Export wrapped version
-export default () => (
+export const AuthenticatedProjects = () => (
   <AuthGuard>
     <Projects />
   </AuthGuard>
