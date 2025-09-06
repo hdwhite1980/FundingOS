@@ -44,17 +44,16 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
     try {
       setLoading(true)
       
-      // Double-check authentication before making calls
-      const { data: { session } } = await import('../lib/supabase').then(m => m.supabase.auth.getSession())
-      if (!session?.user) {
-        console.warn('No authenticated session available')
+      // Use directUserServices with user.id instead of session-based services
+      if (!user?.id) {
+        console.warn('No user ID available')
         setLoading(false)
         return
       }
       
       const [submissionsData, statsData] = await Promise.all([
-        directUserServices.applications.getSubmissions(filters),
-        directUserServices.applications.getSubmissionStats()
+        directUserServices.applications.getSubmissions(user.id, filters),
+        directUserServices.applications.getSubmissionStats(user.id)
       ])
       
       setSubmissions(submissionsData)

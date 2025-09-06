@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Building, MapPin, DollarSign, Calendar, FileText, Users, Leaf } from 'lucide-react'
-import { projectService } from '../lib/supabase'
+import { directUserServices } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 const PROJECT_TYPES = [
@@ -27,6 +27,7 @@ const INDUSTRIES = [
 ]
 
 export default function CreateProjectModal({ 
+  user,
   userProfile, 
   onClose, 
   onProjectCreated, 
@@ -68,7 +69,7 @@ export default function CreateProjectModal({
 
     try {
       // Check if user is properly authenticated
-      if (!userProfile?.id) {
+      if (!user?.id) {
         toast.error('Please log in to create projects')
         setLoading(false)
         return
@@ -76,7 +77,7 @@ export default function CreateProjectModal({
 
       const projectData = {
         ...formData,
-        user_id: userProfile.id,
+        user_id: user.id,
         funding_needed: parseFloat(formData.funding_needed),
         expected_jobs_created: formData.expected_jobs_created ? parseInt(formData.expected_jobs_created) : null,
         matching_funds_available: formData.matching_funds_available ? parseFloat(formData.matching_funds_available) : 0
@@ -84,12 +85,12 @@ export default function CreateProjectModal({
 
       if (isEditMode) {
         // Update existing project
-        const updatedProject = await projectService.updateProject(editProject.id, projectData)
+        const updatedProject = await directUserServices.projects.updateProject(user.id, editProject.id, projectData)
         onProjectUpdated(updatedProject)
         toast.success('Project updated successfully!')
       } else {
         // Create new project
-        const newProject = await projectService.createProject(projectData)
+        const newProject = await directUserServices.projects.createProject(user.id, projectData)
         onProjectCreated(newProject)
         toast.success('Project created successfully!')
       }
