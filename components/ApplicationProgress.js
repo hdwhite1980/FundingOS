@@ -346,12 +346,12 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 
         {/* Applications Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {submissions.map(submission => (
+          {(submissions || []).filter(submission => submission && submission.id).map(submission => (
             <SubmissionCard key={submission.id} submission={submission} />
           ))}
         </div>
 
-        {submissions.length === 0 && (
+        {(!submissions || submissions.length === 0) && (
           <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-gray-300" />
             <h3 className="mt-2 text-lg font-medium text-gray-900">No applications tracked</h3>
@@ -436,9 +436,9 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
                 required
               >
                 <option value="">Select project</option>
-                {projects.map(project => (
+                {(projects || []).filter(project => project && project.id).map(project => (
                   <option key={project.id} value={project.id}>
-                    {project.name}
+                    {project.name || 'Untitled Project'}
                   </option>
                 ))}
               </select>
