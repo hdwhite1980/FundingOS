@@ -103,13 +103,23 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       setLoading(true)
       console.log('Loading dashboard data...')
       
+      if (!user?.id) {
+        console.warn('loadDashboardData: No user.id available')
+        setLoading(false)
+        return
+      }
+
+      console.log('loadDashboardData: Loading data for user:', user.id) // Debug log
+      
       // Load core data
       const [userProjects, allOpportunities] = await Promise.all([
         directUserServices.projects.getProjects(user.id),
         directUserServices.opportunities.getOpportunities({
-          organizationType: userProfile.organization_type
+          organizationType: userProfile?.organization_type || 'nonprofit'
         })
       ])
+      
+      console.log('loadDashboardData: Core data loaded, projects:', userProjects.length, 'opportunities:', allOpportunities.length) // Debug log
       
       setProjects(userProjects)
       setOpportunities(allOpportunities)
@@ -151,10 +161,19 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
   const loadEnhancedStats = async (userProjects, allOpportunities) => {
     try {
+      if (!user?.id) {
+        console.warn('loadEnhancedStats: No user.id available')
+        return
+      }
+
+      console.log('loadEnhancedStats: Loading stats for user:', user.id) // Debug log
+      
       const [donorStats, applicationStats] = await Promise.all([
         directUserServices.donors.getDonorStats(user.id),
         directUserServices.applications.getSubmissionStats(user.id)
       ])
+
+      console.log('loadEnhancedStats: Stats loaded successfully') // Debug log
 
       // Calculate project stats
       const totalProjects = userProjects.length
