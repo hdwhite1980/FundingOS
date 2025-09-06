@@ -29,12 +29,12 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
           {/* Logo & Brand */}
           <div className="flex items-center space-x-8">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-brand-600 to-gold-500 rounded-2xl flex items-center justify-center shadow-financial">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">W</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold gradient-text">WALI OS</h1>
-                <p className="text-xs text-neutral-500 font-medium -mt-0.5">powered by AHTS</p>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">WALI OS</h1>
+                <p className="text-xs bg-gradient-to-r from-blue-500 to-blue-400 bg-clip-text text-transparent font-medium -mt-0.5">powered by AHTS</p>
               </div>
             </div>
             
@@ -117,7 +117,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center space-x-3 p-2 hover:bg-neutral-50 rounded-xl transition-all duration-200 group"
               >
-                <div className="w-9 h-9 bg-gradient-to-r from-brand-500 to-gold-500 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-financial">
+                <div className="w-9 h-9 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-lg">
                   {getInitials(userProfile?.full_name)}
                 </div>
                 <div className="hidden md:block text-left">

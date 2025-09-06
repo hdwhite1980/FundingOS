@@ -97,12 +97,12 @@ export default function AuthPage() {
           >
             {/* Logo */}
             <div className="flex items-center mb-8">
-              <div className="w-12 h-12 bg-gradient-to-r from-brand-400 to-gold-400 rounded-2xl flex items-center justify-center shadow-gold mr-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mr-4">
                 <span className="text-white font-bold text-xl">W</span>
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-white">WALI OS</h1>
-                <p className="text-sm text-neutral-300 font-medium">powered by AHTS</p>
+                <p className="text-sm text-blue-100 font-medium">powered by AHTS</p>
               </div>
             </div>
             
@@ -153,12 +153,12 @@ export default function AuthPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-r from-brand-500 to-gold-500 rounded-2xl flex items-center justify-center shadow-financial mr-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mr-3">
               <span className="text-white font-bold text-xl">W</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold gradient-text">WALI OS</h1>
-              <p className="text-xs text-neutral-500 font-medium">powered by AHTS</p>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">WALI OS</h1>
+              <p className="text-xs text-blue-500 font-medium">powered by AHTS</p>
             </div>
           </div>
 

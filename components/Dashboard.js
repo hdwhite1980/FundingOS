@@ -403,9 +403,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     <StatCard
       icon={Brain}
       title="AI Assistant"
-      value="Active"
-      subtitle="Analyzing opportunities"
-      change={{ positive: true, value: "+3 matches today" }}
+      value="Ready"
+      subtitle="Available for analysis"
       color="gold"
     />
   )
@@ -489,16 +488,14 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 icon={Target}
                 title="Active Projects"
                 value={stats.totalProjects}
-                subtitle={`Seeking $${stats.totalFunding.toLocaleString()}`}
-                change={{ positive: true, value: "+2 this month" }}
+                subtitle={stats.totalFunding > 0 ? `Seeking $${stats.totalFunding.toLocaleString()}` : "No funding requests yet"}
                 color="brand"
               />
               <StatCard
                 icon={DollarSign}
                 title="Funding Secured"
-                value={stats.totalAwarded}
-                subtitle={`${stats.applicationSuccessRate}% success rate`}
-                change={{ positive: true, value: "+15% vs last quarter" }}
+                value={stats.totalAwarded > 0 ? `$${stats.totalAwarded.toLocaleString()}` : "$0"}
+                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
                 color="gold"
                 isFinancial={true}
               />
@@ -506,8 +503,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 icon={Zap}
                 title="Active Opportunities"
                 value={stats.activeOpportunities}
-                subtitle="Matched to your projects"
-                change={{ positive: true, value: "+12 new today" }}
+                subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
                 color="brand"
               />
               <AgentStatusCard userId={user.id} />

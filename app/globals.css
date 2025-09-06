@@ -120,7 +120,7 @@
   }
   
   .btn-primary {
-    @apply btn bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-financial hover:from-brand-700 hover:to-brand-600 hover:shadow-lg focus:ring-brand-500;
+    @apply btn bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-600 focus:ring-blue-500;
   }
   
   .btn-gold {
@@ -437,7 +437,7 @@
   }
   
   .btn-primary {
-    @apply btn bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg hover:shadow-xl hover:from-pink-600 hover:to-rose-600 focus:ring-pink-500;
+    @apply btn bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-600 focus:ring-blue-500;
   }
   
   .btn-secondary {
@@ -478,7 +478,7 @@
   }
   
   .form-input {
-    @apply block w-full px-4 py-3 bg-white border border-slate-300 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200;
+    @apply block w-full px-4 py-3 bg-white border border-slate-300 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
   }
   
   .form-input-error {
@@ -502,7 +502,7 @@
   }
   
   .badge-primary {
-    @apply badge bg-pink-100 text-pink-800 border border-pink-200;
+    @apply badge bg-blue-100 text-blue-800 border border-blue-200;
   }
   
   .badge-success {
@@ -527,7 +527,7 @@
   }
   
   .nav-item-active {
-    @apply nav-item bg-pink-50 text-pink-700 border border-pink-200;
+    @apply nav-item bg-blue-50 text-blue-700 border border-blue-200;
   }
   
   .nav-item-inactive {
@@ -540,7 +540,7 @@
   }
   
   .progress-fill {
-    @apply h-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-500 ease-out;
+    @apply h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out;
   }
   
   /* Animations */
@@ -573,7 +573,7 @@
   
   /* Gradient text */
   .gradient-text {
-    @apply bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-600 via-blue-500 to-brand-500 bg-clip-text text-transparent;
   }
   
   /* Interactive elements */
@@ -600,7 +600,7 @@
   
   /* Loading states */
   .loading-spinner {
-    @apply animate-spin rounded-full border-2 border-slate-200 border-t-pink-500;
+    @apply animate-spin rounded-full border-2 border-slate-200 border-t-blue-500;
   }
   
   .loading-pulse {
