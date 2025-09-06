@@ -89,7 +89,7 @@ export default function AuthPage() {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-4xl font-bold text-white mb-6">
-              Welcome to FundingOS
+              Welcome to WALI OS
             </h1>
             <p className="text-xl text-gray-300 mb-8">
               The AI-powered platform that streamlines your grant applications and maximizes your funding success.
@@ -127,8 +127,8 @@ export default function AuthPage() {
             </h2>
             <p className="text-gray-600">
               {isSignUp 
-                ? 'Join thousands of organizations securing funding with AI'
-                : 'Sign in to your FundingOS account'
+                ? 'Join thousands of organizations securing grants with AI'
+                : 'Sign in to your WALI OS account'
               }
             </p>
           </motion.div>

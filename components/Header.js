@@ -32,7 +32,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
               <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-sm">F</span>
               </div>
-              <h1 className="text-xl font-bold gradient-text">FundingOS</h1>
+              <h1 className="text-xl font-bold gradient-text">WALI OS</h1>
             </div>
             
             {userProfile?.organization_name && (
