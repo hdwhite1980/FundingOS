@@ -569,30 +569,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     )}
                   </button>
                 </div>
-                
-                {/* Enhanced Sync Statistics */}
-                {stats.activeOpportunities > 0 && (
-                  <div className="mt-6 pt-6 border-t border-neutral-100">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="text-center p-4 bg-gradient-to-r from-brand-50 to-transparent rounded-xl">
-                        <p className="text-2xl font-bold text-brand-600">{stats.activeOpportunities}</p>
-                        <p className="text-xs text-neutral-600 font-medium">Active Grants</p>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-r from-gold-50 to-transparent rounded-xl">
-                        <p className="text-2xl font-bold text-gold-600">Federal</p>
-                        <p className="text-xs text-neutral-600 font-medium">Source</p>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-r from-brand-50 to-transparent rounded-xl">
-                        <p className="text-2xl font-bold text-brand-600">Real-time</p>
-                        <p className="text-xs text-neutral-600 font-medium">Updates</p>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-r from-gold-50 to-transparent rounded-xl">
-                        <p className="text-2xl font-bold text-gold-600">AI Matching</p>
-                        <p className="text-xs text-neutral-600 font-medium">Enabled</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </motion.div>
 

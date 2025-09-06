@@ -70,125 +70,72 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {projects.map((project, index) => (
         <div
           key={project.id}
           className={`
-            group relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 animate-fade-in
+            group relative p-3 rounded-lg border cursor-pointer transition-all duration-200
             ${selectedProject?.id === project.id
-              ? 'border-pink-300 bg-gradient-to-r from-pink-50 to-purple-50 shadow-md'
-              : 'border-slate-200 hover:border-pink-300 hover:bg-gradient-to-r hover:from-pink-25 hover:to-purple-25 hover:shadow-sm'
+              ? 'border-blue-300 bg-blue-50 shadow-sm'
+              : 'border-neutral-200 hover:border-blue-300 hover:bg-blue-25 hover:shadow-sm'
             }
           `}
-          style={{ animationDelay: `${index * 50}ms` }}
           onClick={() => handleProjectClick(project)}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2 mb-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  selectedProject?.id === project.id ? 'bg-pink-500' : 'bg-slate-300 group-hover:bg-pink-400'
-                }`}></div>
-                <h3 className={`font-medium text-sm truncate ${
-                  selectedProject?.id === project.id ? 'text-pink-900' : 'text-slate-900'
+              <div className="flex items-center justify-between mb-1">
+                <h3 className={`font-semibold text-sm truncate ${
+                  selectedProject?.id === project.id ? 'text-blue-900' : 'text-neutral-900'
                 }`}>
                   {project.name}
                 </h3>
-              </div>
-              
-              <div className="space-y-1.5">
-                <div className="flex items-center text-xs text-slate-600">
-                  <MapPin className="w-3 h-3 mr-1.5 flex-shrink-0" />
-                  <span className="truncate">{project.location}</span>
-                </div>
                 
-                <div className="flex items-center text-xs text-slate-600">
-                  <DollarSign className="w-3 h-3 mr-1.5 flex-shrink-0" />
-                  <span>${project.funding_needed?.toLocaleString()}</span>
-                </div>
-                
-                {project.timeline && (
-                  <div className="flex items-center text-xs text-slate-600">
-                    <Calendar className="w-3 h-3 mr-1.5 flex-shrink-0" />
-                    <span className="truncate">{project.timeline}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                  selectedProject?.id === project.id 
-                    ? 'bg-pink-100 text-pink-800 border border-pink-200' 
-                    : 'bg-slate-100 text-slate-700 border border-slate-200'
-                }`}>
-                  {project.project_type?.replace('_', ' ')}
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-1 ml-2 relative">
-              {/* Actions Menu */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={(e) => handleActionClick(e, project.id)}
-                  className={`p-1.5 rounded-lg transition-all duration-200 ${
-                    showActionsFor === project.id 
-                      ? 'bg-pink-100 text-pink-600' 
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100'
-                  }`}
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-
-                {/* Actions Dropdown */}
-                {showActionsFor === project.id && (
-                  <div 
-                    className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-xl border border-slate-200 z-[9999]"
-                    style={{ zIndex: 9999 }}
+                {/* Actions Menu */}
+                <div className="flex items-center space-x-1 ml-2 relative">
+                  <button
+                    type="button"
+                    onClick={(e) => handleActionClick(e, project.id)}
+                    className="p-1 text-neutral-400 hover:text-neutral-600 rounded transition-colors"
                   >
-                    <div className="py-1">
+                    <MoreVertical className="w-3 h-3" />
+                  </button>
+                  
+                  {/* Actions Dropdown */}
+                  {showActionsFor === project.id && (
+                    <div className="absolute right-0 top-6 z-50 bg-white rounded-lg shadow-lg border border-neutral-200 min-w-[120px]">
                       <button
                         type="button"
                         onClick={(e) => handleEdit(e, project)}
-                        className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center"
                       >
-                        <Edit3 className="w-4 h-4 mr-2" />
-                        Edit Project
+                        <Edit3 className="w-3 h-3 mr-2" />
+                        Edit
                       </button>
                       <button
                         type="button"
                         onClick={(e) => handleDelete(e, project)}
-                        className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Project
+                        <Trash2 className="w-3 h-3 mr-2" />
+                        Delete
                       </button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-
-              {/* Selection Indicator */}
-              <ChevronRight className={`w-4 h-4 transition-all duration-200 flex-shrink-0 ${
-                selectedProject?.id === project.id 
-                  ? 'text-pink-600 transform rotate-90' 
-                  : 'text-slate-400 group-hover:text-pink-500 group-hover:transform group-hover:translate-x-1'
-              }`} />
+              
+              <div className="flex items-center justify-between text-xs text-neutral-500">
+                <span className="flex items-center">
+                  <DollarSign className="w-3 h-3 mr-1" />
+                  ${project.funding_needed?.toLocaleString()}
+                </span>
+                <span className="capitalize text-xs px-2 py-0.5 bg-neutral-100 rounded-md">
+                  {project.project_type?.replace('_', ' ')}
+                </span>
+              </div>
             </div>
-          </div>
-
-          {/* Progress indicator */}
-          <div className="mt-3 w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-            <div 
-              className={`h-full rounded-full transition-all duration-500 ${
-                selectedProject?.id === project.id
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-500'
-                  : 'bg-slate-300 group-hover:bg-gradient-to-r group-hover:from-pink-400 group-hover:to-purple-400'
-              }`}
-              style={{ width: '45%' }}
-            ></div>
           </div>
         </div>
       ))}
