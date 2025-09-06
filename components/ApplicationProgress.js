@@ -421,6 +421,7 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     project_id: '',
     opportunity_id: '',
+    opportunity_title: '',
     submission_date: new Date().toISOString().split('T')[0],
     application_id: '',
     submitted_amount: '',
@@ -472,6 +473,7 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
                 type="text"
                 className="form-input"
                 placeholder="Enter opportunity title or ID"
+                value={formData.opportunity_title}
                 onChange={(e) => setFormData({...formData, opportunity_title: e.target.value})}
               />
             </div>

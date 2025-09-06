@@ -2,12 +2,10 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, FileText, Clock, Copy, RotateCcw } from 'lucide-react'
-import { directUserServices } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
+import { projectOpportunityService } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 export default function AIAnalysisModal({ opportunity, project, userProfile, onClose }) {
-  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState(null)
   const [activeTab, setActiveTab] = useState('analysis')
@@ -22,6 +20,19 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
   const performAnalysis = async () => {
     try {
       setLoading(true)
+      
+      // Validate required data
+      if (!project?.id) {
+        throw new Error('Project ID is required')
+      }
+      
+      if (!opportunity?.id) {
+        throw new Error('Opportunity ID is required')
+      }
+      
+      if (!user?.id) {
+        throw new Error('User authentication required')
+      }
       
       // Call AI analysis API
       const response = await fetch('/api/ai/analyze-opportunity', {
@@ -43,7 +54,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       setAnalysis(analysisResult)
 
       // Check if this opportunity is already tracked for the project
-      const existingOpportunities = await directUserServices.getProjectOpportunities(project.id, user.id)
+      const existingOpportunities = await directUserServices.projectOpportunities.getProjectOpportunities(project.id, user.id)
       const existing = existingOpportunities.find(po => po.opportunity_id === opportunity.id)
       
       if (existing) {
@@ -64,8 +75,21 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
 
   const handleAddToProject = async () => {
     try {
+      // Validate required data
+      if (!project?.id) {
+        throw new Error('Project ID is required')
+      }
+      
+      if (!opportunity?.id) {
+        throw new Error('Opportunity ID is required')
+      }
+      
+      if (!user?.id) {
+        throw new Error('User authentication required')
+      }
+      
       // First, check if this combination already exists
-      const existingOpportunities = await directUserServices.getProjectOpportunities(project.id, user.id)
+      const existingOpportunities = await directUserServices.projectOpportunities.getProjectOpportunities(project.id, user.id)
       const existing = existingOpportunities.find(po => po.opportunity_id === opportunity.id)
       
       if (existing) {
@@ -75,7 +99,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       }
 
       // If not existing, create new one
-      const newProjectOpportunity = await directUserServices.createProjectOpportunity(user.id, {
+      const newProjectOpportunity = await directUserServices.projectOpportunities.createProjectOpportunity(user.id, {
         project_id: project.id,
         opportunity_id: opportunity.id,
         status: 'ai_analyzing',
@@ -104,6 +128,19 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
     setActiveTab('application')
 
     try {
+      // Validate required data
+      if (!project?.id) {
+        throw new Error('Project ID is required')
+      }
+      
+      if (!opportunity?.id) {
+        throw new Error('Opportunity ID is required')
+      }
+      
+      if (!user?.id) {
+        throw new Error('User authentication required')
+      }
+      
       // Ensure we have a project opportunity first
       let currentProjectOpportunity = projectOpportunity
       
@@ -140,8 +177,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       setApplicationDraft(applicationDraftResponse.content)
       
       // Update project opportunity with draft
-      await directUserServices.updateProjectOpportunity(
-        user.id,
+      await projectOpportunityService.updateProjectOpportunity(
         currentProjectOpportunity.id,
         {
           status: 'draft_generated',

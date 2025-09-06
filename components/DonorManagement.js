@@ -38,7 +38,9 @@ export default function DonorManagement({ user, userProfile, projects }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showCampaignModal, setShowCampaignModal] = useState(false)
+  const [showDonationDetailModal, setShowDonationDetailModal] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState(null)
+  const [selectedDonation, setSelectedDonation] = useState(null)
 
   useEffect(() => {
     if (user) {
@@ -98,8 +100,9 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const handleCreateCampaign = async (campaignData) => {
     try {
-      // Placeholder for campaign functionality
-      toast.success('Campaign functionality coming soon!')
+      // Note: Campaign functionality is not yet implemented
+      // This would store campaign data in the campaigns table when ready
+      toast.info('Campaign feature is under development')
       setShowCampaignModal(false)
     } catch (error) {
       toast.error('Failed to link campaign: ' + error.message)
@@ -131,7 +134,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const syncCampaign = async (campaignId) => {
     try {
-      toast.success('Campaign sync functionality coming soon!')
+      toast.info('Campaign sync feature coming in a future update')
     } catch (error) {
       toast.error('Failed to sync campaign data')
     }
@@ -571,7 +574,13 @@ export default function DonorManagement({ user, userProfile, projects }) {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button className="text-indigo-600 hover:text-indigo-900">
+                          <button 
+                            onClick={() => {
+                              setSelectedDonation(donation)
+                              setShowDonationDetailModal(true)
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
                             <Eye className="w-4 h-4" />
                           </button>
                         </td>
@@ -662,6 +671,16 @@ export default function DonorManagement({ user, userProfile, projects }) {
           projects={projects}
           onClose={() => setShowCampaignModal(false)}
           onSubmit={handleCreateCampaign}
+        />
+      )}
+
+      {showDonationDetailModal && selectedDonation && (
+        <DonationDetailModal
+          donation={selectedDonation}
+          onClose={() => {
+            setShowDonationDetailModal(false)
+            setSelectedDonation(null)
+          }}
         />
       )}
     </div>
@@ -1076,6 +1095,127 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
               </button>
             </div>
           </form>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function DonationDetailModal({ donation, onClose }) {
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount || 0)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Donation Details</h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Donor Info */}
+            <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold text-sm">
+                  {donation.donor?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">
+                  {donation.donor?.name || 'Unknown Donor'}
+                </h4>
+                <p className="text-sm text-gray-600">
+                  {donation.donor?.email || 'No email provided'}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {donation.donor?.donor_type || 'Individual'}
+                </p>
+              </div>
+            </div>
+
+            {/* Donation Amount */}
+            <div className="text-center py-4">
+              <p className="text-3xl font-bold text-green-600">
+                {formatCurrency(donation.amount)}
+              </p>
+              <p className="text-sm text-gray-500">Donation Amount</p>
+            </div>
+
+            {/* Details Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Date</label>
+                <p className="text-sm text-gray-900">
+                  {new Date(donation.donation_date).toLocaleDateString()}
+                </p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-700">Payment Method</label>
+                <p className="text-sm text-gray-900 capitalize">
+                  {donation.payment_method?.replace('_', ' ') || 'Not specified'}
+                </p>
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-gray-700">Project</label>
+                <p className="text-sm text-gray-900">
+                  {donation.project?.name || 'General Donation'}
+                </p>
+              </div>
+
+              {donation.external_platform && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700">Platform</label>
+                  <p className="text-sm text-gray-900 capitalize">
+                    {donation.external_platform}
+                  </p>
+                </div>
+              )}
+
+              {donation.notes && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700">Notes</label>
+                  <p className="text-sm text-gray-900">
+                    {donation.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Timestamps */}
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500">
+                Created: {new Date(donation.created_at).toLocaleString()}
+              </p>
+              {donation.updated_at && donation.updated_at !== donation.created_at && (
+                <p className="text-xs text-gray-500">
+                  Updated: {new Date(donation.updated_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <button onClick={onClose} className="btn-primary">
+              Close
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
