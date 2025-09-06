@@ -44,8 +44,8 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
     try {
       setLoading(true)
       const [submissionsData, statsData] = await Promise.all([
-        directUserServices.applications.getSubmissions(user.id, filters),
-        directUserServices.applications.getSubmissionStats(user.id)
+        directUserServices.applications.getSubmissions(filters),
+        directUserServices.applications.getSubmissionStats()
       ])
       
       setSubmissions(submissionsData)
