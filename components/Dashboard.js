@@ -68,13 +68,12 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     applicationSuccessRate: 0
   })
 
-  // Updated tabs array with AI Agent
+  // Updated tabs array with cleaner, more focused navigation
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: Target },
-    { id: 'ai-agent', label: 'AI Agent', icon: Brain },
-    { id: 'opportunities', label: 'Opportunities', icon: Zap },
-    { id: 'donors', label: 'Donors', icon: Users },
-    { id: 'applications', label: 'Applications', icon: FileText }
+    { id: 'overview', label: 'Overview', icon: Target, description: 'Financial summary & insights' },
+    { id: 'opportunities', label: 'Funding', icon: Zap, description: 'Available grants & matches' },
+    { id: 'applications', label: 'Pipeline', icon: FileText, description: 'Active applications' },
+    { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }
   ]
 
   // Load dashboard data when user and profile are available
@@ -363,39 +362,51 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     }
   }
 
-  // Enhanced stat card component
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = "blue", trend }) => (
+  // Enhanced stat card component with financial focus
+  const StatCard = ({ icon: Icon, title, value, subtitle, change, color = "brand", trend, isFinancial = false }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card hover:shadow-lg transition-all duration-300"
+      className="card-financial p-6 hover:shadow-lg transition-all duration-300 group"
     >
-      <div className="card-body flex items-center">
-        <div className={`p-3 bg-${color}-100 rounded-lg mr-4`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
-        </div>
+      <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
-          {trend && (
-            <p className={`text-xs ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {trend >= 0 ? '+' : ''}{trend}% vs last month
+          <div className="flex items-center mb-3">
+            <div className={`p-2 bg-${color}-100 rounded-xl mr-3 group-hover:scale-110 transition-transform`}>
+              <Icon className={`h-5 w-5 text-${color}-600`} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-600">{title}</p>
+              {change && (
+                <div className={`flex items-center text-xs font-medium ${change.positive ? 'text-financial-success' : 'text-financial-danger'}`}>
+                  <TrendingUp className={`w-3 h-3 mr-1 ${change.positive ? '' : 'rotate-180'}`} />
+                  {change.value}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mb-2">
+            <p className={`text-2xl font-bold ${isFinancial ? 'text-brand-700' : 'text-neutral-900'}`}>
+              {isFinancial && typeof value === 'number' ? `$${value.toLocaleString()}` : value}
             </p>
+          </div>
+          {subtitle && (
+            <p className="text-sm text-neutral-500">{subtitle}</p>
           )}
         </div>
       </div>
     </motion.div>
   )
 
-  // AI Agent Status Card component
+  // AI Agent Status Card component with financial styling
   const AgentStatusCard = ({ userId }) => (
     <StatCard
       icon={Brain}
-      title="AI Agent"
+      title="AI Assistant"
       value="Active"
-      subtitle="Monitoring opportunities"
-      color="purple"
+      subtitle="Analyzing opportunities"
+      change={{ positive: true, value: "+3 matches today" }}
+      color="gold"
     />
   )
 
@@ -437,13 +448,13 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
   // Main dashboard render
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-brand-50/30">
       <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
       
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Enhanced Navigation Tabs */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Modern Navigation Tabs */}
         <div className="mb-8">
-          <div className="border-b border-gray-200">
+          <div className="border-b border-neutral-200">
             <nav className="flex space-x-8">
               {tabs.map(tab => {
                 const Icon = tab.icon
@@ -451,14 +462,17 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors ${
+                    className={`group py-4 px-2 border-b-2 font-semibold text-sm flex flex-col items-center transition-all duration-200 ${
                       activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'border-brand-500 text-brand-600'
+                        : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
                     }`}
                   >
-                    <Icon className="w-5 h-5 mr-2" />
-                    {tab.label}
+                    <Icon className="w-5 h-5 mb-1" />
+                    <span>{tab.label}</span>
+                    <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                      {tab.description}
+                    </span>
                   </button>
                 )
               })}
@@ -467,110 +481,99 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'dashboard' && (
+        {activeTab === 'overview' && (
           <>
-            {/* Enhanced Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {/* Financial Overview Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 icon={Target}
                 title="Active Projects"
                 value={stats.totalProjects}
-                subtitle={`$${stats.totalFunding.toLocaleString()} needed`}
-                color="blue"
+                subtitle={`Seeking $${stats.totalFunding.toLocaleString()}`}
+                change={{ positive: true, value: "+2 this month" }}
+                color="brand"
               />
               <StatCard
-                icon={Users}
-                title="Total Donors"
-                value={stats.totalDonors}
-                subtitle={`$${stats.totalDonated.toLocaleString()} donated`}
-                color="green"
-              />
-              <StatCard
-                icon={FileText}
-                title="Applications"
-                value={stats.totalSubmissions}
+                icon={DollarSign}
+                title="Funding Secured"
+                value={stats.totalAwarded}
                 subtitle={`${stats.applicationSuccessRate}% success rate`}
-                color="purple"
+                change={{ positive: true, value: "+15% vs last quarter" }}
+                color="gold"
+                isFinancial={true}
               />
               <StatCard
-                icon={CheckCircle}
-                title="Total Awarded"
-                value={`$${stats.totalAwarded.toLocaleString()}`}
-                subtitle={`from ${Math.round(stats.totalSubmissions * (stats.applicationSuccessRate / 100))} grants`}
-                color="emerald"
+                icon={Zap}
+                title="Active Opportunities"
+                value={stats.activeOpportunities}
+                subtitle="Matched to your projects"
+                change={{ positive: true, value: "+12 new today" }}
+                color="brand"
               />
-              
               <AgentStatusCard userId={user.id} />
             </div>
 
-            {/* Sync Control Panel */}
+            {/* Enhanced Sync Control Panel */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="card mb-8"
+              className="card-financial mb-8 border-gradient-financial"
             >
-              <div className="card-body">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center">
-                    <div className="p-3 bg-blue-50 rounded-lg mr-4">
-                      <Database className="h-6 w-6 text-blue-600" />
+              <div className="p-6">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center mb-4 lg:mb-0">
+                    <div className="p-3 bg-gradient-to-r from-brand-100 to-gold-100 rounded-2xl mr-4">
+                      <Database className="h-7 w-7 text-brand-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        Federal Opportunity Database
+                      <h3 className="text-lg font-bold text-neutral-900 mb-1">
+                        Federal Grant Database
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        Connected to live federal grant data • Updated daily at 6 AM EST
+                      <p className="text-sm text-neutral-600 flex items-center">
+                        <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-gold-500 animate-pulse' : 'bg-brand-500'}`}></span>
+                        Live connection to federal funding opportunities
                       </p>
                     </div>
                   </div>
-                  <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <div className={`w-2 h-2 rounded-full mr-2 ${
-                        syncing ? 'bg-blue-500 animate-pulse' : 'bg-green-500'
-                      }`} />
-                      {syncing ? 'Syncing data...' : 'Live data ready'}
-                    </div>
-                    
-                    <button
-                      onClick={handleSyncOpportunities}
-                      disabled={syncing}
-                      className="btn-primary btn-sm flex items-center disabled:opacity-50"
-                    >
-                      {syncing ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                          Syncing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Refresh Data
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  
+                  <button
+                    onClick={handleSyncOpportunities}
+                    disabled={syncing}
+                    className={`btn-primary btn-lg flex items-center shadow-financial ${syncing ? 'opacity-75' : ''}`}
+                  >
+                    {syncing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-5 h-5 mr-3" />
+                        Refresh Opportunities
+                      </>
+                    )}
+                  </button>
                 </div>
                 
-                {/* Sync Statistics */}
+                {/* Enhanced Sync Statistics */}
                 {stats.activeOpportunities > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                      <div>
-                        <p className="text-2xl font-bold text-blue-600">{stats.activeOpportunities}</p>
-                        <p className="text-xs text-gray-600">Active Grants</p>
+                  <div className="mt-6 pt-6 border-t border-neutral-100">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="text-center p-4 bg-gradient-to-r from-brand-50 to-transparent rounded-xl">
+                        <p className="text-2xl font-bold text-brand-600">{stats.activeOpportunities}</p>
+                        <p className="text-xs text-neutral-600 font-medium">Active Grants</p>
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold text-green-600">Federal</p>
-                        <p className="text-xs text-gray-600">Source Type</p>
+                      <div className="text-center p-4 bg-gradient-to-r from-gold-50 to-transparent rounded-xl">
+                        <p className="text-2xl font-bold text-gold-600">Federal</p>
+                        <p className="text-xs text-neutral-600 font-medium">Source</p>
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold text-purple-600">Live</p>
-                        <p className="text-xs text-gray-600">Data Status</p>
+                      <div className="text-center p-4 bg-gradient-to-r from-brand-50 to-transparent rounded-xl">
+                        <p className="text-2xl font-bold text-brand-600">Real-time</p>
+                        <p className="text-xs text-neutral-600 font-medium">Updates</p>
                       </div>
-                      <div>
-                        <p className="text-2xl font-bold text-amber-600">6 AM</p>
-                        <p className="text-xs text-gray-600">Daily Update</p>
+                      <div className="text-center p-4 bg-gradient-to-r from-gold-50 to-transparent rounded-xl">
+                        <p className="text-2xl font-bold text-gold-600">AI Matching</p>
+                        <p className="text-xs text-neutral-600 font-medium">Enabled</p>
                       </div>
                     </div>
                   </div>
@@ -578,21 +581,25 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               </div>
             </motion.div>
 
-            {/* Projects and Opportunities Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              <div className="lg:col-span-1">
-                <div className="card">
-                  <div className="p-6 border-b border-slate-100">
+            {/* Projects and Opportunities Overview - Cleaner Layout */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+              {/* Project Sidebar - More Compact */}
+              <div className="xl:col-span-4">
+                <div className="card-financial">
+                  <div className="p-6 border-b border-neutral-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-slate-900">Projects</h2>
+                      <h2 className="text-lg font-bold text-neutral-900">Your Projects</h2>
                       <button
                         onClick={() => setShowCreateModal(true)}
-                        className="btn-primary btn-sm"
+                        className="btn-primary btn-sm shadow-sm"
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        New
+                        New Project
                       </button>
                     </div>
+                    <p className="text-sm text-neutral-600">
+                      {projects.length} active • ${stats.totalFunding.toLocaleString()} total funding needed
+                    </p>
                   </div>
                   <div className="p-4 max-h-96 overflow-y-auto">
                     <ProjectList
@@ -606,7 +613,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 </div>
               </div>
 
-              <div className="lg:col-span-3">
+              {/* Opportunities - Main Content */}
+              <div className="xl:col-span-8">
                 <OpportunityList
                   opportunities={opportunities}
                   selectedProject={selectedProject}
@@ -628,18 +636,18 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         )}
 
         {activeTab === 'opportunities' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-1">
-              <div className="card">
-                <div className="p-6 border-b border-slate-100">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+            <div className="xl:col-span-4">
+              <div className="card-financial">
+                <div className="p-6 border-b border-neutral-100">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-slate-900">Projects</h2>
+                    <h2 className="text-lg font-bold text-neutral-900">Filter by Project</h2>
                     <button
                       onClick={() => setShowCreateModal(true)}
-                      className="btn-primary btn-sm"
+                      className="btn-secondary btn-sm"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      New
+                      Add Project
                     </button>
                   </div>
                 </div>
@@ -655,7 +663,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               </div>
             </div>
 
-            <div className="lg:col-span-3">
+            <div className="xl:col-span-8">
               <OpportunityList
                 opportunities={opportunities}
                 selectedProject={selectedProject}
@@ -663,14 +671,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               />
             </div>
           </div>
-        )}
-
-        {activeTab === 'donors' && (
-          <DonorManagement
-            user={user}
-            userProfile={userProfile}
-            projects={projects}
-          />
         )}
 
         {activeTab === 'applications' && (

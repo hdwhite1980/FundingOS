@@ -2,71 +2,405 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --color-primary: 236 72 153;
-    --color-primary-dark: 219 39 119;
-    --color-secondary: 99 102 241;
-    --color-success: 34 197 94;
-    --color-warning: 251 191 36;
-    --color-error: 239 68 68;
-    --color-background: 248 250 252;
-    --color-surface: 255 255 255;
-    --color-surface-hover: 248 250 252;
-    --color-text-primary: 15 23 42;
-    --color-text-secondary: 71 85 105;
-    --color-text-tertiary: 148 163 184;
-    --color-border: 226 232 240;
-    --color-border-hover: 203 213 225;
+    /* WALI OS Brand Colors - Financial Focus */
+    --color-brand: 34 197 94;         /* Green-500 - Main brand */
+    --color-brand-dark: 22 163 74;    /* Green-600 - Darker brand */
+    --color-gold: 245 158 11;         /* Gold-500 - Premium accent */
+    --color-gold-dark: 217 119 6;     /* Gold-600 - Darker gold */
     
-    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    /* Financial UI Colors */
+    --color-success: 34 197 94;       /* Growth/Profit */
+    --color-warning: 245 158 11;      /* Caution */
+    --color-danger: 239 68 68;        /* Loss/Risk */
+    --color-info: 59 130 246;         /* Information */
     
-    --border-radius: 12px;
-    --border-radius-lg: 16px;
-    --border-radius-xl: 20px;
+    /* Neutral Professional Palette */
+    --color-background: 249 250 251;   /* Neutral-50 */
+    --color-surface: 255 255 255;     /* White */
+    --color-surface-hover: 243 244 246; /* Neutral-100 */
+    --color-text-primary: 17 24 39;   /* Neutral-900 */
+    --color-text-secondary: 75 85 99; /* Neutral-600 */
+    --color-text-tertiary: 156 163 175; /* Neutral-400 */
+    --color-border: 229 231 235;      /* Neutral-200 */
+    --color-border-hover: 209 213 219; /* Neutral-300 */
     
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Financial Shadows & Effects */
+    --shadow-financial: 0 4px 6px -1px rgba(34, 197, 94, 0.1), 0 2px 4px -1px rgba(34, 197, 94, 0.06);
+    --shadow-gold: 0 4px 6px -1px rgba(245, 158, 11, 0.1), 0 2px 4px -1px rgba(245, 158, 11, 0.06);
+    --shadow-elegant: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-premium: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* Modern Border Radius */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+    
+    /* Smooth Transitions */
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   html {
     scroll-behavior: smooth;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
   
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    @apply bg-slate-50 text-slate-900 antialiased;
-    font-feature-settings: 'cv02','cv03','cv04','cv11';
+    @apply bg-neutral-50 text-neutral-900 antialiased;
     font-variation-settings: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
-  /* Custom scrollbars */
+  /* Custom Scrollbars */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    @apply bg-neutral-100;
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full;
+    @apply bg-neutral-300 rounded-full;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-400;
+    @apply bg-neutral-400;
   }
   
   /* Selection */
   ::selection {
-    @apply bg-pink-100 text-pink-900;
+    @apply bg-brand-100 text-brand-900;
+  }
+}
+
+@layer components {
+  /* Glass Morphism - Financial Style */
+  .glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .glass-dark {
+    background: rgba(17, 24, 39, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Modern Card System */
+  .card {
+    @apply bg-white rounded-2xl border border-neutral-200 shadow-sm transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-elegant hover:border-neutral-300 hover:-translate-y-0.5;
+  }
+  
+  .card-financial {
+    @apply card shadow-financial hover:shadow-lg;
+  }
+  
+  .card-premium {
+    @apply card border-gold-200 shadow-gold hover:shadow-premium;
+  }
+  
+  /* Modern Button System */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-financial hover:from-brand-700 hover:to-brand-600 hover:shadow-lg focus:ring-brand-500;
+  }
+  
+  .btn-gold {
+    @apply btn bg-gradient-to-r from-gold-600 to-gold-500 text-white shadow-gold hover:from-gold-700 hover:to-gold-600 hover:shadow-lg focus:ring-gold-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50 hover:border-neutral-400 shadow-sm hover:shadow-md focus:ring-neutral-500;
+  }
+  
+  .btn-ghost {
+    @apply btn text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus:ring-neutral-500;
+  }
+  
+  .btn-success {
+    @apply btn bg-financial-success text-white hover:bg-brand-700 focus:ring-brand-500;
+  }
+  
+  .btn-warning {
+    @apply btn bg-financial-warning text-white hover:bg-gold-600 focus:ring-gold-500;
+  }
+  
+  .btn-danger {
+    @apply btn bg-financial-danger text-white hover:bg-red-600 focus:ring-red-500;
+  }
+  
+  /* Button Sizes */
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+  
+  .btn-md {
+    @apply px-4 py-2.5 text-sm;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+  
+  .btn-xl {
+    @apply px-8 py-4 text-lg;
+  }
+  
+  /* Modern Form Components */
+  .form-group {
+    @apply space-y-2;
+  }
+  
+  .form-label {
+    @apply block text-sm font-semibold text-neutral-700;
+  }
+  
+  .form-input {
+    @apply block w-full px-4 py-3 bg-white border border-neutral-300 rounded-xl placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all duration-200;
+  }
+  
+  .form-input-error {
+    @apply border-red-300 focus:ring-red-500;
+  }
+  
+  .form-select {
+    @apply form-input appearance-none bg-no-repeat bg-right pr-10;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 12px center;
+    background-size: 16px;
+  }
+  
+  .form-textarea {
+    @apply form-input resize-none;
+  }
+  
+  /* Financial Status Badges */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-success {
+    @apply badge bg-brand-100 text-brand-800 border border-brand-200;
+  }
+  
+  .badge-gold {
+    @apply badge bg-gold-100 text-gold-800 border border-gold-200;
+  }
+  
+  .badge-warning {
+    @apply badge bg-yellow-100 text-yellow-800 border border-yellow-200;
+  }
+  
+  .badge-danger {
+    @apply badge bg-red-100 text-red-800 border border-red-200;
+  }
+  
+  .badge-neutral {
+    @apply badge bg-neutral-100 text-neutral-800 border border-neutral-200;
+  }
+  
+  .badge-info {
+    @apply badge bg-blue-100 text-blue-800 border border-blue-200;
+  }
+  
+  /* Modern Navigation */
+  .nav-item {
+    @apply flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200;
+  }
+  
+  .nav-item-active {
+    @apply nav-item bg-brand-50 text-brand-700 border border-brand-200 shadow-sm;
+  }
+  
+  .nav-item-inactive {
+    @apply nav-item text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100;
+  }
+  
+  /* Financial Progress Indicators */
+  .progress-bar {
+    @apply w-full bg-neutral-200 rounded-full h-3 overflow-hidden;
+  }
+  
+  .progress-fill {
+    @apply h-full bg-gradient-to-r from-brand-500 to-gold-500 transition-all duration-700 ease-out;
+  }
+  
+  .progress-fill-success {
+    @apply h-full bg-financial-success transition-all duration-700 ease-out;
+  }
+  
+  /* Modern Animations */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.4s ease-out forwards;
+  }
+  
+  .animate-bounce-subtle {
+    animation: bounceSubtle 2s ease-in-out infinite;
+  }
+  
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  
+  @keyframes bounceSubtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  
+  /* Brand Gradient Text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-600 via-brand-500 to-gold-500 bg-clip-text text-transparent;
+  }
+  
+  .gradient-text-reverse {
+    @apply bg-gradient-to-r from-gold-500 via-brand-500 to-brand-600 bg-clip-text text-transparent;
+  }
+  
+  /* Financial Stats Cards */
+  .stat-card {
+    @apply card-financial p-6 hover:shadow-lg transition-all duration-300;
+  }
+  
+  .stat-value {
+    @apply text-3xl font-bold text-neutral-900;
+  }
+  
+  .stat-value-success {
+    @apply stat-value text-financial-success;
+  }
+  
+  .stat-value-gold {
+    @apply stat-value text-gold-600;
+  }
+  
+  .stat-label {
+    @apply text-sm text-neutral-600 font-medium;
+  }
+  
+  .stat-change {
+    @apply text-xs font-semibold;
+  }
+  
+  .stat-change-positive {
+    @apply stat-change text-financial-success;
+  }
+  
+  .stat-change-negative {
+    @apply stat-change text-financial-danger;
+  }
+  
+  /* Interactive Elements */
+  .interactive {
+    @apply transition-all duration-200 hover:scale-105 active:scale-95;
+  }
+  
+  .interactive-subtle {
+    @apply transition-all duration-200 hover:scale-102 active:scale-98;
+  }
+  
+  /* Empty States */
+  .empty-state {
+    @apply flex flex-col items-center justify-center p-12 text-center;
+  }
+  
+  .empty-state-icon {
+    @apply w-16 h-16 text-neutral-400 mb-4;
+  }
+  
+  .empty-state-title {
+    @apply text-xl font-semibold text-neutral-900 mb-2;
+  }
+  
+  .empty-state-description {
+    @apply text-neutral-600 mb-6 max-w-md;
+  }
+  
+  /* Loading States */
+  .loading-spinner {
+    @apply animate-spin rounded-full border-2 border-neutral-200 border-t-brand-500;
+  }
+  
+  .loading-pulse {
+    @apply animate-pulse bg-neutral-200 rounded-xl;
+  }
+  
+  .loading-skeleton {
+    @apply bg-gradient-to-r from-neutral-200 via-neutral-100 to-neutral-200 bg-[length:200px_100%] animate-[shimmer_1.5s_ease-in-out_infinite];
+  }
+  
+  /* Financial Data Tables */
+  .table-financial {
+    @apply w-full border-collapse;
+  }
+  
+  .table-financial th {
+    @apply bg-neutral-50 px-6 py-4 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider border-b border-neutral-200;
+  }
+  
+  .table-financial td {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-neutral-900 border-b border-neutral-100;
+  }
+  
+  /* Responsive Design Utilities */
+  @media (max-width: 768px) {
+    .card {
+      @apply rounded-xl;
+    }
+    
+    .btn-lg {
+      @apply btn-md;
+    }
+    
+    .form-input {
+      @apply py-2.5;
+    }
+    
+    .stat-value {
+      @apply text-2xl;
+    }
+  }
+  
+  /* Custom Utility Classes */
+  .backdrop-blur-financial {
+    backdrop-filter: blur(12px) saturate(180%) contrast(110%);
+  }
+  
+  .shadow-financial-lg {
+    box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.1), 0 4px 6px -2px rgba(34, 197, 94, 0.05), 0 0 0 1px rgba(34, 197, 94, 0.05);
+  }
+  
+  .border-gradient-financial {
+    border: 1px solid transparent;
+    background: linear-gradient(white, white) padding-box, 
+                linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(245, 158, 11, 0.3)) border-box;
   }
 }
 
