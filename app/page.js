@@ -1,7 +1,8 @@
+// HomePage.js 
 'use client'
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useEffect, useState } from 'react'
-import { userProfileService } from '../lib/supabase'
+import { directUserServices } from '../lib/supabase'
 import AuthPage from '../components/AuthPage'
 import OnboardingFlow from '../components/OnboardingFlow'
 import Dashboard from '../components/Dashboard'
@@ -24,7 +25,11 @@ export default function HomePage() {
 
   const checkUserProfile = async () => {
     try {
-      const profile = await userProfileService.getProfile(session.user.id)
+      // FIXED: Use directUserServices instead of userProfileService
+      const profile = await directUserServices.profile.getOrCreateProfile(
+        session.user.id, 
+        session.user.email
+      )
       
       if (!profile) {
         setNeedsOnboarding(true)
