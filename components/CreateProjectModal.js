@@ -67,6 +67,13 @@ export default function CreateProjectModal({
     setLoading(true)
 
     try {
+      // Check if user is properly authenticated
+      if (!userProfile?.id) {
+        toast.error('Please log in to create projects')
+        setLoading(false)
+        return
+      }
+
       const projectData = {
         ...formData,
         user_id: userProfile.id,
