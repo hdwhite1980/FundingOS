@@ -1,20 +1,22 @@
-// Fixed Dashboard.js with AI Agent integration
+// Dashboard.js with integrated authentication pattern
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { useAuth } from '../hooks/useAuth'
 import Header from './Header'
 import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
 import DonorManagement from './DonorManagement'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
-import AIAgentInterface from './AIAgentInterface' // Add this import
+import AIAgentInterface from './AIAgentInterface'
 import { 
   projectService, 
   opportunityService, 
   donorService, 
   applicationProgressService,
-  projectOpportunityService 
+  projectOpportunityService,
+  userProfileService
 } from '../lib/supabase'
 import { 
   Plus, 
@@ -29,11 +31,17 @@ import {
   FileText,
   Heart,
   CheckCircle,
-  Brain // Add Brain icon for AI Agent
+  Brain
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-export default function Dashboard({ user, userProfile, onProfileUpdate }) {
+export default function Dashboard() {
+  // Authentication state
+  const { user, session, loading: authLoading, initializing } = useAuth()
+  const [userProfile, setUserProfile] = useState(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  
+  // Dashboard state
   const [projects, setProjects] = useState([])
   const [opportunities, setOpportunities] = useState([])
   const [projectOpportunities, setProjectOpportunities] = useState([])
@@ -45,7 +53,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   const [lastSyncTime, setLastSyncTime] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
   
-  // FIXED: Add ref to track if initial load is complete
+  // Track if initial load is complete
   const initialLoadComplete = useRef(false)
   
   // Enhanced stats for all features
@@ -70,20 +78,47 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
   // Updated tabs array with AI Agent
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: Target },
-    { id: 'ai-agent', label: 'AI Agent', icon: Brain }, // Added AI Agent tab
+    { id: 'ai-agent', label: 'AI Agent', icon: Brain },
     { id: 'opportunities', label: 'Opportunities', icon: Zap },
     { id: 'donors', label: 'Donors', icon: Users },
     { id: 'applications', label: 'Applications', icon: FileText }
   ]
 
-  // FIXED: Only load data once on initial mount
+  // Load user profile when authentication is ready
+  useEffect(() => {
+    // Only call services when auth is fully ready AND user exists
+    if (!initializing && !authLoading && user && session) {
+      loadProfile()
+    }
+  }, [initializing, authLoading, user, session])
+
+  // Load dashboard data when profile is ready
   useEffect(() => {
     if (userProfile && !initialLoadComplete.current) {
       console.log('Initial dashboard data load')
       loadDashboardData()
       initialLoadComplete.current = true
     }
-  }, [userProfile]) // Only depend on userProfile for initial load
+  }, [userProfile])
+
+  const loadProfile = async () => {
+    setProfileLoading(true)
+    try {
+      const profileData = await userProfileService.getOrCreateProfile()
+      setUserProfile(profileData)
+      console.log('Profile loaded:', profileData)
+    } catch (error) {
+      console.error('Profile load error:', error)
+      toast.error('Failed to load user profile')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const handleProfileUpdate = (updatedProfile) => {
+    setUserProfile(updatedProfile)
+    console.log('Profile updated:', updatedProfile)
+  }
 
   const loadDashboardData = async () => {
     try {
@@ -117,7 +152,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     }
   }
 
-  // FIXED: Separate function for refreshing data after sync
+  // Separate function for refreshing data after sync
   const refreshDataAfterSync = async () => {
     try {
       console.log('Refreshing data after sync...')
@@ -229,7 +264,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
           },
         })
         
-        // FIXED: Only refresh data after successful sync
+        // Only refresh data after successful sync
         await refreshDataAfterSync()
         
         // Show AI matching notification for selected project
@@ -374,7 +409,7 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     </motion.div>
   )
 
-  // FIXED: Create a simple AI Agent Status Card component
+  // AI Agent Status Card component
   const AgentStatusCard = ({ userId }) => (
     <StatCard
       icon={Brain}
@@ -385,7 +420,8 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     />
   )
 
-  if (loading) {
+  // Show loading while auth is initializing
+  if (initializing || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -393,9 +429,64 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
     )
   }
 
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please log in</h2>
+          <p className="text-gray-600">You need to be authenticated to access the dashboard.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show profile loading state
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error if profile failed to load
+  if (!userProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Profile Error</h2>
+          <p className="text-gray-600 mb-4">Failed to load your profile. Please try refreshing the page.</p>
+          <button 
+            onClick={() => loadProfile()}
+            className="btn-primary"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Dashboard loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    )
+  }
+
+  // Main dashboard render
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} userProfile={userProfile} onProfileUpdate={onProfileUpdate} />
+      <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
       
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Enhanced Navigation Tabs */}
@@ -432,14 +523,14 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
                 icon={Target}
                 title="Active Projects"
                 value={stats.totalProjects}
-                subtitle={`${stats.totalFunding.toLocaleString()} needed`}
+                subtitle={`$${stats.totalFunding.toLocaleString()} needed`}
                 color="blue"
               />
               <StatCard
                 icon={Users}
                 title="Total Donors"
                 value={stats.totalDonors}
-                subtitle={`${stats.totalDonated.toLocaleString()} donated`}
+                subtitle={`$${stats.totalDonated.toLocaleString()} donated`}
                 color="green"
               />
               <StatCard
@@ -452,12 +543,11 @@ export default function Dashboard({ user, userProfile, onProfileUpdate }) {
               <StatCard
                 icon={CheckCircle}
                 title="Total Awarded"
-                value={`${stats.totalAwarded.toLocaleString()}`}
+                value={`$${stats.totalAwarded.toLocaleString()}`}
                 subtitle={`from ${Math.round(stats.totalSubmissions * (stats.applicationSuccessRate / 100))} grants`}
                 color="emerald"
               />
               
-              {/* FIXED: AI Agent Status Card */}
               <AgentStatusCard userId={user.id} />
             </div>
 
