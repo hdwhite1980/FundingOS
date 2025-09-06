@@ -73,6 +73,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     { id: 'overview', label: 'Overview', icon: Target, description: 'Financial summary & insights' },
     { id: 'opportunities', label: 'Funding', icon: Zap, description: 'Available grants & matches' },
     { id: 'applications', label: 'Pipeline', icon: FileText, description: 'Active applications' },
+    { id: 'donations', label: 'Donors', icon: Heart, description: 'Donor management & tracking' },
     { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }
   ]
 
@@ -666,6 +667,14 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
         {activeTab === 'applications' && (
           <ApplicationProgress
+            user={user}
+            userProfile={userProfile}
+            projects={projects}
+          />
+        )}
+
+        {activeTab === 'donations' && (
+          <DonorManagement
             user={user}
             userProfile={userProfile}
             projects={projects}
