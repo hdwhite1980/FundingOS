@@ -23,7 +23,7 @@ import {
   Eye,
   RefreshCw
 } from 'lucide-react'
-import { donorService, donationService, crowdfundingService } from '../lib/supabase'
+import { directUserServices } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 export default function DonorManagement({ user, userProfile, projects }) {
@@ -49,16 +49,15 @@ export default function DonorManagement({ user, userProfile, projects }) {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [donorsData, donationsData, campaignsData, statsData] = await Promise.all([
-        donorService.getDonors(user.id, { search: searchQuery, ...filters }),
-        donationService.getDonations(user.id),
-        crowdfundingService.getCampaigns(user.id),
-        donorService.getDonorStats(user.id)
+      const [donorsData, donationsData, statsData] = await Promise.all([
+        directUserServices.donors.getDonors(user.id, { search: searchQuery, ...filters }),
+        directUserServices.donors.getDonations(user.id),
+        directUserServices.donors.getDonorStats(user.id)
       ])
 
       setDonors(donorsData)
       setDonations(donationsData)
-      setCampaigns(campaignsData)
+      setCampaigns([]) // Placeholder for campaigns - will implement later
       setStats(statsData)
     } catch (error) {
       toast.error('Failed to load donor data')
@@ -70,10 +69,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const handleCreateDonor = async (donorData) => {
     try {
-      const newDonor = await donorService.createDonor({
-        ...donorData,
-        user_id: user.id  // Make sure this is included
-      })
+      const newDonor = await directUserServices.donors.createDonor(user.id, donorData)
       setDonors([newDonor, ...donors])
       setShowCreateModal(false)
       toast.success('Donor added successfully!')
@@ -85,9 +81,8 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const handleCreateDonation = async (donationData) => {
     try {
-      const newDonation = await donationService.createDonation({
+      const newDonation = await directUserServices.donors.createDonation(user.id, {
         ...donationData,
-        user_id: user.id,
         amount: parseFloat(donationData.amount),
         net_amount: parseFloat(donationData.amount) // Simplified
       })
@@ -103,13 +98,9 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const handleCreateCampaign = async (campaignData) => {
     try {
-      const newCampaign = await crowdfundingService.createCampaign({
-        ...campaignData,
-        user_id: user.id  // Make sure this is included
-      })
-      setCampaigns([newCampaign, ...campaigns])
+      // Placeholder for campaign functionality
+      toast.success('Campaign functionality coming soon!')
       setShowCampaignModal(false)
-      toast.success('Campaign linked successfully!')
     } catch (error) {
       toast.error('Failed to link campaign: ' + error.message)
     }
@@ -117,7 +108,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const handleUpdateDonor = async (donorId, updates) => {
     try {
-      const updatedDonor = await donorService.updateDonor(donorId, updates)
+      const updatedDonor = await directUserServices.donors.updateDonor(user.id, donorId, updates)
       setDonors(donors.map(d => d.id === donorId ? updatedDonor : d))
       toast.success('Donor updated successfully!')
     } catch (error) {
@@ -128,7 +119,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
   const handleDeleteDonor = async (donorId) => {
     if (window.confirm('Are you sure you want to delete this donor?')) {
       try {
-        await donorService.deleteDonor(donorId)
+        await directUserServices.donors.deleteDonor(user.id, donorId)
         setDonors(donors.filter(d => d.id !== donorId))
         toast.success('Donor deleted successfully!')
         loadData() // Refresh stats
@@ -140,9 +131,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const syncCampaign = async (campaignId) => {
     try {
-      const updatedCampaign = await crowdfundingService.syncCampaignData(campaignId)
-      setCampaigns(campaigns.map(c => c.id === campaignId ? updatedCampaign : c))
-      toast.success('Campaign data synced!')
+      toast.success('Campaign sync functionality coming soon!')
     } catch (error) {
       toast.error('Failed to sync campaign data')
     }
