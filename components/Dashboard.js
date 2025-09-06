@@ -1,8 +1,7 @@
-// Dashboard.js with integrated authentication pattern and direct user services
+// Dashboard.js - Updated to work with props from HomePage instead of useAuth hook
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { useAuth } from '../hooks/useAuth'
 import Header from './Header'
 import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
@@ -30,10 +29,9 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-export default function Dashboard() {
-  // Authentication state
-  const { user, session, loading: authLoading, initializing } = useAuth()
-  const [userProfile, setUserProfile] = useState(null)
+export default function Dashboard({ user, userProfile: initialUserProfile, onProfileUpdate }) {
+  // Remove useAuth dependency - use props instead
+  const [userProfile, setUserProfile] = useState(initialUserProfile)
   const [profileLoading, setProfileLoading] = useState(false)
   
   // Dashboard state
@@ -79,39 +77,25 @@ export default function Dashboard() {
     { id: 'applications', label: 'Applications', icon: FileText }
   ]
 
-  // Load user profile when authentication is ready
+  // Load dashboard data when user and profile are available
   useEffect(() => {
-    // Only call services when auth is fully ready AND user exists
-    if (!initializing && !authLoading && user && session) {
-      loadProfile()
-    }
-  }, [initializing, authLoading, user, session])
-
-  // Load dashboard data when profile is ready
-  useEffect(() => {
-    if (userProfile && !initialLoadComplete.current) {
+    if (user && userProfile && !initialLoadComplete.current) {
       console.log('Initial dashboard data load')
       loadDashboardData()
       initialLoadComplete.current = true
     }
-  }, [userProfile])
+  }, [user, userProfile])
 
-  const loadProfile = async () => {
-    setProfileLoading(true)
-    try {
-      const profileData = await directUserServices.profile.getOrCreateProfile(user.id, user.email)
-      setUserProfile(profileData)
-      console.log('Profile loaded:', profileData)
-    } catch (error) {
-      console.error('Profile load error:', error)
-      toast.error('Failed to load user profile')
-    } finally {
-      setProfileLoading(false)
-    }
-  }
+  // Update internal profile state when prop changes
+  useEffect(() => {
+    setUserProfile(initialUserProfile)
+  }, [initialUserProfile])
 
   const handleProfileUpdate = (updatedProfile) => {
     setUserProfile(updatedProfile)
+    if (onProfileUpdate) {
+      onProfileUpdate(updatedProfile)
+    }
     console.log('Profile updated:', updatedProfile)
   }
 
@@ -415,16 +399,7 @@ export default function Dashboard() {
     />
   )
 
-  // Show loading while auth is initializing
-  if (initializing || authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  // Show login prompt if not authenticated
+  // Show error if no user provided
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -437,30 +412,12 @@ export default function Dashboard() {
   }
 
   // Show profile loading state
-  if (profileLoading) {
+  if (!userProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your profile...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show error if profile failed to load
-  if (!userProfile) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Profile Error</h2>
-          <p className="text-gray-600 mb-4">Failed to load your profile. Please try refreshing the page.</p>
-          <button 
-            onClick={() => loadProfile()}
-            className="btn-primary"
-          >
-            Retry
-          </button>
         </div>
       </div>
     )
