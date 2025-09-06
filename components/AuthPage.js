@@ -128,22 +128,6 @@ export default function AuthPage() {
                 </motion.div>
               ))}
             </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-white/20">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gold-400">$2.5B+</div>
-                <div className="text-xs text-neutral-300">Funding Secured</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-brand-400">10K+</div>
-                <div className="text-xs text-neutral-300">Organizations</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gold-400">85%</div>
-                <div className="text-xs text-neutral-300">Success Rate</div>
-              </div>
-            </div>
           </motion.div>
         </div>
       </div>
