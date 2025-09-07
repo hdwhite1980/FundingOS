@@ -123,13 +123,13 @@ export default function HomePage() {
   const role = userProfile?.user_role || user.user_metadata?.user_role || 'company'
   // For angel investors, defer to dedicated route that handles investor-specific onboarding
   useEffect(() => {
-    if (!authLoading && !initializing && !loading && user && role === 'angel_investor' && !needsOnboarding) {
+    if (!authLoading && !initializing && user && role === 'angel_investor') {
       router.replace('/angel/dashboard')
     }
-  }, [authLoading, initializing, loading, user, role, needsOnboarding, router])
+  }, [authLoading, initializing, user, role, router])
 
-  if (role === 'angel_investor' && !needsOnboarding) {
-    return <LoadingSpinner /> // transient while redirecting
+  if (role === 'angel_investor') {
+    return <LoadingSpinner />
   }
   if (role === 'grant_writer') {
     return <GrantWriterDashboard user={user} userProfile={userProfile} />

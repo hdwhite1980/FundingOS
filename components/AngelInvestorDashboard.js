@@ -56,29 +56,29 @@ const AngelInvestorDashboard = () => {
   }, [user]);
 
   const loadDashboardData = async () => {
+    setLoading(true)
+    setError(null)
     try {
-      setLoading(true);
-      setError(null);
-
-      const [investorProfile, dashboardStats, investmentOpportunities, investorPortfolio] = await Promise.all([
-        angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email),
-        angelInvestorServices.getAngelInvestorStats(user.id),
-        angelInvestorServices.getInvestmentOpportunities({ featured: true }),
-        angelInvestorServices.getInvestorPortfolio(user.id)
-      ]);
-
-      setInvestorData(investorProfile);
-      setStats(dashboardStats);
-      setOpportunities(investmentOpportunities);
-      setPortfolio(investorPortfolio);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      setError('Failed to load dashboard data');
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
+      const investorProfile = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+      setInvestorData(investorProfile)
+    } catch (e) {
+      console.error('Investor profile load failed', e)
+      setError('Investor profile load failed')
     }
-  };
+    try {
+      const dashboardStats = await angelInvestorServices.getAngelInvestorStats(user.id)
+      setStats(dashboardStats)
+    } catch (e) { console.warn('Stats load failed', e) }
+    try {
+      const investmentOpportunities = await angelInvestorServices.getInvestmentOpportunities({ featured: true })
+      setOpportunities(investmentOpportunities)
+    } catch (e) { console.warn('Opportunities load failed', e) }
+    try {
+      const investorPortfolio = await angelInvestorServices.getInvestorPortfolio(user.id)
+      setPortfolio(investorPortfolio)
+    } catch (e) { console.warn('Portfolio load failed', e) }
+    setLoading(false)
+  }
 
   const handleInvestment = async (projectId, investmentAmount, investmentType = 'equity') => {
     try {

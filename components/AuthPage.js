@@ -47,6 +47,45 @@ export default function AuthPage() {
         if (error) throw error
 
         console.log('AuthPage: Sign up successful', data)
+        // Bootstrap angel investor profile immediately (no need to wait for dashboard)
+        if (formData.userRole === 'angel_investor' && data.user) {
+          try {
+            const userId = data.user.id
+            // Create user_profile row if not yet created (race-safe upsert)
+            await supabase.from('user_profiles').upsert({
+              id: userId,
+              email: formData.email,
+              full_name: formData.fullName,
+              organization_name: formData.organizationName,
+              organization_type: 'startup',
+              user_role: 'angel_investor',
+              setup_completed: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' })
+
+            // Create angel_investors row if absent
+            const { data: existingAngel } = await supabase
+              .from('angel_investors')
+              .select('id')
+              .eq('user_id', userId)
+              .single()
+
+            if (!existingAngel) {
+              await supabase.from('angel_investors').insert([{
+                user_id: userId,
+                name: formData.fullName || 'Angel Investor',
+                email: formData.email,
+                accredited_status: false,
+                investment_preferences: {},
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }])
+            }
+          } catch (bootErr) {
+            console.warn('AuthPage: Angel investor bootstrap failed', bootErr)
+          }
+        }
         toast.success('Account created! Please check your email to verify your account.')
       } else {
         console.log('AuthPage: Signing in user', formData.email)
