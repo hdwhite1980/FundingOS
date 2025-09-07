@@ -156,12 +156,6 @@ export default function AngelInvestorOnboarding({ user, investor, onComplete }) 
       <div className="max-w-3xl mx-auto">
         <ProgressBar step={step} />
         <AnimatePresence mode="wait">
-          {step===1 && <CoreFields core={core} setCore={setCore} />}
-          {step===2 && <PreferenceFields preferences={preferences} setPreferences={setPreferences} />}
-          {step===3 && <EnhancementFields enhancement={enhancement} setEnhancement={setEnhancement} />}
-          {step===4 && <VerificationFields />}
-        </AnimatePresence>
-        <AnimatePresence mode="wait">
           <StepWrapper title={
             step===1? 'Essential Investment Profile': step===2? 'Investment Preferences': step===3? 'Profile Enhancement': 'Verification'
           } subtitle={
