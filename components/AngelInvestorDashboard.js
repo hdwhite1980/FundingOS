@@ -297,7 +297,7 @@ const AngelInvestorDashboard = () => {
           </button>
           
           <button 
-            onClick={fetchDashboardData}
+            onClick={loadDashboardData}
             disabled={loading}
             className="flex items-center justify-between p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
           >
