@@ -1,4 +1,5 @@
 'use client'
+import AngelInvestorDashboard from '../../../components/AngelInvestorDashboard'
 import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { angelInvestorServices } from '../../../lib/supabase'
@@ -120,41 +121,18 @@ export default function AngelDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Angel Dashboard - Logic Test</h1>
-        <p className="text-gray-600 mb-4">User ID: {user?.id}</p>
-        <p className="text-gray-600 mb-4">Email: {user?.email}</p>
-        
-        {investor && (
-          <div className="mt-8 p-4 bg-green-50 rounded-lg">
-            <h3 className="font-semibold text-green-800 mb-2">Investor Data Loaded:</h3>
-            <p className="text-sm text-green-700">Name: {investor.name}</p>
-            <p className="text-sm text-green-700">Core Completed: {String(investor.core_completed)}</p>
-            <p className="text-sm text-green-700">Preferences Completed: {String(investor.preferences_completed)}</p>
-            <p className="text-sm text-green-700">Enhancement Completed: {String(investor.enhancement_completed)}</p>
+    <div className="min-h-screen">
+      {/* Test if AngelInvestorDashboard causes the infinite loop */}
+      {!showOnboarding ? (
+        <AngelInvestorDashboard />
+      ) : (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <h1 className="text-xl font-bold mb-4">Should Show Onboarding</h1>
+            <p className="text-gray-600">But this shouldn't happen since all flags are true</p>
           </div>
-        )}
-        
-        <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-          <h3 className="font-semibold text-yellow-800 mb-2">Onboarding Logic Test:</h3>
-          <p className="text-sm text-yellow-700">
-            Show Onboarding: {String(showOnboarding)}
-          </p>
-          <p className="text-xs text-yellow-600 mt-2">
-            {showOnboarding 
-              ? "❌ Would show onboarding (this seems wrong since all flags are true)"
-              : "✅ Would show dashboard (correct behavior)"
-            }
-          </p>
         </div>
-        
-        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            Testing needsOnboarding logic - checking for infinite loops...
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
