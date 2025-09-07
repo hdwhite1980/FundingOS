@@ -1,8 +1,8 @@
 'use client'
-import AngelInvestorDashboardMinimal from '../../../components/AngelInvestorDashboardMinimal'
+import AngelInvestorDashboard from '../../../components/AngelInvestorDashboard'
 import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
-import { angelInvestorServices } from '../../../lib/supabase'
+import { angelInvestorServices } from '../lib/supabase'
 import { useEffect, useState } from 'react'
 
 // Test the needsOnboarding function
@@ -122,9 +122,9 @@ export default function AngelDashboardPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Test the minimal dashboard component */}
+      {/* Back to the full dashboard with fixes applied */}
       {!showOnboarding ? (
-        <AngelInvestorDashboardMinimal />
+        <AngelInvestorDashboard />
       ) : (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
