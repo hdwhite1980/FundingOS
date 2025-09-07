@@ -50,10 +50,10 @@ const AngelInvestorDashboard = () => {
 
   // Load initial data
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadDashboardData();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const loadDashboardData = async () => {
     setLoading(true)
@@ -163,11 +163,11 @@ const AngelInvestorDashboard = () => {
     return matchesSearch && matchesIndustry && matchesStage;
   });
 
-  const handleSearchFiltersChange = () => {
-    // Could trigger remote filtering later; currently client-side only
-  };
-
-  useEffect(handleSearchFiltersChange, [searchTerm, filterIndustry, filterStage]);
+  // Handle search and filter changes
+  useEffect(() => {
+    // Client-side filtering only, no API calls needed
+    console.log('Dashboard: Filters changed', { searchTerm, filterIndustry, filterStage });
+  }, [searchTerm, filterIndustry, filterStage]);
 
   if (loading && !currentInvestorData) {
     return (
