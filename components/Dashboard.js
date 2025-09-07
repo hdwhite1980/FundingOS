@@ -71,6 +71,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     receivedBreakdown: { funding: 0, donations: 0, campaigns: 0 }
   })
 
+  // Financial insights for information hub
+  const [insights, setInsights] = useState([])
+  const [aiActivity, setAiActivity] = useState([])
+
   // Updated tabs array with cleaner, more focused navigation
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Target, description: 'Financial summary & insights' },
@@ -172,10 +176,11 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
       console.log('loadEnhancedStats: Loading stats for user:', user.id) // Debug log
       
-      const [donorStats, applicationStats, totalReceivedStats] = await Promise.all([
+      const [donorStats, applicationStats, totalReceivedStats, financialInsights] = await Promise.all([
         directUserServices.donors.getDonorStats(user.id),
         directUserServices.applications.getSubmissionStats(user.id),
-        directUserServices.donors.getTotalAmountReceived(user.id)
+        directUserServices.donors.getTotalAmountReceived(user.id),
+        directUserServices.donors.getFinancialInsights(user.id)
       ])
 
       console.log('loadEnhancedStats: Stats loaded successfully', { totalReceivedStats }) // Debug log
@@ -210,6 +215,36 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         totalReceived: totalReceivedStats.totalReceived || 0,
         receivedBreakdown: totalReceivedStats.breakdown || { funding: 0, donations: 0, campaigns: 0 }
       })
+
+      // Set insights for information hub
+      setInsights(financialInsights)
+
+      // Generate AI activity insights
+      const aiActivities = []
+      if (activeOpportunities > 0 && totalProjects > 0) {
+        aiActivities.push({
+          type: 'matching',
+          title: 'Opportunity Analysis',
+          description: `${activeOpportunities} opportunities being analyzed for ${totalProjects} projects`,
+          icon: 'zap',
+          color: 'blue',
+          timestamp: new Date()
+        })
+      }
+      
+      if (applicationStats.totalSubmissions > 0) {
+        aiActivities.push({
+          type: 'tracking',
+          title: 'Application Monitoring',
+          description: `Tracking ${applicationStats.totalSubmissions} applications with ${applicationStats.successRate}% success rate`,
+          icon: 'eye',
+          color: 'green',
+          timestamp: new Date()
+        })
+      }
+      
+      setAiActivity(aiActivities)
+      
     } catch (error) {
       console.error('Error loading enhanced stats:', error)
     }
@@ -540,58 +575,140 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               <AgentStatusCard userId={user.id} />
             </div>
 
-            {/* Enhanced Sync Control Panel */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="card-financial mb-8 border-gradient-financial"
-            >
-              <div className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex items-center mb-4 lg:mb-0">
-                    <div className="p-3 bg-gradient-to-r from-brand-100 to-gold-100 rounded-2xl mr-4">
-                      <Database className="h-7 w-7 text-brand-600" />
+            {/* Information Hub Content */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+              
+              {/* Financial Insights & Recent Activity */}
+              <div className="xl:col-span-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  
+                  {/* Recent Financial Activity */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="card-financial"
+                  >
+                    <div className="p-6">
+                      <div className="flex items-center mb-4">
+                        <TrendingUp className="w-5 h-5 text-brand-600 mr-3" />
+                        <h3 className="text-lg font-bold text-neutral-900">Recent Activity</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {insights.length > 0 ? (
+                          insights.map((insight, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                              <div className="flex items-center">
+                                <div className={`w-2 h-2 rounded-full mr-3 bg-${insight.color}-500`}></div>
+                                <div>
+                                  <p className="font-semibold text-sm text-neutral-900">{insight.title}</p>
+                                  <p className="text-xs text-neutral-600">{insight.description}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-6">
+                            <p className="text-neutral-500 text-sm">No recent activity</p>
+                            <p className="text-neutral-400 text-xs">Start applying for grants or receiving donations to see updates here</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-neutral-900 mb-1">
-                        Federal Grant Database
-                      </h3>
-                      <p className="text-sm text-neutral-600 flex items-center">
-                        <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-gold-500 animate-pulse' : 'bg-brand-500'}`}></span>
-                        Live connection to federal funding opportunities
-                      </p>
+                  </motion.div>
+
+                  {/* AI Assistant Activity */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="card-financial"
+                  >
+                    <div className="p-6">
+                      <div className="flex items-center mb-4">
+                        <Brain className="w-5 h-5 text-gold-600 mr-3" />
+                        <h3 className="text-lg font-bold text-neutral-900">AI Assistant Updates</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {aiActivity.length > 0 ? (
+                          aiActivity.map((activity, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-brand-50 to-gold-50 rounded-lg">
+                              <div className="flex items-center">
+                                <div className={`w-2 h-2 rounded-full mr-3 bg-${activity.color}-500 animate-pulse`}></div>
+                                <div>
+                                  <p className="font-semibold text-sm text-neutral-900">{activity.title}</p>
+                                  <p className="text-xs text-neutral-600">{activity.description}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-6">
+                            <p className="text-neutral-500 text-sm">AI Assistant Ready</p>
+                            <p className="text-neutral-400 text-xs">Create projects to start AI-powered opportunity matching</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Enhanced Sync Control Panel */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card-financial border-gradient-financial"
+                >
+                  <div className="p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex items-center mb-4 lg:mb-0">
+                        <div className="p-3 bg-gradient-to-r from-brand-100 to-gold-100 rounded-2xl mr-4">
+                          <Database className="h-7 w-7 text-brand-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-neutral-900 mb-1">
+                            Federal Grant Database
+                          </h3>
+                          <p className="text-sm text-neutral-600 flex items-center">
+                            <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-gold-500 animate-pulse' : 'bg-brand-500'}`}></span>
+                            Live connection to federal funding opportunities
+                            {lastSyncTime && (
+                              <span className="ml-2 text-neutral-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={handleSyncOpportunities}
+                        disabled={syncing}
+                        className={`btn-primary btn-lg flex items-center shadow-financial ${syncing ? 'opacity-75' : ''}`}
+                      >
+                        {syncing ? (
+                          <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
+                            Syncing...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-5 h-5 mr-3" />
+                            Refresh Opportunities
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                  
-                  <button
-                    onClick={handleSyncOpportunities}
-                    disabled={syncing}
-                    className={`btn-primary btn-lg flex items-center shadow-financial ${syncing ? 'opacity-75' : ''}`}
-                  >
-                    {syncing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
-                        Syncing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-5 h-5 mr-3" />
-                        Refresh Opportunities
-                      </>
-                    )}
-                  </button>
-                </div>
+                </motion.div>
               </div>
-            </motion.div>
 
-            {/* Projects and Opportunities Overview - Cleaner Layout */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-              {/* Project Sidebar - More Compact */}
+              {/* Project Quick Overview Sidebar */}
               <div className="xl:col-span-4">
-                <div className="card-financial">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card-financial"
+                >
                   <div className="p-6 border-b border-neutral-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-bold text-neutral-900">Your Projects</h2>
+                      <h2 className="text-lg font-bold text-neutral-900">Quick Overview</h2>
                       <button
                         onClick={() => setShowCreateModal(true)}
                         className="btn-primary btn-sm shadow-sm"
@@ -600,29 +717,69 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         New Project
                       </button>
                     </div>
-                    <p className="text-sm text-neutral-600">
-                      {projects.length} active • ${stats.totalFunding.toLocaleString()} total funding needed
-                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-3 bg-brand-50 rounded-lg">
+                        <p className="text-2xl font-bold text-brand-700">{stats.totalProjects}</p>
+                        <p className="text-xs text-brand-600">Projects</p>
+                      </div>
+                      <div className="text-center p-3 bg-gold-50 rounded-lg">
+                        <p className="text-2xl font-bold text-gold-700">{stats.totalDonors}</p>
+                        <p className="text-xs text-gold-600">Donors</p>
+                      </div>
+                      <div className="text-center p-3 bg-neutral-100 rounded-lg">
+                        <p className="text-2xl font-bold text-neutral-700">{stats.totalSubmissions}</p>
+                        <p className="text-xs text-neutral-600">Applications</p>
+                      </div>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <p className="text-2xl font-bold text-green-700">{stats.activeOpportunities}</p>
+                        <p className="text-xs text-green-600">Opportunities</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-4 max-h-96 overflow-y-auto">
-                    <ProjectList
-                      projects={projects}
-                      selectedProject={selectedProject}
-                      onProjectSelect={handleProjectSelected}
-                      onProjectEdit={handleProjectEdit}
-                      onProjectDelete={handleProjectDelete}
-                    />
+                  <div className="p-4 max-h-64 overflow-y-auto">
+                    {projects.length > 0 ? (
+                      <div className="space-y-3">
+                        {projects.slice(0, 5).map(project => (
+                          <div
+                            key={project.id}
+                            className="flex items-center justify-between p-2 hover:bg-neutral-50 rounded-lg cursor-pointer"
+                            onClick={() => setSelectedProject(project)}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-neutral-900 truncate">{project.name}</p>
+                              <p className="text-xs text-neutral-500">
+                                {project.funding_needed ? `$${project.funding_needed.toLocaleString()} needed` : 'No funding specified'}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 ml-2">
+                              <div className="w-2 h-2 bg-brand-500 rounded-full"></div>
+                            </div>
+                          </div>
+                        ))}
+                        {projects.length > 5 && (
+                          <div className="text-center pt-2">
+                            <button
+                              onClick={() => setActiveTab('opportunities')}
+                              className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                            >
+                              View all {projects.length} projects →
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-neutral-500 text-sm">No projects yet</p>
+                        <button
+                          onClick={() => setShowCreateModal(true)}
+                          className="text-xs text-brand-600 hover:text-brand-700 font-medium mt-1"
+                        >
+                          Create your first project
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
-
-              {/* Opportunities - Main Content */}
-              <div className="xl:col-span-8">
-                <OpportunityList
-                  opportunities={opportunities}
-                  selectedProject={selectedProject}
-                  userProfile={userProfile}
-                />
+                </motion.div>
               </div>
             </div>
           </>
@@ -673,6 +830,53 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 color="brand"
               />
             </div>
+
+            {/* Enhanced Sync Control Panel - Available in Funding Tab */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="card-financial mb-8 border-gradient-financial"
+            >
+              <div className="p-6">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center mb-4 lg:mb-0">
+                    <div className="p-3 bg-gradient-to-r from-brand-100 to-gold-100 rounded-2xl mr-4">
+                      <Database className="h-7 w-7 text-brand-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-neutral-900 mb-1">
+                        Federal Grant Database
+                      </h3>
+                      <p className="text-sm text-neutral-600 flex items-center">
+                        <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-gold-500 animate-pulse' : 'bg-brand-500'}`}></span>
+                        Live connection to federal funding opportunities
+                        {lastSyncTime && (
+                          <span className="ml-2 text-neutral-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={handleSyncOpportunities}
+                    disabled={syncing}
+                    className={`btn-primary btn-lg flex items-center shadow-financial ${syncing ? 'opacity-75' : ''}`}
+                  >
+                    {syncing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-5 h-5 mr-3" />
+                        Refresh Opportunities
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
               <div className="xl:col-span-4">
