@@ -1,144 +1,126 @@
-// HomePage.js 
 'use client'
+import AngelInvestorDashboard from '../../../components/AngelInvestorDashboard'
+import AngelInvestorOnboarding from '../../../components/AngelInvestorOnboarding'
+import { useAuth } from '../../../contexts/AuthContext'
+import { Loader2 } from 'lucide-react'
+import { angelInvestorServices } from '../../../lib/supabase'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '../contexts/AuthContext'
-import { directUserServices } from '../lib/supabase'
-import AuthPage from '../components/AuthPage'
-import OnboardingFlow from '../components/OnboardingFlow'
-import Dashboard from '../components/Dashboard'
-import AngelInvestorDashboard from '../components/AngelInvestorDashboard'
-import GrantWriterDashboard from '../components/GrantWriterDashboard'
-import CompanyDashboard from '../components/CompanyDashboard'
-import LoadingSpinner from '../components/LoadingSpinner'
 
-export default function HomePage() {
-  const { user, loading: authLoading, initializing } = useAuth()
+export default function AngelDashboardPage() {
+  const { user } = useAuth()
+  const [investor, setInvestor] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [userProfile, setUserProfile] = useState(null)
-  const [needsOnboarding, setNeedsOnboarding] = useState(false)
-  const router = useRouter()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [error, setError] = useState(null)
+  
+  // Determine if onboarding is still required based on flags plus actual required fields
+  const needsOnboarding = (inv) => {
+    if (!inv) return true
+    const prefs = inv.investment_preferences || {}
+    const flags = prefs.flags || {}
+    const core = prefs.core || {}
+    const preferences = prefs.preferences || {}
+
+    // Core required fields
+    const coreComplete = !!(
+      flags.core_completed &&
+      core.investment_range &&
+      core.annual_investment_range &&
+      Array.isArray(core.stages) && core.stages.length > 0 &&
+      Array.isArray(core.industries) && core.industries.length > 0 &&
+      core.experience_level &&
+      core.accredited_status
+    )
+
+    // Preference required fields
+    const prefsComplete = !!(
+      flags.preferences_completed &&
+      preferences.involvement_level &&
+      preferences.decision_speed &&
+      preferences.notification_frequency
+    )
+
+    return !(coreComplete && prefsComplete)
+  }
 
   useEffect(() => {
-    console.log('HomePage: Auth state changed', {
-      user: user ? { id: user.id, email: user.email } : null,
-      authLoading,
-      initializing
-    })
-
-    // Wait for auth to be ready
-    if (authLoading || initializing) {
-      return
-    }
-
-    if (user) {
-      checkUserProfile()
-    } else {
-      setLoading(false)
-    }
-  }, [user, authLoading, initializing])
-
-  const checkUserProfile = async () => {
-    try {
-      console.log('HomePage: Checking user profile for', user.id)
-      // Use directUserServices instead of mixing auth systems
-      const profile = await directUserServices.profile.getOrCreateProfile(
-        user.id, 
-        user.email
-      )
-      
-      console.log('HomePage: Profile result', profile)
-      
-      if (!profile) {
-        setNeedsOnboarding(true)
-      } else if (!profile.setup_completed) {
-        // Backfill user_role from auth metadata if missing
-        let finalProfile = { ...profile }
-        if (!finalProfile.user_role) {
-          const authRole = user.user_metadata?.user_role
-          if (authRole) {
-            const updated = await directUserServices.profile.updateProfile(user.id, { user_role: authRole })
-            if (updated) finalProfile = updated
-          }
-        }
-        setNeedsOnboarding(true)
-        setUserProfile(finalProfile)
-      } else {
-        // Ensure user_role is set; attempt silent backfill if absent
-        let finalProfile = { ...profile }
-        if (!finalProfile.user_role) {
-          const authRole = user.user_metadata?.user_role
-          if (authRole) {
-            const updated = await directUserServices.profile.updateProfile(user.id, { user_role: authRole })
-            if (updated) finalProfile = updated
-          }
-        }
-        setUserProfile(finalProfile)
-        setNeedsOnboarding(false)
+    if (!user) return
+    
+    const load = async () => {
+      try {
+        setLoading(true)
+        const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+        setInvestor(inv)
+        setShowOnboarding(needsOnboarding(inv))
+        setError(null)
+      } catch (e) {
+        console.error('Angel onboarding load error', e)
+        setError(e)
+        // If we cannot load/create the profile, still prompt user with guidance instead of silent dashboard
+        setShowOnboarding(true)
+      } finally {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error('HomePage: Error checking user profile:', error)
-      setNeedsOnboarding(true)
+    }
+    load()
+  }, [user])
+
+  // Callback after onboarding completes – refetch to ensure freshest data
+  const handleOnboardingComplete = async () => {
+    try {
+      setLoading(true)
+      const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+      setInvestor(refreshed)
+      setShowOnboarding(needsOnboarding(refreshed))
+    } catch (e) {
+      console.error('Post-onboarding refresh error', e)
+      setShowOnboarding(false) // fail-safe: allow dashboard access
     } finally {
       setLoading(false)
     }
   }
 
-  const handleOnboardingComplete = (profile) => {
-    setUserProfile(profile)
-    setNeedsOnboarding(false)
-  }
-
-  // Ensure role sync from auth metadata if profile missing user_role
-  useEffect(() => {
-    if (user && userProfile && !userProfile.user_role && user.user_metadata?.user_role) {
-      directUserServices.profile.updateProfile(user.id, { user_role: user.user_metadata.user_role })
-        .then(updated => { if (updated) setUserProfile(updated) })
-        .catch(()=>{})
-    }
-  }, [user, userProfile])
-
-  // Show loading while auth is initializing
-  if (authLoading || initializing || loading) {
-    return <LoadingSpinner />
-  }
-
-  // Show auth page if no user
   if (!user) {
-    return <AuthPage />
-  }
-
-  // Show onboarding if needed
-  if (needsOnboarding) {
     return (
-      <OnboardingFlow 
-        user={user}
-        existingProfile={userProfile}
-        onComplete={handleOnboardingComplete}
-      />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Authenticating...</p>
+        </div>
+      </div>
     )
   }
 
-  // Route to dashboard by role (fallback to company)
-  const role = userProfile?.user_role || user.user_metadata?.user_role || 'company'
-  
-  // For angel investors, redirect immediately (don't render anything else)
-  if (role === 'angel_investor') {
-    // Use useEffect to handle redirect
-    useEffect(() => {
-      router.replace('/angel/dashboard')
-    }, [router])
-    
-    return <LoadingSpinner />
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading investor profile...</p>
+        </div>
+      </div>
+    )
   }
-  if (role === 'grant_writer') {
-    return <GrantWriterDashboard user={user} userProfile={userProfile} />
+
+  if (showOnboarding && investor) {
+    return <AngelInvestorOnboarding user={user} investor={investor} onComplete={handleOnboardingComplete} />
   }
-  return (
-    <CompanyDashboard
-      user={user}
-      userProfile={userProfile}
-      onProfileUpdate={setUserProfile}
-    />
-  )
+
+  if (showOnboarding && !investor) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6 text-center">
+        <div className="max-w-md">
+          <h1 className="text-xl font-semibold mb-3">Angel Investor Setup Blocked</h1>
+          <p className="text-sm text-gray-600 mb-4">We couldn't create or load your angel investor profile. This is usually a Row Level Security (RLS) policy issue.</p>
+          <div className="bg-white border rounded-lg p-4 text-left text-xs font-mono whitespace-pre-wrap mb-4">
+{`Required policies (run in SQL editor):\n\nALTER TABLE angel_investors ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "ai select" ON angel_investors FOR SELECT USING (auth.uid() = user_id);\nCREATE POLICY "ai insert" ON angel_investors FOR INSERT WITH CHECK (auth.uid() = user_id);\nCREATE POLICY "ai update" ON angel_investors FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);`}
+          </div>
+          {error && <p className="text-xs text-red-600 mb-4">{error.message}</p>}
+          <button onClick={handleOnboardingComplete} className="btn-primary px-5 py-2 rounded text-sm">Retry</button>
+        </div>
+      </div>
+    )
+  }
+
+  return <AngelInvestorDashboard />
 }
