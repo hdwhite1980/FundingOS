@@ -16,17 +16,34 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
   const [applicationDraft, setApplicationDraft] = useState(null) // Fixed: Declared at the top
 
   useEffect(() => {
+    // Add comprehensive debugging
+    console.log('AIAnalysisModal useEffect - Auth State:', {
+      user: user ? { id: user.id, email: user.email } : null,
+      authLoading,
+      initializing,
+      sessionExists: !!user,
+      timestamp: new Date().toISOString()
+    })
+
     // Only perform analysis when auth is ready and user is available
     if (!authLoading && !initializing && user?.id) {
+      console.log('AIAnalysisModal: Starting performAnalysis - user authenticated')
       performAnalysis()
     } else if (!authLoading && !initializing && !user) {
       // Auth is loaded but no user - show error
+      console.log('AIAnalysisModal: Auth loaded but no user found')
       setLoading(false)
       toast.error('Please log in to use AI analysis')
+    } else {
+      console.log('AIAnalysisModal: Waiting for auth to complete', {
+        authLoading,
+        initializing,
+        hasUser: !!user
+      })
     }
   }, [authLoading, initializing, user])
 
-  const performAnalysis = async () => {
+  const performAnalysis = async (retryCount = 0) => {
     try {
       setLoading(true)
       
@@ -44,15 +61,25 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
           user, 
           authLoading, 
           initializing,
-          userKeys: user ? Object.keys(user) : 'no user object'
+          userKeys: user ? Object.keys(user) : 'no user object',
+          retryCount
         })
+        
+        // In production, sometimes auth takes a moment longer
+        if (retryCount < 2 && (authLoading || initializing)) {
+          console.log('AI Analysis: Retrying authentication check...')
+          setTimeout(() => performAnalysis(retryCount + 1), 1000)
+          return
+        }
+        
         throw new Error('User authentication required - please ensure you are logged in')
       }
       
       console.log('AI Analysis: Starting analysis', {
         userId: user.id,
         projectId: project.id,
-        opportunityId: opportunity.id
+        opportunityId: opportunity.id,
+        retryCount
       })
       
       // Call AI analysis API

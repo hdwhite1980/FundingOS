@@ -11,19 +11,28 @@ export const AuthProvider = ({ children }) => {
   const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
+    console.log('AuthContext: Starting initialization')
+    
     // Get initial session
     const getInitialSession = async () => {
       try {
+        console.log('AuthContext: Getting initial session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) {
-          console.error('Error getting session:', error)
+          console.error('AuthContext: Error getting session:', error)
         } else {
+          console.log('AuthContext: Initial session retrieved:', {
+            hasSession: !!session,
+            userId: session?.user?.id,
+            userEmail: session?.user?.email
+          })
           setSession(session)
           setUser(session?.user ?? null)
         }
       } catch (error) {
-        console.error('Error in getInitialSession:', error)
+        console.error('AuthContext: Error in getInitialSession:', error)
       } finally {
+        console.log('AuthContext: Initialization complete')
         setLoading(false)
         setInitializing(false)
       }
@@ -34,7 +43,12 @@ export const AuthProvider = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id)
+        console.log('AuthContext: Auth state changed:', {
+          event,
+          hasSession: !!session,
+          userId: session?.user?.id,
+          userEmail: session?.user?.email
+        })
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)

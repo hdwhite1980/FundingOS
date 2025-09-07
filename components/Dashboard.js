@@ -44,7 +44,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState(null)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('overview')
   
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
@@ -65,7 +65,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     totalSubmissions: 0,
     totalRequested: 0,
     totalAwarded: 0,
-    applicationSuccessRate: 0
+    applicationSuccessRate: 0,
+    // New combined stats
+    totalReceived: 0,
+    receivedBreakdown: { funding: 0, donations: 0, campaigns: 0 }
   })
 
   // Updated tabs array with cleaner, more focused navigation
@@ -169,12 +172,13 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
       console.log('loadEnhancedStats: Loading stats for user:', user.id) // Debug log
       
-      const [donorStats, applicationStats] = await Promise.all([
+      const [donorStats, applicationStats, totalReceivedStats] = await Promise.all([
         directUserServices.donors.getDonorStats(user.id),
-        directUserServices.applications.getSubmissionStats(user.id)
+        directUserServices.applications.getSubmissionStats(user.id),
+        directUserServices.donors.getTotalAmountReceived(user.id)
       ])
 
-      console.log('loadEnhancedStats: Stats loaded successfully') // Debug log
+      console.log('loadEnhancedStats: Stats loaded successfully', { totalReceivedStats }) // Debug log
 
       // Calculate project stats
       const totalProjects = userProjects.length
@@ -201,7 +205,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         totalSubmissions: applicationStats.totalSubmissions || 0,
         totalRequested: applicationStats.totalRequested || 0,
         totalAwarded: applicationStats.totalAwarded || 0,
-        applicationSuccessRate: applicationStats.successRate || 0
+        applicationSuccessRate: applicationStats.successRate || 0,
+        // Combined total received stats
+        totalReceived: totalReceivedStats.totalReceived || 0,
+        receivedBreakdown: totalReceivedStats.breakdown || { funding: 0, donations: 0, campaigns: 0 }
       })
     } catch (error) {
       console.error('Error loading enhanced stats:', error)
@@ -513,9 +520,13 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               />
               <StatCard
                 icon={DollarSign}
-                title="Funding Secured"
-                value={stats.totalAwarded > 0 ? `$${stats.totalAwarded.toLocaleString()}` : "$0"}
-                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
+                title="Total Amount Received"
+                value={stats.totalReceived > 0 ? `$${stats.totalReceived.toLocaleString()}` : "$0"}
+                subtitle={
+                  stats.totalReceived > 0 
+                    ? `$${stats.receivedBreakdown.funding.toLocaleString()} grants + $${stats.receivedBreakdown.donations.toLocaleString()} donations`
+                    : "No funding or donations yet"
+                }
                 color="gold"
                 isFinancial={true}
               />
@@ -628,41 +639,77 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         )}
 
         {activeTab === 'opportunities' && (
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-            <div className="xl:col-span-4">
-              <div className="card-financial">
-                <div className="p-6 border-b border-neutral-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-neutral-900">Filter by Project</h2>
-                    <button
-                      onClick={() => setShowCreateModal(true)}
-                      className="btn-secondary btn-sm"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Project
-                    </button>
-                  </div>
-                </div>
-                <div className="p-4 max-h-96 overflow-y-auto">
-                  <ProjectList
-                    projects={projects}
-                    selectedProject={selectedProject}
-                    onProjectSelect={handleProjectSelected}
-                    onProjectEdit={handleProjectEdit}
-                    onProjectDelete={handleProjectDelete}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="xl:col-span-8">
-              <OpportunityList
-                opportunities={opportunities}
-                selectedProject={selectedProject}
-                userProfile={userProfile}
+          <>
+            {/* Funding Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <StatCard
+                icon={DollarSign}
+                title="Funding Secured"
+                value={stats.totalAwarded > 0 ? `$${stats.totalAwarded.toLocaleString()}` : "$0"}
+                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
+                color="gold"
+                isFinancial={true}
+              />
+              <StatCard
+                icon={Target}
+                title="Funding Requested"
+                value={stats.totalRequested > 0 ? `$${stats.totalRequested.toLocaleString()}` : "$0"}
+                subtitle={stats.totalSubmissions > 0 ? `${stats.totalSubmissions} applications` : "No applications yet"}
+                color="brand"
+                isFinancial={true}
+              />
+              <StatCard
+                icon={Zap}
+                title="Active Opportunities"
+                value={stats.activeOpportunities}
+                subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
+                color="brand"
+              />
+              <StatCard
+                icon={FileText}
+                title="Applications"
+                value={stats.totalSubmissions}
+                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
+                color="brand"
               />
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+              <div className="xl:col-span-4">
+                <div className="card-financial">
+                  <div className="p-6 border-b border-neutral-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-bold text-neutral-900">Filter by Project</h2>
+                      <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="btn-secondary btn-sm"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Project
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-4 max-h-96 overflow-y-auto">
+                    <ProjectList
+                      projects={projects}
+                      selectedProject={selectedProject}
+                      onProjectSelect={handleProjectSelected}
+                      onProjectEdit={handleProjectEdit}
+                      onProjectDelete={handleProjectDelete}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="xl:col-span-8">
+                <OpportunityList
+                  opportunities={opportunities}
+                  selectedProject={selectedProject}
+                  userProfile={userProfile}
+                />
+              </div>
+            </div>
+          </>
         )}
 
         {activeTab === 'applications' && (
