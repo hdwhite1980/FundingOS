@@ -39,7 +39,15 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
       loadAgentState()
     }, 60000) // Every minute
 
-    return () => clearInterval(interval)
+    // Set up periodic progress updates
+    const progressInterval = setInterval(() => {
+      updateGoalProgress()
+    }, 5 * 60000) // Every 5 minutes
+
+    return () => {
+      clearInterval(interval)
+      clearInterval(progressInterval)
+    }
   }, [user.id])
 
   useEffect(() => {
@@ -108,6 +116,9 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
         const goals = await goalsRes.value.json()
         if (goals && Array.isArray(goals) && goals.length > 0) {
           setCurrentGoals(goals)
+          
+          // Update goal progress in the background
+          updateGoalProgress()
         }
       }
       
@@ -127,6 +138,24 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
       
     } catch (error) {
       console.error('Error loading agent state:', error)
+    }
+  }
+
+  const updateGoalProgress = async () => {
+    try {
+      const response = await fetch('/api/ai/agent/update-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+      
+      if (response.ok) {
+        const updatedGoals = await response.json()
+        setCurrentGoals(updatedGoals)
+        console.log('Goal progress updated successfully')
+      }
+    } catch (error) {
+      console.error('Error updating goal progress:', error)
     }
   }
 
@@ -162,6 +191,9 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
         
         // Reload agent state in case the conversation created new decisions
         setTimeout(() => loadAgentState(), 1000)
+        
+        // Update goal progress after agent interaction (might have triggered new activity)
+        setTimeout(() => updateGoalProgress(), 2000)
       } else {
         throw new Error('Failed to get agent response')
       }
@@ -559,7 +591,10 @@ function AgentGoalCard({ goal }) {
               style={{ width: `${goal.progress}%` }}
             ></div>
           </div>
-          <div className="text-xs text-gray-500">{goal.progress}% complete</div>
+          <div className="text-xs text-gray-500">
+            {goal.progress}% complete 
+            <span className="text-blue-500 ml-1">• Live tracking</span>
+          </div>
         </>
       )}
     </div>

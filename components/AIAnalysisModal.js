@@ -2,10 +2,12 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, FileText, Clock, Copy, RotateCcw } from 'lucide-react'
-import { projectOpportunityService } from '../lib/supabase'
+import { directUserServices } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import toast from 'react-hot-toast'
 
 export default function AIAnalysisModal({ opportunity, project, userProfile, onClose }) {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState(null)
   const [activeTab, setActiveTab] = useState('analysis')
@@ -177,7 +179,8 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       setApplicationDraft(applicationDraftResponse.content)
       
       // Update project opportunity with draft
-      await projectOpportunityService.updateProjectOpportunity(
+      await directUserServices.projectOpportunities.updateProjectOpportunity(
+        user.id,
         currentProjectOpportunity.id,
         {
           status: 'draft_generated',

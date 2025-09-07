@@ -254,6 +254,46 @@ export default async function handler(req, res) {
         }
         break
 
+      case 'update-progress':
+        try {
+          // Update goal progress based on real user activity
+          const { data: goals, error: goalError } = await supabase
+            .from('agent_goals')
+            .select('*')
+            .eq('user_id', userId)
+
+          if (goalError) throw goalError
+
+          // Calculate and update progress for each goal
+          for (const goal of goals || []) {
+            const newProgress = await calculateGoalProgress(userId, goal.type, supabase)
+            
+            const { error: updateError } = await supabase
+              .from('agent_goals')
+              .update({ progress: newProgress })
+              .eq('id', goal.id)
+
+            if (updateError) {
+              console.error(`Error updating progress for goal ${goal.id}:`, updateError)
+            }
+          }
+
+          // Return updated goals
+          const { data: updatedGoals, error: fetchError } = await supabase
+            .from('agent_goals')
+            .select('*')
+            .eq('user_id', userId)
+            .order('priority', { ascending: false })
+
+          if (fetchError) throw fetchError
+
+          res.json(updatedGoals || [])
+        } catch (error) {
+          console.error('Update progress error:', error)
+          res.status(500).json({ error: 'Failed to update goal progress' })
+        }
+        break
+
       default:
         res.status(404).json({ error: 'Action not found' })
     }
@@ -1012,7 +1052,72 @@ function calculateDiversificationScore(donations, campaigns, applications) {
   return Math.min(100, diversityPoints + volumeBonus)
 }
 
+// Calculate real progress percentages based on user activity
+async function calculateGoalProgress(userId, goalType, supabaseClient) {
+  try {
+    switch (goalType) {
+      case 'opportunity_discovery':
+        // Base progress on opportunities discovered vs weekly target (5 per week)
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        const { count: weeklyOpps } = await supabaseClient
+          .from('opportunities')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', weekAgo.toISOString())
+        
+        const targetPerWeek = 5
+        const discoveryProgress = Math.min(100, Math.round((weeklyOpps / targetPerWeek) * 100))
+        return discoveryProgress
+
+      case 'deadline_management':
+        // Base progress on applications with deadlines being tracked
+        const { data: applications } = await supabaseClient
+          .from('application_submissions')
+          .select('*, opportunities(deadline_date)')
+          .eq('user_id', userId)
+        
+        if (!applications || applications.length === 0) return 0
+        
+        const appsWithDeadlines = applications.filter(app => app.opportunities?.deadline_date)
+        const deadlineProgress = Math.round((appsWithDeadlines.length / applications.length) * 100)
+        return deadlineProgress
+
+      case 'application_tracking':
+        // Base progress on applications submitted vs projects that need funding
+        const { data: projects } = await supabaseClient
+          .from('projects')
+          .select('*')
+          .eq('user_id', userId)
+        
+        const { count: appCount } = await supabaseClient
+          .from('application_submissions')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+        
+        if (!projects || projects.length === 0) return 0
+        
+        // Calculate based on applications per project (target: 2 applications per project)
+        const targetAppsPerProject = 2
+        const targetTotal = projects.length * targetAppsPerProject
+        const trackingProgress = Math.min(100, Math.round((appCount / targetTotal) * 100))
+        return trackingProgress
+
+      default:
+        return 0
+    }
+  } catch (error) {
+    console.error('Error calculating goal progress:', error)
+    return 0
+  }
+}
+
 async function createInitialGoals(userId, supabaseClient) {
+  // Calculate real progress for each goal type
+  const [discoveryProgress, deadlineProgress, trackingProgress] = await Promise.all([
+    calculateGoalProgress(userId, 'opportunity_discovery', supabaseClient),
+    calculateGoalProgress(userId, 'deadline_management', supabaseClient),
+    calculateGoalProgress(userId, 'application_tracking', supabaseClient)
+  ])
+
   const goals = [
     {
       user_id: userId,
@@ -1020,7 +1125,7 @@ async function createInitialGoals(userId, supabaseClient) {
       type: 'opportunity_discovery',
       priority: 8,
       status: 'active',
-      progress: 30,
+      progress: discoveryProgress,
       created_at: new Date().toISOString()
     },
     {
@@ -1029,7 +1134,7 @@ async function createInitialGoals(userId, supabaseClient) {
       type: 'deadline_management',
       priority: 9,
       status: 'active',
-      progress: 50,
+      progress: deadlineProgress,
       created_at: new Date().toISOString()
     },
     {
@@ -1038,7 +1143,7 @@ async function createInitialGoals(userId, supabaseClient) {
       type: 'application_tracking',
       priority: 7,
       status: 'active',
-      progress: 20,
+      progress: trackingProgress,
       created_at: new Date().toISOString()
     },
     {

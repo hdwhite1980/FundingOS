@@ -102,7 +102,14 @@ export default function DonorManagement({ user, userProfile, projects }) {
     try {
       // Note: Campaign functionality is not yet implemented
       // This would store campaign data in the campaigns table when ready
-      toast.info('Campaign feature is under development')
+      toast('Campaign feature is under development', {
+        icon: 'ℹ️',
+        style: {
+          borderRadius: '10px',
+          background: '#3b82f6',
+          color: '#fff',
+        },
+      })
       setShowCampaignModal(false)
     } catch (error) {
       toast.error('Failed to link campaign: ' + error.message)
@@ -134,7 +141,14 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const syncCampaign = async (campaignId) => {
     try {
-      toast.info('Campaign sync feature coming in a future update')
+      toast('Campaign sync feature coming in a future update', {
+        icon: 'ℹ️',
+        style: {
+          borderRadius: '10px',
+          background: '#3b82f6',
+          color: '#fff',
+        },
+      })
     } catch (error) {
       toast.error('Failed to sync campaign data')
     }
