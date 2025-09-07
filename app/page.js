@@ -98,6 +98,16 @@ export default function HomePage() {
     }
   }, [user, userProfile])
 
+  // Handle angel investor redirect
+  useEffect(() => {
+    if (!authLoading && !initializing && !loading && user && !needsOnboarding && userProfile) {
+      const role = userProfile.user_role || user.user_metadata?.user_role
+      if (role === 'angel_investor') {
+        router.replace('/angel/dashboard')
+      }
+    }
+  }, [authLoading, initializing, loading, user, needsOnboarding, userProfile, router])
+
   // Show loading while auth is initializing
   if (authLoading || initializing || loading) {
     return <LoadingSpinner />
@@ -122,13 +132,8 @@ export default function HomePage() {
   // Route to dashboard by role (fallback to company)
   const role = userProfile?.user_role || user.user_metadata?.user_role || 'company'
   
-  // For angel investors, redirect immediately (don't render anything else)
+  // For angel investors, show loading while redirect happens
   if (role === 'angel_investor') {
-    // Use useEffect to handle redirect
-    useEffect(() => {
-      router.replace('/angel/dashboard')
-    }, [router])
-    
     return <LoadingSpinner />
   }
   if (role === 'grant_writer') {
