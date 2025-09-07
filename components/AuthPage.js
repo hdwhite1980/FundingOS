@@ -59,12 +59,12 @@ export default function AuthPage() {
               organization_name: formData.organizationName,
               organization_type: 'startup',
               user_role: 'angel_investor',
-              setup_completed: true,
+              setup_completed: true, // Skip general onboarding
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }, { onConflict: 'id' })
 
-            // Create angel_investors row if absent
+            // Create angel_investors row with empty preferences (triggers angel onboarding)
             const { data: existingAngel } = await supabase
               .from('angel_investors')
               .select('id')
@@ -77,11 +77,12 @@ export default function AuthPage() {
                 name: formData.fullName || 'Angel Investor',
                 email: formData.email,
                 accredited_status: false,
-                investment_preferences: {},
+                investment_preferences: {}, // Empty triggers onboarding
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }])
             }
+            console.log('AuthPage: Angel investor bootstrap completed')
           } catch (bootErr) {
             console.warn('AuthPage: Angel investor bootstrap failed', bootErr)
           }
