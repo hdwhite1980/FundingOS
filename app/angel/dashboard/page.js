@@ -15,7 +15,6 @@ export default function AngelDashboardPage() {
   
   // Determine if onboarding is still required based on flags plus actual required fields
   const needsOnboarding = (inv) => {
-  console.log('[AngelDashboard] Evaluating onboarding need. Investor raw:', inv)
     if (!inv) return true
     const prefs = inv.investment_preferences || {}
     const flags = prefs.flags || {}
@@ -32,7 +31,6 @@ export default function AngelDashboardPage() {
       core.experience_level &&
       core.accredited_status
     )
-  console.log('[AngelDashboard] coreComplete?', coreComplete, { flags, core })
 
     // Preference required fields
     const prefsComplete = !!(
@@ -41,18 +39,17 @@ export default function AngelDashboardPage() {
       preferences.decision_speed &&
       preferences.notification_frequency
     )
-  console.log('[AngelDashboard] prefsComplete?', prefsComplete, { flags, preferences })
 
     return !(coreComplete && prefsComplete)
   }
 
   useEffect(() => {
+    if (!user) return
+    
     const load = async () => {
-      if (!user) return
       try {
         setLoading(true)
-  const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
-  console.log('[AngelDashboard] Loaded investor profile', inv)
+        const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
         setInvestor(inv)
         setShowOnboarding(needsOnboarding(inv))
         setError(null)
@@ -72,8 +69,7 @@ export default function AngelDashboardPage() {
   const handleOnboardingComplete = async () => {
     try {
       setLoading(true)
-  const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
-  console.log('[AngelDashboard] Post-onboarding refresh investor', refreshed)
+      const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
       setInvestor(refreshed)
       setShowOnboarding(needsOnboarding(refreshed))
     } catch (e) {
