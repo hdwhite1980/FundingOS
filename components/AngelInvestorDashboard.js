@@ -126,9 +126,10 @@ const AngelInvestorDashboard = () => {
           <p className="text-gray-600 mb-4">{error}</p>
           <button 
             onClick={loadDashboardData}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={loading}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            Try Again
+            {loading ? 'Loading...' : 'Try Again'}
           </button>
         </div>
       </div>
@@ -163,12 +164,6 @@ const AngelInvestorDashboard = () => {
     const matchesStage = filterStage === 'all' || stage === filterStage.toLowerCase();
     return matchesSearch && matchesIndustry && matchesStage;
   });
-
-  // Handle search and filter changes
-  useEffect(() => {
-    // Client-side filtering only, no API calls needed
-    console.log('Dashboard: Filters changed', { searchTerm, filterIndustry, filterStage });
-  }, [searchTerm, filterIndustry, filterStage]);
 
   if (loading && !currentInvestorData) {
     return (
