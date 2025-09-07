@@ -69,6 +69,30 @@ export default function DonorManagement({ user, userProfile, projects }) {
     }
   }
 
+  const refreshStats = async () => {
+    try {
+      toast('Refreshing donor statistics...', {
+        icon: '🔄',
+        style: {
+          borderRadius: '10px',
+          background: '#3b82f6',
+          color: '#fff',
+        },
+      })
+      
+      const success = await directUserServices.donors.refreshAllDonorStats(user.id)
+      
+      if (success) {
+        await loadData() // Reload all data
+        toast.success('Donor statistics refreshed successfully!')
+      } else {
+        toast.error('Failed to refresh donor statistics')
+      }
+    } catch (error) {
+      toast.error('Failed to refresh donor statistics: ' + error.message)
+    }
+  }
+
   const handleCreateDonor = async (donorData) => {
     try {
       const newDonor = await directUserServices.donors.createDonor(user.id, donorData)
@@ -366,8 +390,20 @@ export default function DonorManagement({ user, userProfile, projects }) {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Donor Management</h1>
-          <p className="text-gray-600">Track donors, donations, and crowdfunding campaigns</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Donor Management</h1>
+              <p className="text-gray-600">Track donors, donations, and crowdfunding campaigns</p>
+            </div>
+            <button
+              onClick={refreshStats}
+              className="btn-secondary flex items-center"
+              title="Refresh all donor statistics"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh Stats
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -390,6 +426,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
             icon={Heart}
             title="Total Donations"
             value={stats.totalDonations || 0}
+            subtitle={`${formatCurrency(stats.avgDonationAmount)} average`}
             color="red"
           />
           <StatCard

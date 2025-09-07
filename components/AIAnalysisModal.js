@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import toast from 'react-hot-toast'
 
 export default function AIAnalysisModal({ opportunity, project, userProfile, onClose }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading, initializing } = useAuth()
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState(null)
   const [activeTab, setActiveTab] = useState('analysis')
@@ -16,8 +16,15 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
   const [applicationDraft, setApplicationDraft] = useState(null) // Fixed: Declared at the top
 
   useEffect(() => {
-    performAnalysis()
-  }, [])
+    // Only perform analysis when auth is ready and user is available
+    if (!authLoading && !initializing && user?.id) {
+      performAnalysis()
+    } else if (!authLoading && !initializing && !user) {
+      // Auth is loaded but no user - show error
+      setLoading(false)
+      toast.error('Please log in to use AI analysis')
+    }
+  }, [authLoading, initializing, user])
 
   const performAnalysis = async () => {
     try {
@@ -33,8 +40,20 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       }
       
       if (!user?.id) {
-        throw new Error('User authentication required')
+        console.error('AI Analysis: No user ID available', { 
+          user, 
+          authLoading, 
+          initializing,
+          userKeys: user ? Object.keys(user) : 'no user object'
+        })
+        throw new Error('User authentication required - please ensure you are logged in')
       }
+      
+      console.log('AI Analysis: Starting analysis', {
+        userId: user.id,
+        projectId: project.id,
+        opportunityId: opportunity.id
+      })
       
       // Call AI analysis API
       const response = await fetch('/api/ai/analyze-opportunity', {
@@ -87,8 +106,19 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       }
       
       if (!user?.id) {
-        throw new Error('User authentication required')
+        console.error('Add to project: No user ID available', { 
+          user, 
+          authLoading, 
+          initializing 
+        })
+        throw new Error('User authentication required - please ensure you are logged in')
       }
+      
+      console.log('Add to project: Starting', {
+        userId: user.id,
+        projectId: project.id,
+        opportunityId: opportunity.id
+      })
       
       // First, check if this combination already exists
       const existingOpportunities = await directUserServices.projectOpportunities.getProjectOpportunities(project.id, user.id)
@@ -140,8 +170,19 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       }
       
       if (!user?.id) {
-        throw new Error('User authentication required')
+        console.error('Generate application: No user ID available', { 
+          user, 
+          authLoading, 
+          initializing 
+        })
+        throw new Error('User authentication required - please ensure you are logged in')
       }
+      
+      console.log('Generate application: Starting', {
+        userId: user.id,
+        projectId: project.id,
+        opportunityId: opportunity.id
+      })
       
       // Ensure we have a project opportunity first
       let currentProjectOpportunity = projectOpportunity
@@ -267,10 +308,26 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
 
         {/* Content */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          {loading ? (
+          {(loading || authLoading || initializing) ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">AI is analyzing the opportunity fit...</p>
+              <p className="text-gray-600">
+                {authLoading || initializing ? 'Loading user session...' : 'AI is analyzing the opportunity fit...'}
+              </p>
+              {authLoading || initializing ? (
+                <p className="text-sm text-gray-500 mt-2">Please wait while we verify your authentication</p>
+              ) : null}
+            </div>
+          ) : !user ? (
+            <div className="text-center py-12">
+              <div className="text-red-500 mb-4">
+                <X className="w-12 h-12 mx-auto" />
+              </div>
+              <p className="text-gray-600 mb-4">Authentication required</p>
+              <p className="text-sm text-gray-500">Please log in to use AI analysis features</p>
+              <button onClick={onClose} className="btn-primary mt-4">
+                Close
+              </button>
             </div>
           ) : (
             <>
