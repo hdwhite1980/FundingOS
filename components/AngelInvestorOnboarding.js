@@ -112,12 +112,6 @@ export default function AngelInvestorOnboarding({ user, investor, onComplete }) 
 
       await angelInvestorServices.updateInvestmentPreferences(user.id, payload);
       toast.success('Saved');
-      
-      // After completing preferences (step 2), user has minimum required info to access dashboard
-      if (segment === 'preferences' && onComplete) {
-        onComplete();
-        return true;
-      }
     } catch (e) {
       console.error(e);
       setError(e.message);

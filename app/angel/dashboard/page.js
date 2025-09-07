@@ -21,7 +21,7 @@ export default function AngelDashboardPage() {
     const core = prefs.core || {}
     const preferences = prefs.preferences || {}
 
-    // Core required fields
+    // Core required fields (Step 1)
     const coreComplete = !!(
       flags.core_completed &&
       core.investment_range &&
@@ -32,7 +32,7 @@ export default function AngelDashboardPage() {
       core.accredited_status
     )
 
-    // Preference required fields
+    // Preference required fields (Step 2)
     const prefsComplete = !!(
       flags.preferences_completed &&
       preferences.involvement_level &&
@@ -40,7 +40,11 @@ export default function AngelDashboardPage() {
       preferences.notification_frequency
     )
 
-    return !(coreComplete && prefsComplete)
+    // Enhancement completed (Step 3)
+    const enhancementComplete = !!(flags.enhancement_completed)
+
+    // Require all steps to be completed before accessing dashboard
+    return !(coreComplete && prefsComplete && enhancementComplete)
   }
 
   useEffect(() => {
