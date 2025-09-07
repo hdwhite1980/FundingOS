@@ -68,12 +68,38 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 
   const handleCreateSubmission = async (submissionData) => {
     try {
-      const newSubmission = await directUserServices.applications.createApplication(user.id, submissionData)
-      setSubmissions([newSubmission, ...submissions])
+      console.log('Submitting application data:', submissionData)
+      
+      // Clean up the data - remove documents for now since file upload isn't implemented
+      const cleanData = {
+        ...submissionData
+      }
+      
+      // Remove documents array since it's not implemented yet
+      delete cleanData.documents
+      
+      // Ensure required fields have values
+      if (!cleanData.project_id) {
+        throw new Error('Project is required')
+      }
+      
+      if (!cleanData.submitted_amount || cleanData.submitted_amount <= 0) {
+        throw new Error('Submitted amount must be greater than 0')
+      }
+      
+      console.log('Clean data to submit:', cleanData)
+      
+      const newSubmission = await directUserServices.applications.createApplication(user.id, cleanData)
+      
+      // Refresh both submissions and stats
+      await loadSubmissions()
+      await loadStats()
+      
       setShowCreateModal(false)
       toast.success('Application submission tracked!')
     } catch (error) {
-      toast.error('Failed to create submission: ' + error.message)
+      console.error('Create submission error:', error)
+      toast.error('Failed to create submission: ' + (error.message || 'Unknown error'))
     }
   }
 
@@ -178,10 +204,10 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-1">
-                {submission.opportunity?.title || 'Unknown Opportunity'}
+                {submission.opportunity?.title || submission.opportunity_title || 'Unknown Opportunity'}
               </h3>
               <p className="text-sm text-gray-600">
-                {submission.opportunity?.sponsor} • {submission.project?.name}
+                {submission.opportunity?.sponsor || 'No sponsor info'} • {submission.projects?.name || 'No project linked'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Application ID: {submission.application_id || 'Pending'}
@@ -420,23 +446,38 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 function CreateSubmissionModal({ projects, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     project_id: '',
-    opportunity_id: '',
     opportunity_title: '',
-    submission_date: new Date().toISOString().split('T')[0],
     application_id: '',
     submitted_amount: '',
-    requested_amount: '',
-    notes: '',
-    documents: []
+    submission_date: new Date().toISOString().split('T')[0],
+    notes: ''
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    onSubmit({
-      ...formData,
+    
+    // Clean up form data
+    const cleanData = {
+      project_id: formData.project_id,
+      opportunity_title: formData.opportunity_title?.trim() || 'Manual Entry',
+      application_id: formData.application_id?.trim() || null,
       submitted_amount: parseFloat(formData.submitted_amount),
-      requested_amount: parseFloat(formData.requested_amount)
+      submission_date: formData.submission_date,
+      status: 'submitted', // Explicitly set status
+      notes: formData.notes?.trim() || null
+    }
+    
+    // Remove any empty strings or undefined values (but keep opportunity_title)
+    Object.keys(cleanData).forEach(key => {
+      if (cleanData[key] === '' || cleanData[key] === undefined) {
+        if (key !== 'opportunity_title') { // Keep opportunity_title even if it's "Manual Entry"
+          delete cleanData[key]
+        }
+      }
     })
+    
+    console.log('Submitting form with clean data:', cleanData)
+    onSubmit(cleanData)
   }
 
   return (
