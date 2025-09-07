@@ -1,6 +1,6 @@
 'use client'
-import AngelInvestorDashboard from '@/components/AngelInvestorDashboard'
-import { useAuth } from '@/contexts/AuthContext'
+import AngelInvestorDashboard from '../../../components/AngelInvestorDashboard'
+import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 
 export default function AngelDashboardPage() {
