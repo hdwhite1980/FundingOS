@@ -11,9 +11,11 @@ export default function AngelDashboardPage() {
   const [investor, setInvestor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [error, setError] = useState(null)
   
   // Determine if onboarding is still required based on flags plus actual required fields
   const needsOnboarding = (inv) => {
+  console.log('[AngelDashboard] Evaluating onboarding need. Investor raw:', inv)
     if (!inv) return true
     const prefs = inv.investment_preferences || {}
     const flags = prefs.flags || {}
@@ -30,6 +32,7 @@ export default function AngelDashboardPage() {
       core.experience_level &&
       core.accredited_status
     )
+  console.log('[AngelDashboard] coreComplete?', coreComplete, { flags, core })
 
     // Preference required fields
     const prefsComplete = !!(
@@ -38,6 +41,7 @@ export default function AngelDashboardPage() {
       preferences.decision_speed &&
       preferences.notification_frequency
     )
+  console.log('[AngelDashboard] prefsComplete?', prefsComplete, { flags, preferences })
 
     return !(coreComplete && prefsComplete)
   }
@@ -47,11 +51,16 @@ export default function AngelDashboardPage() {
       if (!user) return
       try {
         setLoading(true)
-        const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+  const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+  console.log('[AngelDashboard] Loaded investor profile', inv)
         setInvestor(inv)
         setShowOnboarding(needsOnboarding(inv))
+        setError(null)
       } catch (e) {
         console.error('Angel onboarding load error', e)
+        setError(e)
+        // If we cannot load/create the profile, still prompt user with guidance instead of silent dashboard
+        setShowOnboarding(true)
       } finally {
         setLoading(false)
       }
@@ -63,7 +72,8 @@ export default function AngelDashboardPage() {
   const handleOnboardingComplete = async () => {
     try {
       setLoading(true)
-      const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+  const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+  console.log('[AngelDashboard] Post-onboarding refresh investor', refreshed)
       setInvestor(refreshed)
       setShowOnboarding(needsOnboarding(refreshed))
     } catch (e) {
@@ -98,6 +108,22 @@ export default function AngelDashboardPage() {
 
   if (showOnboarding && investor) {
     return <AngelInvestorOnboarding user={user} investor={investor} onComplete={handleOnboardingComplete} />
+  }
+
+  if (showOnboarding && !investor) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6 text-center">
+        <div className="max-w-md">
+          <h1 className="text-xl font-semibold mb-3">Angel Investor Setup Blocked</h1>
+          <p className="text-sm text-gray-600 mb-4">We couldn't create or load your angel investor profile. This is usually a Row Level Security (RLS) policy issue.</p>
+          <div className="bg-white border rounded-lg p-4 text-left text-xs font-mono whitespace-pre-wrap mb-4">
+{`Required policies (run in SQL editor):\n\nALTER TABLE angel_investors ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "ai select" ON angel_investors FOR SELECT USING (auth.uid() = user_id);\nCREATE POLICY "ai insert" ON angel_investors FOR INSERT WITH CHECK (auth.uid() = user_id);\nCREATE POLICY "ai update" ON angel_investors FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);`}
+          </div>
+          {error && <p className="text-xs text-red-600 mb-4">{error.message}</p>}
+          <button onClick={handleOnboardingComplete} className="btn-primary px-5 py-2 rounded text-sm">Retry</button>
+        </div>
+      </div>
+    )
   }
 
   return <AngelInvestorDashboard />

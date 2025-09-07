@@ -1,6 +1,7 @@
 // HomePage.js 
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import { directUserServices } from '../lib/supabase'
 import AuthPage from '../components/AuthPage'
@@ -16,6 +17,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [userProfile, setUserProfile] = useState(null)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     console.log('HomePage: Auth state changed', {
@@ -87,6 +89,15 @@ export default function HomePage() {
     setNeedsOnboarding(false)
   }
 
+  // Ensure role sync from auth metadata if profile missing user_role
+  useEffect(() => {
+    if (user && userProfile && !userProfile.user_role && user.user_metadata?.user_role) {
+      directUserServices.profile.updateProfile(user.id, { user_role: user.user_metadata.user_role })
+        .then(updated => { if (updated) setUserProfile(updated) })
+        .catch(()=>{})
+    }
+  }, [user, userProfile])
+
   // Show loading while auth is initializing
   if (authLoading || initializing || loading) {
     return <LoadingSpinner />
@@ -110,8 +121,15 @@ export default function HomePage() {
 
   // Route to dashboard by role (fallback to company)
   const role = userProfile?.user_role || user.user_metadata?.user_role || 'company'
-  if (role === 'angel_investor') {
-    return <AngelInvestorDashboard />
+  // For angel investors, defer to dedicated route that handles investor-specific onboarding
+  useEffect(() => {
+    if (!authLoading && !initializing && !loading && user && role === 'angel_investor' && !needsOnboarding) {
+      router.replace('/angel/dashboard')
+    }
+  }, [authLoading, initializing, loading, user, role, needsOnboarding, router])
+
+  if (role === 'angel_investor' && !needsOnboarding) {
+    return <LoadingSpinner /> // transient while redirecting
   }
   if (role === 'grant_writer') {
     return <GrantWriterDashboard user={user} userProfile={userProfile} />
