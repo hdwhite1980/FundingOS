@@ -45,6 +45,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [syncing, setSyncing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [activeFundingTab, setActiveFundingTab] = useState('grants')
   
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
@@ -78,9 +79,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Updated tabs array with cleaner, more focused navigation
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Target, description: 'Financial summary & insights' },
-    { id: 'opportunities', label: 'Funding', icon: Zap, description: 'Available grants & matches' },
+    { id: 'opportunities', label: 'Funding', icon: Zap, description: 'Grants, campaigns, investors & REITs' },
     { id: 'applications', label: 'Pipeline', icon: FileText, description: 'Active applications' },
-    { id: 'donations', label: 'Donors', icon: Heart, description: 'Donor management & tracking' },
+    { id: 'donations', label: 'Donors & Investors', icon: Heart, description: 'Donor & investor management' },
     { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }
   ]
 
@@ -650,53 +651,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     </div>
                   </motion.div>
                 </div>
-
-                {/* Enhanced Sync Control Panel */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="card-financial border-gradient-financial"
-                >
-                  <div className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                      <div className="flex items-center mb-4 lg:mb-0">
-                        <div className="p-3 bg-gradient-to-r from-brand-100 to-gold-100 rounded-2xl mr-4">
-                          <Database className="h-7 w-7 text-brand-600" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-neutral-900 mb-1">
-                            Federal Grant Database
-                          </h3>
-                          <p className="text-sm text-neutral-600 flex items-center">
-                            <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-gold-500 animate-pulse' : 'bg-brand-500'}`}></span>
-                            Live connection to federal funding opportunities
-                            {lastSyncTime && (
-                              <span className="ml-2 text-neutral-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={handleSyncOpportunities}
-                        disabled={syncing}
-                        className={`btn-primary btn-lg flex items-center shadow-financial ${syncing ? 'opacity-75' : ''}`}
-                      >
-                        {syncing ? (
-                          <>
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
-                            Syncing...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="w-5 h-5 mr-3" />
-                            Refresh Opportunities
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
               </div>
 
               {/* Project Quick Overview Sidebar */}
@@ -880,37 +834,159 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
               <div className="xl:col-span-4">
-                <div className="card-financial">
-                  <div className="p-6 border-b border-neutral-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-bold text-neutral-900">Filter by Project</h2>
-                      <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="btn-secondary btn-sm"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Project
-                      </button>
+                <div className="space-y-6">
+                  {/* Filter by Project */}
+                  <div className="card-financial">
+                    <div className="p-6 border-b border-neutral-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-neutral-900">Filter by Project</h2>
+                        <button
+                          onClick={() => setShowCreateModal(true)}
+                          className="btn-secondary btn-sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Project
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-4 max-h-96 overflow-y-auto">
+                      <ProjectList
+                        projects={projects}
+                        selectedProject={selectedProject}
+                        onProjectSelect={handleProjectSelected}
+                        onProjectEdit={handleProjectEdit}
+                        onProjectDelete={handleProjectDelete}
+                      />
                     </div>
                   </div>
-                  <div className="p-4 max-h-96 overflow-y-auto">
-                    <ProjectList
-                      projects={projects}
-                      selectedProject={selectedProject}
-                      onProjectSelect={handleProjectSelected}
-                      onProjectEdit={handleProjectEdit}
-                      onProjectDelete={handleProjectDelete}
-                    />
-                  </div>
+
+                  {/* Active Campaigns */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="card-financial"
+                  >
+                    <div className="p-6 border-b border-neutral-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-neutral-900">Active Campaigns</h2>
+                        <button className="btn-primary btn-sm">
+                          <Plus className="w-4 h-4 mr-2" />
+                          New Campaign
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      {/* Campaign placeholder - will be populated with actual campaign data */}
+                      <div className="text-center py-6">
+                        <Heart className="mx-auto h-8 w-8 text-gray-300 mb-2" />
+                        <p className="text-sm text-gray-600">No active campaigns</p>
+                        <p className="text-xs text-gray-500">Create campaigns to raise funds from multiple donors</p>
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
 
               <div className="xl:col-span-8">
-                <OpportunityList
-                  opportunities={opportunities}
-                  selectedProject={selectedProject}
-                  userProfile={userProfile}
-                />
+                {/* Funding Source Tabs */}
+                <div className="mb-6">
+                  <div className="border-b border-neutral-200">
+                    <nav className="flex space-x-8">
+                      {[
+                        { id: 'grants', label: 'Grants', icon: FileText },
+                        { id: 'campaigns', label: 'Campaigns', icon: Heart },
+                        { id: 'angels', label: 'Angel Investors', icon: Users },
+                        { id: 'reits', label: 'REITs', icon: TrendingUp },
+                        { id: 'donations', label: 'Direct Donations', icon: DollarSign }
+                      ].map(tab => {
+                        const Icon = tab.icon
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveFundingTab(tab.id)}
+                            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                              activeFundingTab === tab.id
+                                ? 'border-brand-500 text-brand-600'
+                                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                            }`}
+                          >
+                            <div className="flex items-center">
+                              <Icon className="w-4 h-4 mr-2" />
+                              {tab.label}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </nav>
+                  </div>
+                </div>
+
+                {/* Funding Source Content */}
+                <div className="bg-white rounded-lg border">
+                  {activeFundingTab === 'grants' && (
+                    <OpportunityList
+                      opportunities={opportunities}
+                      selectedProject={selectedProject}
+                      userProfile={userProfile}
+                    />
+                  )}
+
+                  {activeFundingTab === 'campaigns' && (
+                    <div className="p-6">
+                      <div className="text-center py-8">
+                        <Heart className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Crowdfunding Campaigns</h3>
+                        <p className="text-gray-600 mb-6">Launch campaigns to raise funds from your community</p>
+                        <button className="btn-primary">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Campaign
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeFundingTab === 'angels' && (
+                    <div className="p-6">
+                      <div className="text-center py-8">
+                        <Users className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Angel Investors</h3>
+                        <p className="text-gray-600 mb-6">Connect with individual investors interested in your projects</p>
+                        <button className="btn-primary">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Find Angels
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeFundingTab === 'reits' && (
+                    <div className="p-6">
+                      <div className="text-center py-8">
+                        <TrendingUp className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Real Estate Investment Trusts</h3>
+                        <p className="text-gray-600 mb-6">Explore REIT opportunities for sustainable funding</p>
+                        <button className="btn-primary">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Explore REITs
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeFundingTab === 'donations' && (
+                    <div className="p-6">
+                      <div className="text-center py-8">
+                        <DollarSign className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Direct Donations</h3>
+                        <p className="text-gray-600 mb-6">Accept direct donations from supporters</p>
+                        <button className="btn-primary">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Setup Donations
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </>

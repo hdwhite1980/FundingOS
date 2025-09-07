@@ -28,8 +28,8 @@ import toast from 'react-hot-toast'
 
 export default function DonorManagement({ user, userProfile, projects }) {
   const [donors, setDonors] = useState([])
+  const [investors, setInvestors] = useState([])
   const [donations, setDonations] = useState([])
-  const [campaigns, setCampaigns] = useState([])
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('donors')
@@ -37,9 +37,9 @@ export default function DonorManagement({ user, userProfile, projects }) {
   const [filters, setFilters] = useState({})
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDonationModal, setShowDonationModal] = useState(false)
-  const [showCampaignModal, setShowCampaignModal] = useState(false)
   const [showDonationDetailModal, setShowDonationDetailModal] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState(null)
+  const [selectedInvestor, setSelectedInvestor] = useState(null)
   const [selectedDonation, setSelectedDonation] = useState(null)
 
   useEffect(() => {
@@ -159,6 +159,19 @@ export default function DonorManagement({ user, userProfile, projects }) {
         loadData() // Refresh stats
       } catch (error) {
         toast.error('Failed to delete donor: ' + error.message)
+      }
+    }
+  }
+
+  const handleDeleteInvestor = async (investorId) => {
+    if (window.confirm('Are you sure you want to delete this investor?')) {
+      try {
+        // Future: implement investor deletion
+        setInvestors(investors.filter(i => i.id !== investorId))
+        toast.success('Investor deleted successfully!')
+        loadData() // Refresh stats
+      } catch (error) {
+        toast.error('Failed to delete investor: ' + error.message)
       }
     }
   }
@@ -294,6 +307,116 @@ export default function DonorManagement({ user, userProfile, projects }) {
       </div>
     </motion.div>
   )
+
+  const InvestorCard = ({ investor }) => {
+    const getInvestorTypeIcon = () => {
+      const type = investor.type || 'individual';
+      switch(type) {
+        case 'angel':
+          return <TrendingUp className="w-5 h-5 text-blue-600" />;
+        case 'venture_capital':
+          return <Users className="w-5 h-5 text-green-600" />;
+        default:
+          return <Users className="w-5 h-5 text-gray-600" />;
+      }
+    };
+
+    const getInvestorTypeLabel = () => {
+      const type = investor.type || 'individual';
+      switch(type) {
+        case 'angel':
+          return 'Angel Investor';
+        case 'venture_capital':
+          return 'VC Firm';
+        default:
+          return 'Individual';
+      }
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card hover:shadow-lg transition-all duration-300"
+      >
+        <div className="card-body">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {(investor.name || '').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">{investor.name || 'Unknown Investor'}</h3>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    {getInvestorTypeIcon()}
+                    <span>{getInvestorTypeLabel()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {investor.email && (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <Mail className="w-4 h-4 mr-2" />
+                    {investor.email}
+                  </div>
+                )}
+                {investor.phone && (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <Phone className="w-4 h-4 mr-2" />
+                    {investor.phone}
+                  </div>
+                )}
+                {investor.focus_areas && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Focus:</span> {investor.focus_areas}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between mt-4">
+                <div>
+                  <p className="text-lg font-bold text-green-600">
+                    {formatCurrency(investor.total_invested || 0)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {investor.investment_count || 0} investment{(investor.investment_count || 0) !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => {
+                      setSelectedInvestor(investor)
+                      // Future: Open investment modal
+                    }}
+                    className="btn-primary btn-sm"
+                  >
+                    New Investment
+                  </button>
+                  <button
+                    onClick={() => setSelectedInvestor(investor)}
+                    className="btn-secondary btn-sm"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteInvestor(investor.id)}
+                    className="btn-secondary btn-sm text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
 
   const CampaignCard = ({ campaign }) => {
     const progressPercentage = campaign.goal_amount 
@@ -441,9 +564,9 @@ export default function DonorManagement({ user, userProfile, projects }) {
         {/* Tabs */}
         <div className="flex space-x-1 mb-8">
           {[
-            { id: 'donors', label: 'Donors', icon: Users },
-            { id: 'donations', label: 'Donations', icon: DollarSign },
-            { id: 'campaigns', label: 'Campaigns', icon: TrendingUp }
+            { id: 'donors', label: 'Donors', icon: Users, description: 'Companies & Organizations' },
+            { id: 'investors', label: 'Investors', icon: TrendingUp, description: 'Individual Investors' },
+            { id: 'donations', label: 'Donations', icon: DollarSign, description: 'Transaction History' }
           ].map(tab => {
             const Icon = tab.icon
             return (
@@ -517,6 +640,65 @@ export default function DonorManagement({ user, userProfile, projects }) {
                   className="btn-primary mt-4"
                 >
                   Add First Donor
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'investors' && (
+          <div className="space-y-6">
+            {/* Search and Actions */}
+            <div className="flex items-center justify-between">
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search investors..."
+                    className="form-input pl-10"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button className="btn-secondary flex items-center">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import
+                </button>
+                <button className="btn-secondary flex items-center">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </button>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-primary flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Investor
+                </button>
+              </div>
+            </div>
+
+            {/* Investors Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {investors.map(investor => (
+                <InvestorCard key={investor.id} investor={investor} />
+              ))}
+            </div>
+
+            {investors.length === 0 && (
+              <div className="text-center py-12">
+                <TrendingUp className="mx-auto h-12 w-12 text-gray-300" />
+                <h3 className="mt-2 text-lg font-medium text-gray-900">No investors yet</h3>
+                <p className="mt-1 text-gray-500">Connect with individual investors interested in your projects.</p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-primary mt-4"
+                >
+                  Add First Investor
                 </button>
               </div>
             )}
