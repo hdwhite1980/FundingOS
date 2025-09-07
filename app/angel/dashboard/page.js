@@ -11,6 +11,36 @@ export default function AngelDashboardPage() {
   const [investor, setInvestor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  
+  // Determine if onboarding is still required based on flags plus actual required fields
+  const needsOnboarding = (inv) => {
+    if (!inv) return true
+    const prefs = inv.investment_preferences || {}
+    const flags = prefs.flags || {}
+    const core = prefs.core || {}
+    const preferences = prefs.preferences || {}
+
+    // Core required fields
+    const coreComplete = !!(
+      flags.core_completed &&
+      core.investment_range &&
+      core.annual_investment_range &&
+      Array.isArray(core.stages) && core.stages.length > 0 &&
+      Array.isArray(core.industries) && core.industries.length > 0 &&
+      core.experience_level &&
+      core.accredited_status
+    )
+
+    // Preference required fields
+    const prefsComplete = !!(
+      flags.preferences_completed &&
+      preferences.involvement_level &&
+      preferences.decision_speed &&
+      preferences.notification_frequency
+    )
+
+    return !(coreComplete && prefsComplete)
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -19,11 +49,7 @@ export default function AngelDashboardPage() {
         setLoading(true)
         const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
         setInvestor(inv)
-        const prefs = inv?.investment_preferences || {}
-        const flags = prefs.flags || {}
-        if (!flags.core_completed || !flags.preferences_completed) {
-          setShowOnboarding(true)
-        }
+        setShowOnboarding(needsOnboarding(inv))
       } catch (e) {
         console.error('Angel onboarding load error', e)
       } finally {
@@ -32,6 +58,21 @@ export default function AngelDashboardPage() {
     }
     load()
   }, [user])
+
+  // Callback after onboarding completes – refetch to ensure freshest data
+  const handleOnboardingComplete = async () => {
+    try {
+      setLoading(true)
+      const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+      setInvestor(refreshed)
+      setShowOnboarding(needsOnboarding(refreshed))
+    } catch (e) {
+      console.error('Post-onboarding refresh error', e)
+      setShowOnboarding(false) // fail-safe: allow dashboard access
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (!user) {
     return (
@@ -56,7 +97,7 @@ export default function AngelDashboardPage() {
   }
 
   if (showOnboarding && investor) {
-    return <AngelInvestorOnboarding user={user} investor={investor} onComplete={() => setShowOnboarding(false)} />
+    return <AngelInvestorOnboarding user={user} investor={investor} onComplete={handleOnboardingComplete} />
   }
 
   return <AngelInvestorDashboard />
