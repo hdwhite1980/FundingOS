@@ -124,8 +124,15 @@ export default function AngelInvestorOnboarding({ user, investor, onComplete }) 
   };
 
   const completeOnboarding = async () => {
-    const ok = await saveSegment('enhancement');
-    if (ok) onComplete && onComplete();
+    console.log('AngelOnboarding: Completing onboarding...')
+    // Step 4 is just verification/completion - no need to save data
+    // Enhancement was already saved in step 3
+    if (onComplete) {
+      console.log('AngelOnboarding: Calling onComplete callback')
+      onComplete();
+    } else {
+      console.log('AngelOnboarding: No onComplete callback provided')
+    }
   };
 
   const StepWrapper = ({ children, title, subtitle }) => (

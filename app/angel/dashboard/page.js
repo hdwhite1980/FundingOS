@@ -71,11 +71,15 @@ export default function AngelDashboardPage() {
 
   // Callback after onboarding completes – refetch to ensure freshest data
   const handleOnboardingComplete = async () => {
+    console.log('AngelDashboard: Onboarding completed, refreshing data...')
     try {
       setLoading(true)
       const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+      console.log('AngelDashboard: Refreshed investor data:', refreshed)
       setInvestor(refreshed)
-      setShowOnboarding(needsOnboarding(refreshed))
+      const needsOnboardingResult = needsOnboarding(refreshed)
+      console.log('AngelDashboard: Still needs onboarding?', needsOnboardingResult)
+      setShowOnboarding(needsOnboardingResult)
     } catch (e) {
       console.error('Post-onboarding refresh error', e)
       setShowOnboarding(false) // fail-safe: allow dashboard access
