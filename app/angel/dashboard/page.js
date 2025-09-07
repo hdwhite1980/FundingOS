@@ -4,7 +4,7 @@ import AngelInvestorOnboarding from '../../../components/AngelInvestorOnboarding
 import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { angelInvestorServices } from '../../../lib/supabase'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 
 // Determine if onboarding is still required based on flags plus actual required fields
 const needsOnboarding = (inv) => {
@@ -18,7 +18,7 @@ const needsOnboarding = (inv) => {
   const flags = prefs.flags || {}
 
   // Core required fields (Step 1) - check direct fields on investor record OR JSON fallback
-  const coreComplete = !!(
+  const coreComplete = Boolean(
     (inv.core_completed || flags.core_completed) &&
     inv.investment_range &&
     inv.annual_investment_range &&
@@ -29,7 +29,7 @@ const needsOnboarding = (inv) => {
   )
 
   // Preference required fields (Step 2) - check direct fields on investor record OR JSON fallback
-  const prefsComplete = !!(
+  const prefsComplete = Boolean(
     (inv.preferences_completed || flags.preferences_completed) &&
     inv.involvement_level &&
     inv.decision_speed &&
@@ -37,20 +37,19 @@ const needsOnboarding = (inv) => {
   )
 
   // Enhancement completed (Step 3) - check direct field on investor record OR JSON fallback
-  const enhancementComplete = !!(inv.enhancement_completed || flags.enhancement_completed)
+  const enhancementComplete = Boolean(inv.enhancement_completed || flags.enhancement_completed)
 
+  const result = !(coreComplete && prefsComplete && enhancementComplete)
+  
   console.log('AngelDashboard: Completion status:', {
     coreComplete,
     prefsComplete,
     enhancementComplete,
-    coreFlags: { direct: inv.core_completed, json: flags.core_completed },
-    prefsFlags: { direct: inv.preferences_completed, json: flags.preferences_completed },
-    enhancementFlags: { direct: inv.enhancement_completed, json: flags.enhancement_completed },
-    finalResult: !(coreComplete && prefsComplete && enhancementComplete)
+    finalResult: result
   })
 
   // Require all steps to be completed before accessing dashboard
-  return !(coreComplete && prefsComplete && enhancementComplete)
+  return result
 }
 
 export default function AngelDashboardPage() {
@@ -59,57 +58,43 @@ export default function AngelDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [error, setError] = useState(null)
-  const userRef = useRef(null)
-  
-  // Update ref when user changes
-  useEffect(() => {
-    userRef.current = user
-  }, [user])
+  const [dataLoaded, setDataLoaded] = useState(false)
 
-  // Load investor data
+  // Single useEffect to load data when user changes
   useEffect(() => {
-    if (!user?.id || !user?.email) return
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
+
+    if (dataLoaded && investor) {
+      return // Don't reload if we already have data
+    }
     
-    const loadInvestorData = async () => {
+    const loadData = async () => {
       try {
         setLoading(true)
         const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
         setInvestor(inv)
         setShowOnboarding(needsOnboarding(inv))
         setError(null)
+        setDataLoaded(true)
       } catch (e) {
         console.error('Angel onboarding load error', e)
         setError(e)
-        // If we cannot load/create the profile, still prompt user with guidance instead of silent dashboard
         setShowOnboarding(true)
       } finally {
         setLoading(false)
       }
     }
     
-    loadInvestorData()
-  }, [user?.id, user?.email])
+    loadData()
+  }, [user?.id]) // Only depend on user ID, nothing else
 
-  // Callback after onboarding completes – refetch to ensure freshest data
-  const handleOnboardingComplete = async () => {
-    const currentUser = userRef.current
-    if (!currentUser?.id || !currentUser?.email) return
-    
-    console.log('AngelDashboard: Onboarding completed, refreshing data...')
-    try {
-      setLoading(true)
-      const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(currentUser.id, currentUser.email)
-      console.log('AngelDashboard: Refreshed investor data:', refreshed)
-      setInvestor(refreshed)
-      const needsOnboardingResult = needsOnboarding(refreshed)
-      console.log('AngelDashboard: Still needs onboarding?', needsOnboardingResult)
-      setShowOnboarding(needsOnboardingResult)
-    } catch (e) {
-      console.error('Post-onboarding refresh error', e)
-      setShowOnboarding(false) // fail-safe: allow dashboard access
-    } finally {
-      setLoading(false)
-    }
+  // Simple callback that doesn't cause re-renders
+  const handleOnboardingComplete = () => {
+    // Force a reload by resetting dataLoaded
+    setDataLoaded(false)
   }
 
   if (!user) {
