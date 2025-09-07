@@ -1,5 +1,5 @@
 'use client'
-import AngelInvestorDashboard from '../../../components/AngelInvestorDashboard'
+import AngelInvestorDashboardMinimal from '../../../components/AngelInvestorDashboardMinimal'
 import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { angelInvestorServices } from '../../../lib/supabase'
@@ -122,9 +122,9 @@ export default function AngelDashboardPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Test if AngelInvestorDashboard causes the infinite loop */}
+      {/* Test the minimal dashboard component */}
       {!showOnboarding ? (
-        <AngelInvestorDashboard />
+        <AngelInvestorDashboardMinimal />
       ) : (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">

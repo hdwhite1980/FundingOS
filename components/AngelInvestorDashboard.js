@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   DollarSign, 
@@ -48,14 +48,10 @@ const AngelInvestorDashboard = () => {
   
   const { user } = useAuth();
 
-  // Load initial data
-  useEffect(() => {
-    if (user?.id) {
-      loadDashboardData();
-    }
-  }, [user?.id]);
-
-  const loadDashboardData = async () => {
+  // Load initial data - wrapped in useCallback to prevent infinite loops
+  const loadDashboardData = useCallback(async () => {
+    if (!user?.id || !user?.email) return;
+    
     setLoading(true)
     setError(null)
     try {
@@ -78,9 +74,14 @@ const AngelInvestorDashboard = () => {
       setPortfolio(investorPortfolio)
     } catch (e) { console.warn('Portfolio load failed', e) }
     setLoading(false)
-  }
+  }, [user?.id, user?.email]);
 
-  const handleInvestment = async (projectId, investmentAmount, investmentType = 'equity') => {
+  // Load initial data
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  const handleInvestment = useCallback(async (projectId, investmentAmount, investmentType = 'equity') => {
     try {
       setLoading(true);
       
@@ -103,7 +104,7 @@ const AngelInvestorDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, loadDashboardData]);
 
   if (loading && !investorData) {
     return (
