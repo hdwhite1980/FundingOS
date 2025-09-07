@@ -3,7 +3,7 @@ import AngelInvestorDashboard from '../../../components/AngelInvestorDashboard'
 import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { angelInvestorServices } from '../../../lib/supabase'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 // Test the needsOnboarding function
 const needsOnboarding = (inv) => {
@@ -56,36 +56,37 @@ export default function AngelDashboardPage() {
   const [investor, setInvestor] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
-  // Test the service call
-  useEffect(() => {
+  // Stable loadInvestor function using useCallback
+  const loadInvestor = useCallback(async () => {
     if (!user?.id) {
       setLoading(false)
       return
     }
 
-    const loadInvestor = async () => {
-      try {
-        console.log('AngelDashboard: Loading investor for user:', user?.id)
-        const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
-        console.log('AngelDashboard: Investor loaded:', inv)
-        setInvestor(inv)
-        
-        // Test needsOnboarding logic
-        const needsOnboardingResult = needsOnboarding(inv)
-        console.log('AngelDashboard: Needs onboarding?', needsOnboardingResult)
-        setShowOnboarding(needsOnboardingResult)
-        
-        setError(null)
-      } catch (e) {
-        console.error('Angel investor load error:', e)
-        setError(e)
-      } finally {
-        setLoading(false)
-      }
+    try {
+      console.log('AngelDashboard: Loading investor for user:', user?.id)
+      const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+      console.log('AngelDashboard: Investor loaded:', inv)
+      setInvestor(inv)
+      
+      // Test needsOnboarding logic
+      const needsOnboardingResult = needsOnboarding(inv)
+      console.log('AngelDashboard: Needs onboarding?', needsOnboardingResult)
+      setShowOnboarding(needsOnboardingResult)
+      
+      setError(null)
+    } catch (e) {
+      console.error('Angel investor load error:', e)
+      setError(e)
+    } finally {
+      setLoading(false)
     }
+  }, [user?.id, user?.email])
 
+  // Test the service call
+  useEffect(() => {
     loadInvestor()
-  }, [user?.id])
+  }, [loadInvestor])
 
   if (!user) {
     return (
