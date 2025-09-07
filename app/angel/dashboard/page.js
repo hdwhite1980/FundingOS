@@ -21,6 +21,13 @@ export default function AngelDashboardPage() {
     const core = prefs.core || {}
     const preferences = prefs.preferences || {}
 
+    console.log('AngelDashboard: Checking needsOnboarding with data:', {
+      prefs,
+      flags,
+      core,
+      preferences
+    })
+
     // Core required fields (Step 1)
     const coreComplete = !!(
       flags.core_completed &&
@@ -42,6 +49,13 @@ export default function AngelDashboardPage() {
 
     // Enhancement completed (Step 3)
     const enhancementComplete = !!(flags.enhancement_completed)
+
+    console.log('AngelDashboard: Completion status:', {
+      coreComplete,
+      prefsComplete,
+      enhancementComplete,
+      finalResult: !(coreComplete && prefsComplete && enhancementComplete)
+    })
 
     // Require all steps to be completed before accessing dashboard
     return !(coreComplete && prefsComplete && enhancementComplete)
