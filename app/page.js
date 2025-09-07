@@ -6,6 +6,9 @@ import { directUserServices } from '../lib/supabase'
 import AuthPage from '../components/AuthPage'
 import OnboardingFlow from '../components/OnboardingFlow'
 import Dashboard from '../components/Dashboard'
+import AngelInvestorDashboard from '../components/AngelInvestorDashboard'
+import GrantWriterDashboard from '../components/GrantWriterDashboard'
+import CompanyDashboard from '../components/CompanyDashboard'
 import LoadingSpinner from '../components/LoadingSpinner'
 
 export default function HomePage() {
@@ -47,10 +50,28 @@ export default function HomePage() {
       if (!profile) {
         setNeedsOnboarding(true)
       } else if (!profile.setup_completed) {
+        // Backfill user_role from auth metadata if missing
+        let finalProfile = { ...profile }
+        if (!finalProfile.user_role) {
+          const authRole = user.user_metadata?.user_role
+          if (authRole) {
+            const updated = await directUserServices.profile.updateProfile(user.id, { user_role: authRole })
+            if (updated) finalProfile = updated
+          }
+        }
         setNeedsOnboarding(true)
-        setUserProfile(profile)
+        setUserProfile(finalProfile)
       } else {
-        setUserProfile(profile)
+        // Ensure user_role is set; attempt silent backfill if absent
+        let finalProfile = { ...profile }
+        if (!finalProfile.user_role) {
+          const authRole = user.user_metadata?.user_role
+          if (authRole) {
+            const updated = await directUserServices.profile.updateProfile(user.id, { user_role: authRole })
+            if (updated) finalProfile = updated
+          }
+        }
+        setUserProfile(finalProfile)
         setNeedsOnboarding(false)
       }
     } catch (error) {
@@ -87,9 +108,16 @@ export default function HomePage() {
     )
   }
 
-  // Show main dashboard
+  // Route to dashboard by role (fallback to company)
+  const role = userProfile?.user_role || user.user_metadata?.user_role || 'company'
+  if (role === 'angel_investor') {
+    return <AngelInvestorDashboard />
+  }
+  if (role === 'grant_writer') {
+    return <GrantWriterDashboard user={user} userProfile={userProfile} />
+  }
   return (
-    <Dashboard 
+    <CompanyDashboard
       user={user}
       userProfile={userProfile}
       onProfileUpdate={setUserProfile}

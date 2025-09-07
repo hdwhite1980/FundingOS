@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Building2, ArrowRight, CheckCircle } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 export default function AuthPage() {
@@ -13,11 +13,10 @@ export default function AuthPage() {
     password: '',
     confirmPassword: '',
     fullName: '',
-    organizationName: ''
+    organizationName: '',
+    userRole: 'company'
   })
   
-  const supabase = useSupabaseClient()
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -32,30 +31,36 @@ export default function AuthPage() {
           throw new Error('Password must be at least 6 characters')
         }
 
+        console.log('AuthPage: Signing up user', formData.email)
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
             data: {
               full_name: formData.fullName,
-              organization_name: formData.organizationName
+              organization_name: formData.organizationName,
+              user_role: formData.userRole
             }
           }
         })
 
         if (error) throw error
 
+        console.log('AuthPage: Sign up successful', data)
         toast.success('Account created! Please check your email to verify your account.')
       } else {
+        console.log('AuthPage: Signing in user', formData.email)
         const { error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password
         })
 
         if (error) throw error
+        console.log('AuthPage: Sign in successful')
         toast.success('Welcome back!')
       }
     } catch (error) {
+      console.error('AuthPage: Auth error:', error)
       toast.error(error.message)
     } finally {
       setLoading(false)
@@ -202,6 +207,23 @@ export default function AuthPage() {
                     placeholder="Enter your organization name"
                     required
                   />
+                </div>
+                <div>
+                  <label className="form-label flex items-center">Select Role</label>
+                  <div className='grid grid-cols-3 gap-3 text-sm'>
+                    {[
+                      { value: 'angel_investor', label: 'Angel Investor' },
+                      { value: 'company', label: 'Company' },
+                      { value: 'grant_writer', label: 'Grant Writer' }
+                    ].map(r => (
+                      <button
+                        type='button'
+                        key={r.value}
+                        onClick={()=>setFormData(f=>({...f,userRole:r.value}))}
+                        className={`border rounded p-2 flex items-center justify-center hover:bg-blue-50 transition ${formData.userRole===r.value? 'border-blue-600 bg-blue-50 text-blue-700 font-medium':'border-gray-300 text-gray-600'}`}
+                      >{r.label}</button>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
