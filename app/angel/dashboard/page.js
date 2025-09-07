@@ -2,7 +2,7 @@
 import AngelInvestorDashboard from '../../../components/AngelInvestorDashboard'
 import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
-import { angelInvestorServices } from '../lib/supabase'
+import { angelInvestorServices } from '../../../lib/supabase'
 import { useEffect, useState } from 'react'
 
 // Test the needsOnboarding function
