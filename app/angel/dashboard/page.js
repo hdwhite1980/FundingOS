@@ -20,9 +20,13 @@ export default function AngelDashboardPage() {
     // The actual data is now stored directly on the investor record, not in nested structure
     console.log('AngelDashboard: Checking needsOnboarding with investor:', inv)
 
-    // Core required fields (Step 1) - check direct fields on investor record
+    // For backward compatibility, also check the JSON structure
+    const prefs = inv.investment_preferences || {}
+    const flags = prefs.flags || {}
+
+    // Core required fields (Step 1) - check direct fields on investor record OR JSON fallback
     const coreComplete = !!(
-      inv.core_completed &&
+      (inv.core_completed || flags.core_completed) &&
       inv.investment_range &&
       inv.annual_investment_range &&
       Array.isArray(inv.stages) && inv.stages.length > 0 &&
@@ -31,21 +35,24 @@ export default function AngelDashboardPage() {
       inv.accredited_status !== null
     )
 
-    // Preference required fields (Step 2) - check direct fields on investor record  
+    // Preference required fields (Step 2) - check direct fields on investor record OR JSON fallback
     const prefsComplete = !!(
-      inv.preferences_completed &&
+      (inv.preferences_completed || flags.preferences_completed) &&
       inv.involvement_level &&
       inv.decision_speed &&
       inv.notification_frequency
     )
 
-    // Enhancement completed (Step 3) - check direct field on investor record
-    const enhancementComplete = !!(inv.enhancement_completed)
+    // Enhancement completed (Step 3) - check direct field on investor record OR JSON fallback
+    const enhancementComplete = !!(inv.enhancement_completed || flags.enhancement_completed)
 
     console.log('AngelDashboard: Completion status:', {
       coreComplete,
       prefsComplete,
       enhancementComplete,
+      coreFlags: { direct: inv.core_completed, json: flags.core_completed },
+      prefsFlags: { direct: inv.preferences_completed, json: flags.preferences_completed },
+      enhancementFlags: { direct: inv.enhancement_completed, json: flags.enhancement_completed },
       finalResult: !(coreComplete && prefsComplete && enhancementComplete)
     })
 
