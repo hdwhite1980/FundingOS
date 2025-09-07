@@ -16,39 +16,31 @@ export default function AngelDashboardPage() {
   // Determine if onboarding is still required based on flags plus actual required fields
   const needsOnboarding = (inv) => {
     if (!inv) return true
-    const prefs = inv.investment_preferences || {}
-    const flags = prefs.flags || {}
-    const core = prefs.core || {}
-    const preferences = prefs.preferences || {}
+    
+    // The actual data is now stored directly on the investor record, not in nested structure
+    console.log('AngelDashboard: Checking needsOnboarding with investor:', inv)
 
-    console.log('AngelDashboard: Checking needsOnboarding with data:', {
-      prefs,
-      flags,
-      core,
-      preferences
-    })
-
-    // Core required fields (Step 1)
+    // Core required fields (Step 1) - check direct fields on investor record
     const coreComplete = !!(
-      flags.core_completed &&
-      core.investment_range &&
-      core.annual_investment_range &&
-      Array.isArray(core.stages) && core.stages.length > 0 &&
-      Array.isArray(core.industries) && core.industries.length > 0 &&
-      core.experience_level &&
-      core.accredited_status
+      inv.core_completed &&
+      inv.investment_range &&
+      inv.annual_investment_range &&
+      Array.isArray(inv.stages) && inv.stages.length > 0 &&
+      Array.isArray(inv.industries) && inv.industries.length > 0 &&
+      inv.experience_level &&
+      inv.accredited_status !== null
     )
 
-    // Preference required fields (Step 2)
+    // Preference required fields (Step 2) - check direct fields on investor record  
     const prefsComplete = !!(
-      flags.preferences_completed &&
-      preferences.involvement_level &&
-      preferences.decision_speed &&
-      preferences.notification_frequency
+      inv.preferences_completed &&
+      inv.involvement_level &&
+      inv.decision_speed &&
+      inv.notification_frequency
     )
 
-    // Enhancement completed (Step 3)
-    const enhancementComplete = !!(flags.enhancement_completed)
+    // Enhancement completed (Step 3) - check direct field on investor record
+    const enhancementComplete = !!(inv.enhancement_completed)
 
     console.log('AngelDashboard: Completion status:', {
       coreComplete,
