@@ -4,7 +4,7 @@ import AngelInvestorOnboarding from '../../../components/AngelInvestorOnboarding
 import { useAuth } from '../../../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 import { angelInvestorServices } from '../../../lib/supabase'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 // Determine if onboarding is still required based on flags plus actual required fields
 const needsOnboarding = (inv) => {
@@ -59,37 +59,46 @@ export default function AngelDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [error, setError] = useState(null)
-
-  // Memoize the load function to prevent unnecessary re-renders
-  const loadInvestorData = useCallback(async () => {
-    if (!user) return
-    
-    try {
-      setLoading(true)
-      const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
-      setInvestor(inv)
-      setShowOnboarding(needsOnboarding(inv))
-      setError(null)
-    } catch (e) {
-      console.error('Angel onboarding load error', e)
-      setError(e)
-      // If we cannot load/create the profile, still prompt user with guidance instead of silent dashboard
-      setShowOnboarding(true)
-    } finally {
-      setLoading(false)
-    }
+  const userRef = useRef(null)
+  
+  // Update ref when user changes
+  useEffect(() => {
+    userRef.current = user
   }, [user])
 
+  // Load investor data
   useEffect(() => {
+    if (!user?.id || !user?.email) return
+    
+    const loadInvestorData = async () => {
+      try {
+        setLoading(true)
+        const inv = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+        setInvestor(inv)
+        setShowOnboarding(needsOnboarding(inv))
+        setError(null)
+      } catch (e) {
+        console.error('Angel onboarding load error', e)
+        setError(e)
+        // If we cannot load/create the profile, still prompt user with guidance instead of silent dashboard
+        setShowOnboarding(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
     loadInvestorData()
-  }, [loadInvestorData])
+  }, [user?.id, user?.email])
 
   // Callback after onboarding completes – refetch to ensure freshest data
-  const handleOnboardingComplete = useCallback(async () => {
+  const handleOnboardingComplete = async () => {
+    const currentUser = userRef.current
+    if (!currentUser?.id || !currentUser?.email) return
+    
     console.log('AngelDashboard: Onboarding completed, refreshing data...')
     try {
       setLoading(true)
-      const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(user.id, user.email)
+      const refreshed = await angelInvestorServices.getOrCreateAngelInvestor(currentUser.id, currentUser.email)
       console.log('AngelDashboard: Refreshed investor data:', refreshed)
       setInvestor(refreshed)
       const needsOnboardingResult = needsOnboarding(refreshed)
@@ -101,7 +110,7 @@ export default function AngelDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }
 
   if (!user) {
     return (
