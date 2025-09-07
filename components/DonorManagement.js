@@ -29,6 +29,7 @@ import toast from 'react-hot-toast'
 export default function DonorManagement({ user, userProfile, projects }) {
   const [donors, setDonors] = useState([])
   const [investors, setInvestors] = useState([])
+  const [campaigns, setCampaigns] = useState([])
   const [donations, setDonations] = useState([])
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
@@ -37,6 +38,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
   const [filters, setFilters] = useState({})
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDonationModal, setShowDonationModal] = useState(false)
+  const [showCampaignModal, setShowCampaignModal] = useState(false)
   const [showDonationDetailModal, setShowDonationDetailModal] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState(null)
   const [selectedInvestor, setSelectedInvestor] = useState(null)
@@ -51,19 +53,22 @@ export default function DonorManagement({ user, userProfile, projects }) {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [donorsData, donationsData, statsData] = await Promise.all([
+      const [donorsData, donationsData, campaignsData, investorsData, statsData] = await Promise.all([
         directUserServices.donors.getDonors(user.id, { search: searchQuery, ...filters }),
         directUserServices.donors.getDonations(user.id),
+        directUserServices.campaigns.getCampaigns(user.id, { search: searchQuery, ...filters }),
+        directUserServices.investors.getInvestors(user.id, { search: searchQuery, ...filters }),
         directUserServices.donors.getDonorStats(user.id)
       ])
 
       setDonors(donorsData)
       setDonations(donationsData)
-      setCampaigns([]) // Placeholder for campaigns - will implement later
+      setCampaigns(campaignsData)
+      setInvestors(investorsData)
       setStats(statsData)
     } catch (error) {
-      toast.error('Failed to load donor data')
-      console.error('Error loading donor data:', error)
+      toast.error('Failed to load data')
+      console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
@@ -124,19 +129,61 @@ export default function DonorManagement({ user, userProfile, projects }) {
 
   const handleCreateCampaign = async (campaignData) => {
     try {
-      // Note: Campaign functionality is not yet implemented
-      // This would store campaign data in the campaigns table when ready
-      toast('Campaign feature is under development', {
-        icon: 'ℹ️',
-        style: {
-          borderRadius: '10px',
-          background: '#3b82f6',
-          color: '#fff',
-        },
-      })
+      const newCampaign = await directUserServices.campaigns.createCampaign(user.id, campaignData)
+      setCampaigns([newCampaign, ...campaigns])
       setShowCampaignModal(false)
+      toast.success('Campaign created successfully!')
     } catch (error) {
-      toast.error('Failed to link campaign: ' + error.message)
+      toast.error('Failed to create campaign: ' + error.message)
+      console.error('Create campaign error:', error)
+    }
+  }
+
+  const handleCreateInvestor = async (investorData) => {
+    try {
+      const newInvestor = await directUserServices.investors.createInvestor(user.id, investorData)
+      setInvestors([newInvestor, ...investors])
+      setShowCreateModal(false)
+      toast.success('Investor created successfully!')
+    } catch (error) {
+      toast.error('Failed to create investor: ' + error.message)
+      console.error('Create investor error:', error)
+    }
+  }
+
+  const handleUpdateCampaign = async (campaignId, updates) => {
+    try {
+      const updatedCampaign = await directUserServices.campaigns.updateCampaign(user.id, campaignId, updates)
+      setCampaigns(campaigns.map(c => c.id === campaignId ? updatedCampaign : c))
+      toast.success('Campaign updated successfully!')
+    } catch (error) {
+      toast.error('Failed to update campaign: ' + error.message)
+      console.error('Update campaign error:', error)
+    }
+  }
+
+  const handleDeleteCampaign = async (campaignId) => {
+    if (window.confirm('Are you sure you want to delete this campaign?')) {
+      try {
+        await directUserServices.campaigns.deleteCampaign(user.id, campaignId)
+        setCampaigns(campaigns.filter(c => c.id !== campaignId))
+        toast.success('Campaign deleted successfully!')
+        loadData() // Refresh stats
+      } catch (error) {
+        toast.error('Failed to delete campaign: ' + error.message)
+        console.error('Delete campaign error:', error)
+      }
+    }
+  }
+
+  const handleUpdateInvestor = async (investorId, updates) => {
+    try {
+      const updatedInvestor = await directUserServices.investors.updateInvestor(user.id, investorId, updates)
+      setInvestors(investors.map(i => i.id === investorId ? updatedInvestor : i))
+      toast.success('Investor updated successfully!')
+    } catch (error) {
+      toast.error('Failed to update investor: ' + error.message)
+      console.error('Update investor error:', error)
     }
   }
 
@@ -166,7 +213,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
   const handleDeleteInvestor = async (investorId) => {
     if (window.confirm('Are you sure you want to delete this investor?')) {
       try {
-        // Future: implement investor deletion
+        await directUserServices.investors.deleteInvestor(user.id, investorId)
         setInvestors(investors.filter(i => i.id !== investorId))
         toast.success('Investor deleted successfully!')
         loadData() // Refresh stats
@@ -566,6 +613,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
           {[
             { id: 'donors', label: 'Donors', icon: Users, description: 'Companies & Organizations' },
             { id: 'investors', label: 'Investors', icon: TrendingUp, description: 'Individual Investors' },
+            { id: 'campaigns', label: 'Campaigns', icon: Heart, description: 'Crowdfunding Campaigns' },
             { id: 'donations', label: 'Donations', icon: DollarSign, description: 'Transaction History' }
           ].map(tab => {
             const Icon = tab.icon
@@ -705,6 +753,44 @@ export default function DonorManagement({ user, userProfile, projects }) {
           </div>
         )}
 
+        {activeTab === 'campaigns' && (
+          <div className="space-y-6">
+            {/* Campaign Controls */}
+            <div className="flex justify-between mb-6">
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setShowCampaignModal(true)}
+                  className="btn-primary flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Link Campaign
+                </button>
+              </div>
+            </div>
+
+            {/* Campaigns Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {campaigns.map(campaign => (
+                <CampaignCard key={campaign.id} campaign={campaign} />
+              ))}
+            </div>
+
+            {campaigns.length === 0 && (
+              <div className="text-center py-12">
+                <Heart className="mx-auto h-12 w-12 text-gray-300" />
+                <h3 className="mt-2 text-lg font-medium text-gray-900">No campaigns yet</h3>
+                <p className="mt-1 text-gray-500">Connect your crowdfunding campaigns to track progress.</p>
+                <button
+                  onClick={() => setShowCampaignModal(true)}
+                  className="btn-primary mt-4"
+                >
+                  Link First Campaign
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'donations' && (
           <div className="space-y-6">
             {/* Donation Controls */}
@@ -832,44 +918,6 @@ export default function DonorManagement({ user, userProfile, projects }) {
                   className="btn-primary mt-4"
                 >
                   Record First Donation
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'campaigns' && (
-          <div className="space-y-6">
-            {/* Campaign Controls */}
-            <div className="flex justify-between mb-6">
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setShowCampaignModal(true)}
-                  className="btn-primary flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Link Campaign
-                </button>
-              </div>
-            </div>
-
-            {/* Campaigns Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {campaigns.map(campaign => (
-                <CampaignCard key={campaign.id} campaign={campaign} />
-              ))}
-            </div>
-
-            {campaigns.length === 0 && (
-              <div className="text-center py-12">
-                <TrendingUp className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No campaigns yet</h3>
-                <p className="mt-1 text-gray-500">Connect your crowdfunding campaigns to track progress.</p>
-                <button
-                  onClick={() => setShowCampaignModal(true)}
-                  className="btn-primary mt-4"
-                >
-                  Link First Campaign
                 </button>
               </div>
             )}

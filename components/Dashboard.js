@@ -47,6 +47,12 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [activeTab, setActiveTab] = useState('overview')
   const [activeFundingTab, setActiveFundingTab] = useState('grants')
   
+  // Modal states for funding tab
+  const [showCampaignModal, setShowCampaignModal] = useState(false)
+  const [showAngelModal, setShowAngelModal] = useState(false)
+  const [showReitsModal, setShowReitsModal] = useState(false)
+  const [showDonationsModal, setShowDonationsModal] = useState(false)
+  
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
   
@@ -937,7 +943,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         <Heart className="mx-auto h-12 w-12 text-gray-300 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Crowdfunding Campaigns</h3>
                         <p className="text-gray-600 mb-6">Launch campaigns to raise funds from your community</p>
-                        <button className="btn-primary">
+                        <button 
+                          onClick={() => setShowCampaignModal(true)}
+                          className="btn-primary"
+                        >
                           <Plus className="w-4 h-4 mr-2" />
                           Create Campaign
                         </button>
@@ -951,7 +960,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         <Users className="mx-auto h-12 w-12 text-gray-300 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Angel Investors</h3>
                         <p className="text-gray-600 mb-6">Connect with individual investors interested in your projects</p>
-                        <button className="btn-primary">
+                        <button 
+                          onClick={() => setShowAngelModal(true)}
+                          className="btn-primary"
+                        >
                           <Plus className="w-4 h-4 mr-2" />
                           Find Angels
                         </button>
@@ -965,7 +977,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         <TrendingUp className="mx-auto h-12 w-12 text-gray-300 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Real Estate Investment Trusts</h3>
                         <p className="text-gray-600 mb-6">Explore REIT opportunities for sustainable funding</p>
-                        <button className="btn-primary">
+                        <button 
+                          onClick={() => setShowReitsModal(true)}
+                          className="btn-primary"
+                        >
                           <Plus className="w-4 h-4 mr-2" />
                           Explore REITs
                         </button>
@@ -979,7 +994,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         <DollarSign className="mx-auto h-12 w-12 text-gray-300 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Direct Donations</h3>
                         <p className="text-gray-600 mb-6">Accept direct donations from supporters</p>
-                        <button className="btn-primary">
+                        <button 
+                          onClick={() => setShowDonationsModal(true)}
+                          className="btn-primary"
+                        >
                           <Plus className="w-4 h-4 mr-2" />
                           Setup Donations
                         </button>
@@ -1019,7 +1037,98 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             editProject={editingProject}
           />
         )}
+
+        {/* Funding Tab Modals */}
+        {showCampaignModal && <CampaignModal onClose={() => setShowCampaignModal(false)} />}
+        {showAngelModal && <AngelModal onClose={() => setShowAngelModal(false)} />}
+        {showReitsModal && <ReitsModal onClose={() => setShowReitsModal(false)} />}
+        {showDonationsModal && <DonationsModal onClose={() => setShowDonationsModal(false)} />}
       </main>
+    </div>
+  )
+}
+
+// Modal Components for Funding Tab
+function CampaignModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Create Campaign</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div className="text-center py-6">
+          <Heart className="mx-auto h-12 w-12 text-pink-300 mb-4" />
+          <p className="text-gray-600 mb-4">Campaign creation feature is coming soon!</p>
+          <p className="text-sm text-gray-500">Set up crowdfunding campaigns on platforms like GoFundMe, Kickstarter, and more.</p>
+        </div>
+        <div className="flex justify-end">
+          <button onClick={onClose} className="btn-primary">Got it</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AngelModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Find Angel Investors</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div className="text-center py-6">
+          <Users className="mx-auto h-12 w-12 text-blue-300 mb-4" />
+          <p className="text-gray-600 mb-4">Angel investor matching is coming soon!</p>
+          <p className="text-sm text-gray-500">Connect with individual investors who are interested in funding projects like yours.</p>
+        </div>
+        <div className="flex justify-end">
+          <button onClick={onClose} className="btn-primary">Got it</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReitsModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Explore REITs</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div className="text-center py-6">
+          <TrendingUp className="mx-auto h-12 w-12 text-green-300 mb-4" />
+          <p className="text-gray-600 mb-4">REIT exploration tools are coming soon!</p>
+          <p className="text-sm text-gray-500">Discover Real Estate Investment Trust opportunities for sustainable funding.</p>
+        </div>
+        <div className="flex justify-end">
+          <button onClick={onClose} className="btn-primary">Got it</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DonationsModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Setup Donations</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div className="text-center py-6">
+          <DollarSign className="mx-auto h-12 w-12 text-emerald-300 mb-4" />
+          <p className="text-gray-600 mb-4">Direct donation setup is coming soon!</p>
+          <p className="text-sm text-gray-500">Set up payment processing to accept direct donations from supporters.</p>
+        </div>
+        <div className="flex justify-end">
+          <button onClick={onClose} className="btn-primary">Got it</button>
+        </div>
+      </div>
     </div>
   )
 }
