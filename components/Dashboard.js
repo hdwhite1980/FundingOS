@@ -1,4 +1,4 @@
-// Dashboard.js - Updated to work with props from HomePage instead of useAuth hook
+// Dashboard.js - Updated with Modern SaaS Design System
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -30,7 +30,9 @@ import {
   FileText,
   Heart,
   CheckCircle,
-  Brain
+  Brain,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -432,38 +434,66 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       console.error('Failed to load project opportunities:', error)
     }
   }
-  
-  // Legacy StatCard wrapper for backward compatibility - will be phased out
-  const LegacyStatCard = ({ icon: Icon, title, value, subtitle, change, color = "green", trend, isFinancial = false }) => (
-    <StatCard 
-      icon={Icon}
-      iconBg="bg-brand-50" 
-      iconColor="text-brand-600"
-      label={title}
-      value={isFinancial && typeof value === 'number' ? `$${value.toLocaleString()}` : value}
-      sub={subtitle}
-    />
+
+  // Enhanced StatCard wrapper for modern design system
+  const ModernStatCard = ({ icon: Icon, title, value, subtitle, change, color = "emerald", trend, isFinancial = false }) => (
+    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="p-2.5 bg-slate-50 rounded-lg">
+              <Icon className="w-5 h-5 text-slate-600" />
+            </div>
+            <span className="text-sm font-medium text-slate-600">{title}</span>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-slate-900">
+              {isFinancial && typeof value === 'number' ? `$${value.toLocaleString()}` : value}
+            </p>
+            <p className="text-sm text-slate-500">{subtitle}</p>
+          </div>
+        </div>
+        {trend && (
+          <div className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium ${
+            trend === 'up' 
+              ? 'bg-emerald-100 text-emerald-700' 
+              : 'bg-red-100 text-red-700'
+          }`}>
+            {trend === 'up' ? (
+              <ArrowUpRight className="w-3 h-3" />
+            ) : (
+              <ArrowDownRight className="w-3 h-3" />
+            )}
+            <span>{change}</span>
+          </div>
+        )}
+      </div>
+    </div>
   )
 
-  // AI Agent Status Card component with shared StatCard
+  // AI Agent Status Card component
   const AgentStatusCard = ({ userId }) => (
-    <StatCard
-      icon={Brain}
-      iconBg="bg-emerald-50"
-      iconColor="text-emerald-600"
-      label="AI Assistant"
-      value="Ready"
-      sub="Available for analysis"
-    />
+    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+      <div className="flex items-center space-x-3 mb-4">
+        <div className="p-2.5 bg-emerald-50 rounded-lg">
+          <Brain className="w-5 h-5 text-emerald-600" />
+        </div>
+        <span className="text-sm font-medium text-slate-600">AI Assistant</span>
+      </div>
+      <div className="space-y-1">
+        <p className="text-2xl font-bold text-slate-900">Ready</p>
+        <p className="text-sm text-slate-500">Available for analysis</p>
+      </div>
+    </div>
   )
 
   // Show error if no user provided
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please log in</h2>
-          <p className="text-gray-600">You need to be authenticated to access the dashboard.</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Please log in</h2>
+          <p className="text-slate-600">You need to be authenticated to access the dashboard.</p>
         </div>
       </div>
     )
@@ -472,10 +502,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Show profile loading state
   if (!userProfile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your profile...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading your profile...</p>
         </div>
       </div>
     )
@@ -484,10 +514,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Dashboard loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
         <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
         </div>
       </div>
     )
@@ -495,10 +525,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
   // Main dashboard render
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-slate-50">
       <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Modern Navigation Tabs - iOS Segmented Control Style */}
         <div className="mb-8">
           <nav className="flex space-x-1 bg-slate-100 rounded-lg p-1 max-w-fit">
@@ -526,32 +556,32 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         {activeTab === 'overview' && (
           <>
             {/* Financial Overview Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-              <StatCard
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <ModernStatCard
                 icon={Target}
                 title="Active Projects"
                 value={stats.totalProjects}
                 subtitle={stats.totalFunding > 0 ? `Seeking $${stats.totalFunding.toLocaleString()}` : "No funding requests yet"}
-                color="green"
+                color="emerald"
               />
-              <StatCard
+              <ModernStatCard
                 icon={DollarSign}
                 title="Total Amount Received"
-                value={stats.totalReceived > 0 ? `$${stats.totalReceived.toLocaleString()}` : "$0"}
+                value={stats.totalReceived}
                 subtitle={
                   stats.totalReceived > 0 
                     ? `$${stats.receivedBreakdown.funding.toLocaleString()} grants + $${stats.receivedBreakdown.donations.toLocaleString()} donations`
                     : "No funding or donations yet"
                 }
-                color="gold"
+                color="amber"
                 isFinancial={true}
               />
-              <StatCard
+              <ModernStatCard
                 icon={Zap}
                 title="Active Opportunities"
                 value={stats.activeOpportunities}
                 subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
-                color="brand"
+                color="emerald"
               />
               <AgentStatusCard userId={user.id} />
             </div>
@@ -567,30 +597,32 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="card-financial"
+                    className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
                   >
                     <div className="p-6">
                       <div className="flex items-center mb-4">
-                        <TrendingUp className="w-5 h-5 text-brand-600 mr-3" />
-                        <h3 className="text-lg font-bold text-neutral-900">Recent Activity</h3>
+                        <div className="p-2 bg-slate-50 rounded-lg mr-3">
+                          <TrendingUp className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-900">Recent Activity</h3>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {insights.length > 0 ? (
                           insights.map((insight, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                            <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                               <div className="flex items-center">
                                 <div className={`w-2 h-2 rounded-full mr-3 bg-${insight.color}-500`}></div>
                                 <div>
-                                  <p className="font-semibold text-sm text-neutral-900">{insight.title}</p>
-                                  <p className="text-xs text-neutral-600">{insight.description}</p>
+                                  <p className="font-medium text-sm text-slate-900">{insight.title}</p>
+                                  <p className="text-xs text-slate-600">{insight.description}</p>
                                 </div>
                               </div>
                             </div>
                           ))
                         ) : (
                           <div className="text-center py-6">
-                            <p className="text-neutral-500 text-sm">No recent activity</p>
-                            <p className="text-neutral-400 text-xs">Start applying for grants or receiving donations to see updates here</p>
+                            <p className="text-slate-500 text-sm">No recent activity</p>
+                            <p className="text-slate-400 text-xs">Start applying for grants or receiving donations to see updates here</p>
                           </div>
                         )}
                       </div>
@@ -601,30 +633,32 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="card-financial"
+                    className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
                   >
                     <div className="p-6">
                       <div className="flex items-center mb-4">
-                        <Brain className="w-5 h-5 text-gold-600 mr-3" />
-                        <h3 className="text-lg font-bold text-neutral-900">AI Assistant Updates</h3>
+                        <div className="p-2 bg-amber-50 rounded-lg mr-3">
+                          <Brain className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-900">AI Assistant Updates</h3>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {aiActivity.length > 0 ? (
                           aiActivity.map((activity, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-brand-50 to-gold-50 rounded-lg">
+                            <div key={index} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
                               <div className="flex items-center">
                                 <div className={`w-2 h-2 rounded-full mr-3 bg-${activity.color}-500 animate-pulse`}></div>
                                 <div>
-                                  <p className="font-semibold text-sm text-neutral-900">{activity.title}</p>
-                                  <p className="text-xs text-neutral-600">{activity.description}</p>
+                                  <p className="font-medium text-sm text-slate-900">{activity.title}</p>
+                                  <p className="text-xs text-slate-600">{activity.description}</p>
                                 </div>
                               </div>
                             </div>
                           ))
                         ) : (
                           <div className="text-center py-6">
-                            <p className="text-neutral-500 text-sm">AI Assistant Ready</p>
-                            <p className="text-neutral-400 text-xs">Create projects to start AI-powered opportunity matching</p>
+                            <p className="text-slate-500 text-sm">AI Assistant Ready</p>
+                            <p className="text-slate-400 text-xs">Create projects to start AI-powered opportunity matching</p>
                           </div>
                         )}
                       </div>
@@ -638,35 +672,35 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="card-financial"
+                  className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
                 >
-                  <div className="p-6 border-b border-neutral-100">
+                  <div className="p-6 border-b border-slate-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-bold text-neutral-900">Quick Overview</h2>
+                      <h2 className="text-lg font-semibold text-slate-900">Quick Overview</h2>
                       <button
                         onClick={() => setShowCreateModal(true)}
-                        className="btn-primary btn-sm shadow-sm"
+                        className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2"
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        New Project
+                        <Plus className="w-4 h-4" />
+                        <span>New Project</span>
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-brand-50 rounded-lg">
-                        <p className="text-2xl font-bold text-brand-700">{stats.totalProjects}</p>
-                        <p className="text-xs text-brand-600">Projects</p>
+                      <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                        <p className="text-2xl font-bold text-emerald-700">{stats.totalProjects}</p>
+                        <p className="text-xs font-medium text-emerald-600">Projects</p>
                       </div>
-                      <div className="text-center p-3 bg-gold-50 rounded-lg">
-                        <p className="text-2xl font-bold text-gold-700">{stats.totalDonors}</p>
-                        <p className="text-xs text-gold-600">Donors</p>
+                      <div className="text-center p-3 bg-amber-50 rounded-lg">
+                        <p className="text-2xl font-bold text-amber-700">{stats.totalDonors}</p>
+                        <p className="text-xs font-medium text-amber-600">Donors</p>
                       </div>
-                      <div className="text-center p-3 bg-neutral-100 rounded-lg">
-                        <p className="text-2xl font-bold text-neutral-700">{stats.totalSubmissions}</p>
-                        <p className="text-xs text-neutral-600">Applications</p>
+                      <div className="text-center p-3 bg-slate-100 rounded-lg">
+                        <p className="text-2xl font-bold text-slate-700">{stats.totalSubmissions}</p>
+                        <p className="text-xs font-medium text-slate-600">Applications</p>
                       </div>
                       <div className="text-center p-3 bg-emerald-50 rounded-lg">
                         <p className="text-2xl font-bold text-emerald-700">{stats.activeOpportunities}</p>
-                        <p className="text-xs text-emerald-600">Opportunities</p>
+                        <p className="text-xs font-medium text-emerald-600">Opportunities</p>
                       </div>
                     </div>
                   </div>
@@ -676,17 +710,17 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         {projects.slice(0, 5).map(project => (
                           <div
                             key={project.id}
-                            className="flex items-center justify-between p-2 hover:bg-neutral-50 rounded-lg cursor-pointer"
+                            className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                             onClick={() => setSelectedProject(project)}
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-neutral-900 truncate">{project.name}</p>
-                              <p className="text-xs text-neutral-500">
+                              <p className="text-sm font-medium text-slate-900 truncate">{project.name}</p>
+                              <p className="text-xs text-slate-500">
                                 {project.funding_needed ? `$${project.funding_needed.toLocaleString()} needed` : 'No funding specified'}
                               </p>
                             </div>
                             <div className="flex-shrink-0 ml-2">
-                              <div className="w-2 h-2 bg-brand-500 rounded-full"></div>
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                             </div>
                           </div>
                         ))}
@@ -694,7 +728,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                           <div className="text-center pt-2">
                             <button
                               onClick={() => setActiveTab('opportunities')}
-                              className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                              className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
                             >
                               View all {projects.length} projects →
                             </button>
@@ -703,10 +737,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                       </div>
                     ) : (
                       <div className="text-center py-6">
-                        <p className="text-neutral-500 text-sm">No projects yet</p>
+                        <p className="text-slate-500 text-sm">No projects yet</p>
                         <button
                           onClick={() => setShowCreateModal(true)}
-                          className="text-xs text-brand-600 hover:text-brand-700 font-medium mt-1"
+                          className="text-xs text-emerald-600 hover:text-emerald-700 font-medium mt-1"
                         >
                           Create your first project
                         </button>
@@ -733,82 +767,80 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           <>
             {/* Funding Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard
+              <ModernStatCard
                 icon={DollarSign}
                 title="Funding Secured"
-                value={stats.totalAwarded > 0 ? `$${stats.totalAwarded.toLocaleString()}` : "$0"}
+                value={stats.totalAwarded}
                 subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
-                color="gold"
+                color="amber"
                 isFinancial={true}
               />
-              <StatCard
+              <ModernStatCard
                 icon={Target}
                 title="Funding Requested"
-                value={stats.totalRequested > 0 ? `$${stats.totalRequested.toLocaleString()}` : "$0"}
+                value={stats.totalRequested}
                 subtitle={stats.totalSubmissions > 0 ? `${stats.totalSubmissions} applications` : "No applications yet"}
-                color="brand"
+                color="emerald"
                 isFinancial={true}
               />
-              <StatCard
+              <ModernStatCard
                 icon={Zap}
                 title="Active Opportunities"
                 value={stats.activeOpportunities}
                 subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
-                color="brand"
+                color="emerald"
               />
-              <StatCard
+              <ModernStatCard
                 icon={FileText}
                 title="Applications"
                 value={stats.totalSubmissions}
                 subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
-                color="brand"
+                color="emerald"
               />
             </div>
 
-            {/* Enhanced Sync Control Panel - Available in Funding Tab */}
+            {/* Enhanced Sync Control Panel */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="card-financial mb-8 border-gradient-financial"
+              className="bg-white rounded-xl border border-slate-200 p-6 mb-8 hover:shadow-md transition-all duration-200"
             >
-              <div className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex items-center mb-4 lg:mb-0">
-                    <div className="p-3 bg-gradient-to-r from-brand-100 to-gold-100 rounded-2xl mr-4">
-                      <Database className="h-7 w-7 text-brand-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-neutral-900 mb-1">
-                        Federal Grant Database
-                      </h3>
-                      <p className="text-sm text-neutral-600 flex items-center">
-                        <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-gold-500 animate-pulse' : 'bg-brand-500'}`}></span>
-                        Live connection to federal funding opportunities
-                        {lastSyncTime && (
-                          <span className="ml-2 text-neutral-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
-                        )}
-                      </p>
-                    </div>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center mb-4 lg:mb-0">
+                  <div className="p-3 bg-emerald-100 rounded-lg mr-4">
+                    <Database className="h-6 w-6 text-emerald-600" />
                   </div>
-                  
-                  <button
-                    onClick={handleSyncOpportunities}
-                    disabled={syncing}
-                    className={`btn-primary btn-lg flex items-center shadow-financial ${syncing ? 'opacity-75' : ''}`}
-                  >
-                    {syncing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
-                        Syncing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-5 h-5 mr-3" />
-                        Refresh Opportunities
-                      </>
-                    )}
-                  </button>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                      Federal Grant Database
+                    </h3>
+                    <p className="text-sm text-slate-600 flex items-center">
+                      <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                      Live connection to federal funding opportunities
+                      {lastSyncTime && (
+                        <span className="ml-2 text-slate-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
+                
+                <button
+                  onClick={handleSyncOpportunities}
+                  disabled={syncing}
+                  className={`bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-6 py-3 flex items-center ${syncing ? 'opacity-75' : ''}`}
+                >
+                  {syncing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-5 h-5 mr-3" />
+                      Refresh Opportunities
+                    </>
+                  )}
+                </button>
               </div>
             </motion.div>
 
@@ -816,16 +848,16 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               <div className="xl:col-span-4">
                 <div className="space-y-6">
                   {/* Filter by Project */}
-                  <div className="card-financial">
-                    <div className="p-6 border-b border-neutral-100">
+                  <div className="bg-white rounded-xl border border-slate-200">
+                    <div className="p-6 border-b border-slate-200">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-neutral-900">Filter by Project</h2>
+                        <h2 className="text-lg font-semibold text-slate-900">Filter by Project</h2>
                         <button
                           onClick={() => setShowCreateModal(true)}
-                          className="btn-secondary btn-sm"
+                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2"
                         >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Project
+                          <Plus className="w-4 h-4" />
+                          <span>Add Project</span>
                         </button>
                       </div>
                     </div>
@@ -844,23 +876,22 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="card-financial"
+                    className="bg-white rounded-xl border border-slate-200"
                   >
-                    <div className="p-6 border-b border-neutral-100">
+                    <div className="p-6 border-b border-slate-200">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-neutral-900">Active Campaigns</h2>
-                        <button className="btn-primary btn-sm">
-                          <Plus className="w-4 h-4 mr-2" />
-                          New Campaign
+                        <h2 className="text-lg font-semibold text-slate-900">Active Campaigns</h2>
+                        <button className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2">
+                          <Plus className="w-4 h-4" />
+                          <span>New Campaign</span>
                         </button>
                       </div>
                     </div>
-                    <div className="p-4">
-                      {/* Campaign placeholder - will be populated with actual campaign data */}
+                    <div className="p-6">
                       <div className="text-center py-6">
-                        <Heart className="mx-auto h-8 w-8 text-gray-300 mb-2" />
-                        <p className="text-sm text-gray-600">No active campaigns</p>
-                        <p className="text-xs text-gray-500">Create campaigns to raise funds from multiple donors</p>
+                        <Heart className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-600">No active campaigns</p>
+                        <p className="text-xs text-slate-500">Create campaigns to raise funds from multiple donors</p>
                       </div>
                     </div>
                   </motion.div>
@@ -870,7 +901,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               <div className="xl:col-span-8">
                 {/* Funding Source Tabs */}
                 <div className="mb-6">
-                  <div className="border-b border-neutral-200">
+                  <div className="border-b border-slate-200">
                     <nav className="flex space-x-8">
                       {[
                         { id: 'grants', label: 'Grants', icon: FileText },
@@ -886,8 +917,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                             onClick={() => setActiveFundingTab(tab.id)}
                             className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                               activeFundingTab === tab.id
-                                ? 'border-brand-500 text-brand-600'
-                                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                                ? 'border-emerald-500 text-emerald-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                             }`}
                           >
                             <div className="flex items-center">
@@ -902,7 +933,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 </div>
 
                 {/* Funding Source Content */}
-                <div className="bg-white rounded-lg border">
+                <div className="bg-white rounded-xl border border-slate-200">
                   {activeFundingTab === 'grants' && (
                     <OpportunityList
                       opportunities={opportunities}
@@ -930,9 +961,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   {activeFundingTab === 'reits' && (
                     <div className="p-6">
                       <div className="text-center py-8">
-                        <TrendingUp className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Real Estate Investment Trusts</h3>
-                        <p className="text-gray-600 mb-6">REIT opportunities for sustainable funding</p>
+                        <TrendingUp className="mx-auto h-12 w-12 text-slate-300 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 mb-2">Real Estate Investment Trusts</h3>
+                        <p className="text-slate-600 mb-6">REIT opportunities for sustainable funding</p>
                         <div className="inline-flex items-center px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
                           <Clock className="w-4 h-4 mr-2" />
                           Coming Soon
@@ -995,8 +1026,8 @@ function CampaignModal({ onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-neutral-900">Create Campaign</h3>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
+          <h3 className="text-xl font-bold text-slate-900">Create Campaign</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
         </div>
         <div className="text-center py-8">
           <Heart className="mx-auto h-16 w-16 text-pink-400 mb-6" />
@@ -1017,8 +1048,8 @@ function AngelModal({ onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-neutral-900">Find Angel Investors</h3>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
+          <h3 className="text-xl font-bold text-slate-900">Find Angel Investors</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
         </div>
         <div className="text-center py-8">
           <Users className="mx-auto h-16 w-16 text-emerald-400 mb-6" />
@@ -1039,16 +1070,16 @@ function ReitsModal({ onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-neutral-900">Explore REITs</h3>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
+          <h3 className="text-xl font-bold text-slate-900">Explore REITs</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
         </div>
         <div className="text-center py-6">
           <TrendingUp className="mx-auto h-12 w-12 text-green-300 mb-4" />
-          <p className="text-gray-600 mb-4">REIT exploration tools are coming soon!</p>
-          <p className="text-sm text-gray-500">Discover Real Estate Investment Trust opportunities for sustainable funding.</p>
+          <p className="text-slate-600 mb-4">REIT exploration tools are coming soon!</p>
+          <p className="text-sm text-slate-500">Discover Real Estate Investment Trust opportunities for sustainable funding.</p>
         </div>
         <div className="flex justify-end">
-          <button onClick={onClose} className="btn-primary">Got it</button>
+          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
         </div>
       </div>
     </div>
@@ -1058,18 +1089,18 @@ function ReitsModal({ onClose }) {
 function DonationsModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Setup Donations</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-slate-900">Setup Donations</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
         </div>
         <div className="text-center py-6">
           <DollarSign className="mx-auto h-12 w-12 text-emerald-300 mb-4" />
-          <p className="text-gray-600 mb-4">Direct donation setup is coming soon!</p>
-          <p className="text-sm text-gray-500">Set up payment processing to accept direct donations from supporters.</p>
+          <p className="text-slate-600 mb-4">Direct donation setup is coming soon!</p>
+          <p className="text-sm text-slate-500">Set up payment processing to accept direct donations from supporters.</p>
         </div>
         <div className="flex justify-end">
-          <button onClick={onClose} className="btn-primary">Got it</button>
+          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
         </div>
       </div>
     </div>
