@@ -1,7 +1,7 @@
-"use client";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ArrowRight, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
+import ModalShell from './ui/ModalShell';
 import { angelInvestorServices } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -136,20 +136,20 @@ export default function AngelInvestorOnboarding({ user, investor, onComplete }) 
   };
 
   const StepWrapper = ({ children, title, subtitle }) => (
-    <motion.div key={step} initial={{ opacity:0, x:20}} animate={{opacity:1, x:0}} exit={{opacity:0,x:-20}} className="bg-white border rounded-xl p-6 shadow-sm">
-      <h2 className="text-xl font-semibold mb-1">{title}</h2>
-      {subtitle && <p className="text-sm text-gray-600 mb-4">{subtitle}</p>}
-      {error && <div className="mb-4 bg-red-50 text-red-700 px-3 py-2 rounded flex items-center text-sm"><AlertTriangle className="w-4 h-4 mr-2" />{error}</div>}
+    <motion.div key={step} initial={{ opacity:0, x:20}} animate={{opacity:1, x:0}} exit={{opacity:0,x:-20}} className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+      <h2 className="text-xl font-semibold mb-1 text-neutral-900">{title}</h2>
+      {subtitle && <p className="text-sm text-neutral-600 mb-4">{subtitle}</p>}
+      {error && <div className="mb-4 bg-red-50 text-red-700 px-3 py-2 rounded-lg flex items-center text-sm border border-red-200"><AlertTriangle className="w-4 h-4 mr-2" />{error}</div>}
       {children}
-      <div className="flex justify-between pt-6 mt-4 border-t">
-        <button disabled={step===1||saving} onClick={()=>setStep(s=>s-1)} className="px-4 py-2 text-sm rounded border disabled:opacity-40">Back</button>
+      <div className="flex justify-between pt-6 mt-4 border-t border-neutral-100">
+        <button disabled={step===1||saving} onClick={()=>setStep(s=>s-1)} className="px-4 py-2 text-sm rounded-md border border-neutral-200 text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 transition-colors">Back</button>
         {step < 4 ? (
-          <button disabled={saving} onClick={async ()=>{ const seg = step===1? 'core': step===2?'preferences':'enhancement'; const ok = await saveSegment(seg); if (ok) setStep(s=>s+1); }} className="px-5 py-2 bg-green-600 text-white rounded text-sm flex items-center disabled:opacity-60 hover:bg-green-700 transition-colors">
+          <button disabled={saving} onClick={async ()=>{ const seg = step===1? 'core': step===2?'preferences':'enhancement'; const ok = await saveSegment(seg); if (ok) setStep(s=>s+1); }} className="px-5 py-2 bg-brand-600 text-white rounded-md text-sm flex items-center disabled:opacity-60 hover:bg-brand-700 transition-colors">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Continue <ArrowRight className="w-4 h-4 ml-1" />
           </button>
         ) : (
-          <button disabled={saving} onClick={completeOnboarding} className="px-5 py-2 bg-green-600 text-white rounded text-sm flex items-center">
+          <button disabled={saving} onClick={completeOnboarding} className="px-5 py-2 bg-brand-600 text-white rounded-md text-sm flex items-center hover:bg-brand-700 transition-colors">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Finish <CheckCircle className="w-4 h-4 ml-1" />
           </button>
@@ -159,7 +159,7 @@ export default function AngelInvestorOnboarding({ user, investor, onComplete }) 
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
+    <div className="min-h-screen bg-neutral-50 py-10 px-4">
       <div className="max-w-3xl mx-auto">
         <ProgressBar step={step} />
         <AnimatePresence mode="wait">
@@ -188,8 +188,8 @@ function ProgressBar({ step }) {
         const complete = i+1 < step;
         return (
           <div key={l} className="flex-1 flex items-center">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border transition-colors ${complete? 'bg-green-600 text-white border-green-600': current? 'bg-green-600 text-white border-green-600':'bg-white text-gray-500 border-gray-300'}`}>{i+1}</div>
-            {i < labels.length-1 && <div className={`h-1 flex-1 mx-2 rounded ${complete? 'bg-green-500':'bg-gray-200'}`}></div>}
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border transition-colors ${complete? 'bg-brand-600 text-white border-brand-600': current? 'bg-brand-600 text-white border-brand-600':'bg-white text-neutral-500 border-neutral-300'}`}>{i+1}</div>
+            {i < labels.length-1 && <div className={`h-1 flex-1 mx-2 rounded ${complete? 'bg-brand-500':'bg-neutral-200'}`}></div>}
           </div>
         );
       })}
@@ -239,14 +239,14 @@ function EnhancementFields({ enhancement, setEnhancement }) {
 
 function VerificationFields() {
   return (
-    <div className="space-y-4 text-sm text-gray-600">
+    <div className="space-y-4 text-sm text-neutral-600">
       <p>Document upload & accreditation verification will be handled here in a future update.</p>
       <ul className="list-disc pl-5 space-y-1">
         <li>Upload accreditation proof (CPA letter, W2s, etc.)</li>
         <li>Identity verification (KYC)</li>
         <li>Agreement to platform terms</li>
       </ul>
-      <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded text-xs">Placeholder step for compliance pipeline.</div>
+      <div className="bg-gold-50 border border-gold-200 text-gold-800 p-3 rounded text-xs">Placeholder step for compliance pipeline.</div>
     </div>
   );
 }
@@ -255,10 +255,10 @@ function VerificationFields() {
 function RadioGroup({ label, value, onChange, options, displayMap }) {
   return (
     <div>
-      <p className="text-sm font-medium mb-2">{label}</p>
+      <p className="text-sm font-medium mb-2 text-neutral-700">{label}</p>
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
         {options.map(opt => (
-          <button key={opt} type="button" onClick={()=>onChange(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-green-50 transition-colors ${value===opt? 'border-green-600 bg-green-50 font-medium text-green-700':'border-gray-300 text-gray-600'}`}>{displayMap?.[opt] || opt}</button>
+          <button key={opt} type="button" onClick={()=>onChange(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-brand-50 transition-colors ${value===opt? 'border-brand-600 bg-brand-50 font-medium text-brand-700':'border-neutral-300 text-neutral-600'}`}>{displayMap?.[opt] || opt}</button>
         ))}
       </div>
     </div>
@@ -276,10 +276,10 @@ function CheckboxGroup({ label, values, setValues, options, limit, displayMap })
   };
   return (
     <div>
-      <p className="text-sm font-medium mb-2">{label}{limit? ` (max ${limit})`:''}</p>
+      <p className="text-sm font-medium mb-2 text-neutral-700">{label}{limit? ` (max ${limit})`:''}</p>
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
         {options.map(opt => (
-          <button key={opt} type="button" onClick={()=>toggle(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-green-50 transition-colors ${(values.includes(opt))? 'border-green-600 bg-green-50 font-medium text-green-700':'border-gray-300 text-gray-600'}`}>{displayMap?.[opt] || opt}</button>
+          <button key={opt} type="button" onClick={()=>toggle(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-brand-50 transition-colors ${(values.includes(opt))? 'border-brand-600 bg-brand-50 font-medium text-brand-700':'border-neutral-300 text-neutral-600'}`}>{displayMap?.[opt] || opt}</button>
         ))}
       </div>
     </div>
@@ -289,8 +289,8 @@ function CheckboxGroup({ label, values, setValues, options, limit, displayMap })
 function TextInput({ label, value, onChange, type='text' }) {
   return (
     <div>
-      <label className="text-sm font-medium mb-1 block">{label}</label>
-      <input type={type} value={value} onChange={(e)=>onChange(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+      <label className="text-sm font-medium mb-1 block text-neutral-700">{label}</label>
+      <input type={type} value={value} onChange={(e)=>onChange(e.target.value)} className="w-full border border-neutral-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all" />
     </div>
   );
 }
@@ -298,14 +298,14 @@ function TextInput({ label, value, onChange, type='text' }) {
 function EvaluationRanking({ current, onRank }) {
   return (
     <div>
-      <p className="text-sm font-medium mb-2">Importance ranking (1=most important)</p>
+      <p className="text-sm font-medium mb-2 text-neutral-700">Importance ranking (1=most important)</p>
       <div className="space-y-2">
         {EVALUATION_ITEMS.map(item => (
           <div key={item} className="flex items-center gap-3">
-            <span className="w-40 text-sm capitalize">{item.replace('_',' ')}</span>
+            <span className="w-40 text-sm capitalize text-neutral-700">{item.replace('_',' ')}</span>
             <div className="flex gap-1">
               {[1,2,3,4,5].map(n=> (
-                <button key={n} type="button" onClick={()=>onRank(item,n)} className={`w-8 h-8 text-xs rounded-md border flex items-center justify-center transition-colors ${current?.[item]===n? 'bg-green-600 text-white border-green-600':'border-gray-300 text-gray-600 hover:bg-green-50'}`}>{n}</button>
+                <button key={n} type="button" onClick={()=>onRank(item,n)} className={`w-8 h-8 text-xs rounded-md border flex items-center justify-center transition-colors ${current?.[item]===n? 'bg-brand-600 text-white border-brand-600':'border-neutral-300 text-neutral-600 hover:bg-brand-50'}`}>{n}</button>
               ))}
             </div>
           </div>

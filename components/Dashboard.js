@@ -9,6 +9,7 @@ import DonorManagement from './DonorManagement'
 // Focused funding source components
 import CampaignList from './CampaignList'
 import DirectDonationsList from './DirectDonationsList'
+import { StatCard } from './ui/StatCard'
 import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
@@ -431,51 +432,28 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       console.error('Failed to load project opportunities:', error)
     }
   }
-
-  // Enhanced stat card component with financial focus
-  const StatCard = ({ icon: Icon, title, value, subtitle, change, color = "green", trend, isFinancial = false }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-xl border border-green-100 shadow-sm hover:shadow-lg transition-all duration-300 group p-4 sm:p-6"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center mb-3">
-            <div className={`p-2 sm:p-3 bg-green-100 rounded-xl mr-3 group-hover:scale-110 transition-transform`}>
-              <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-neutral-700 truncate">{title}</p>
-              {change && (
-                <div className={`flex items-center text-xs font-medium mt-1 ${change.positive ? 'text-green-600' : 'text-red-600'}`}>
-                  <TrendingUp className={`w-3 h-3 mr-1 ${change.positive ? '' : 'rotate-180'}`} />
-                  {change.value}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mb-2">
-            <p className="text-xl sm:text-2xl font-bold text-green-700">
-              {isFinancial && typeof value === 'number' ? `$${value.toLocaleString()}` : value}
-            </p>
-          </div>
-          {subtitle && (
-            <p className="text-xs sm:text-sm text-neutral-500 line-clamp-2">{subtitle}</p>
-          )}
-        </div>
-      </div>
-    </motion.div>
+  
+  // Legacy StatCard wrapper for backward compatibility - will be phased out
+  const LegacyStatCard = ({ icon: Icon, title, value, subtitle, change, color = "green", trend, isFinancial = false }) => (
+    <StatCard 
+      icon={Icon}
+      iconBg="bg-brand-50" 
+      iconColor="text-brand-600"
+      label={title}
+      value={isFinancial && typeof value === 'number' ? `$${value.toLocaleString()}` : value}
+      sub={subtitle}
+    />
   )
 
-  // AI Agent Status Card component with financial styling
+  // AI Agent Status Card component with shared StatCard
   const AgentStatusCard = ({ userId }) => (
     <StatCard
       icon={Brain}
-      title="AI Assistant"
+      iconBg="bg-emerald-50"
+      iconColor="text-emerald-600"
+      label="AI Assistant"
       value="Ready"
-      subtitle="Available for analysis"
-      color="green"
+      sub="Available for analysis"
     />
   )
 

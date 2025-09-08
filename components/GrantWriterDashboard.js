@@ -2,11 +2,12 @@
 import React from 'react';
 import { PenTool, FileText, Clock, CheckCircle } from 'lucide-react';
 import Logo from './Logo';
+import { StatCard } from './ui/StatCard';
 
 export default function GrantWriterDashboard({ user, userProfile }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex flex-col">
-      <header className="bg-white border-b border-green-200 shadow-sm px-4 sm:px-6 py-6">
+    <div className="min-h-screen bg-neutral-50 flex flex-col">
+      <header className="bg-white border-b border-neutral-200 shadow-sm px-4 sm:px-6 py-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center space-x-4">
             <Logo variant="dark" size="md" showText={false} />
@@ -21,45 +22,29 @@ export default function GrantWriterDashboard({ user, userProfile }) {
       <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8">
         {/* Feature Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <div className="bg-white rounded-xl border border-green-100 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 bg-green-100 rounded-xl mr-4">
-                <PenTool className="h-6 w-6 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-neutral-900">AI Drafting</h3>
-            </div>
-            <p className="text-sm text-neutral-600">AI-assisted narrative drafting and optimization</p>
-          </div>
+          <StatCard 
+            icon={PenTool}
+            label="AI Drafting"
+            value="AI-assisted narrative drafting and optimization"
+          />
 
-          <div className="bg-white rounded-xl border border-green-100 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 bg-emerald-100 rounded-xl mr-4">
-                <FileText className="h-6 w-6 text-emerald-600" />
-              </div>
-              <h3 className="font-semibold text-neutral-900">Content Library</h3>
-            </div>
-            <p className="text-sm text-neutral-600">Reusable content library & compliance checklist</p>
-          </div>
+          <StatCard 
+            icon={FileText}
+            label="Content Library"
+            value="Reusable content library & compliance checklist"
+          />
 
-          <div className="bg-white rounded-xl border border-green-100 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 bg-green-100 rounded-xl mr-4">
-                <Clock className="h-6 w-6 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-neutral-900">Pipeline Tracking</h3>
-            </div>
-            <p className="text-sm text-neutral-600">Submission pipeline and status tracking</p>
-          </div>
+          <StatCard 
+            icon={Clock}
+            label="Pipeline Tracking"
+            value="Submission pipeline and status tracking"
+          />
 
-          <div className="bg-white rounded-xl border border-green-100 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 bg-emerald-100 rounded-xl mr-4">
-                <CheckCircle className="h-6 w-6 text-emerald-600" />
-              </div>
-              <h3 className="font-semibold text-neutral-900">Collaboration</h3>
-            </div>
-            <p className="text-sm text-neutral-600">Collaboration notes & version history</p>
-          </div>
+          <StatCard 
+            icon={CheckCircle}
+            label="Collaboration"
+            value="Collaboration notes & version history"
+          />
         </div>
 
         <section className="bg-white border border-green-100 rounded-xl shadow-sm p-6 sm:p-8">

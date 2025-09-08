@@ -34,6 +34,8 @@ import { angelInvestorServices } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import CompanyManager from './CompanyManager';
 import Logo from './Logo';
+import { StatCard } from './ui/StatCard';
+import { ModalShell } from './ui/ModalShell';
 
 const AngelInvestorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -204,79 +206,33 @@ const AngelInvestorDashboard = () => {
 
       {/* Portfolio Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Invested</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ${(currentInvestorData.investor?.total_invested || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-4 bg-brand-50 rounded-xl border border-brand-100">
-              <DollarSign className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-          <div className="flex items-center mt-4 text-sm">
-            <ArrowUpRight className="w-4 h-4 text-green-500 mr-1" />
-            <span className="text-green-500">+12% this quarter</span>
-          </div>
-        </div>
+        <StatCard 
+          icon={DollarSign}
+          label="Total Invested"
+          value={`$${(currentInvestorData.investor?.total_invested || 0).toLocaleString()}`}
+          sub="+12% this quarter"
+        />
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Portfolio Value</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ${(currentInvestorData.investor?.portfolio_value || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-          <div className="flex items-center mt-4 text-sm">
-            <ArrowUpRight className="w-4 h-4 text-green-500 mr-1" />
-            <span className="text-green-500">
-              +{((currentInvestorData.investor?.portfolio_value / Math.max(currentInvestorData.investor?.total_invested, 1) - 1) * 100).toFixed(1)}% ROI
-            </span>
-          </div>
-        </div>
+        <StatCard 
+          icon={TrendingUp}
+          label="Portfolio Value"
+          value={`$${(currentInvestorData.investor?.portfolio_value || 0).toLocaleString()}`}
+          sub={`+${((currentInvestorData.investor?.portfolio_value / Math.max(currentInvestorData.investor?.total_invested, 1) - 1) * 100).toFixed(1)}% ROI`}
+        />
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active Investments</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {currentInvestorData.investor?.active_investments || 0}
-              </p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <Building2 className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-          <div className="flex items-center mt-4 text-sm">
-            <ArrowUpRight className="w-4 h-4 text-green-500 mr-1" />
-            <span className="text-green-500">+3 this month</span>
-          </div>
-        </div>
+        <StatCard 
+          icon={Building2}
+          label="Active Investments"
+          value={`${currentInvestorData.investor?.active_investments || 0}`}
+          sub="+3 this month"
+        />
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">New Opportunities</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {opportunities.length}
-              </p>
-            </div>
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <Target className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-          <div className="flex items-center mt-4 text-sm">
-            <Clock className="w-4 h-4 text-blue-500 mr-1" />
-            <span className="text-blue-500">Updated today</span>
-          </div>
-        </div>
+        <StatCard 
+          icon={Target}
+          label="New Opportunities"
+          value={`${opportunities.length}`}
+          sub="Updated today"
+        />
       </div>
 
       {/* Quick Actions */}
