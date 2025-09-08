@@ -90,10 +90,10 @@ export default function AngelDashboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Authenticating...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-600" />
+          <p className="text-neutral-600">Authenticating...</p>
         </div>
       </div>
     )
@@ -101,10 +101,10 @@ export default function AngelDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading investor profile...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-600" />
+          <p className="text-neutral-600">Loading investor profile...</p>
         </div>
       </div>
     )
@@ -112,10 +112,10 @@ export default function AngelDashboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100">
         <div className="text-center">
           <h1 className="text-xl font-bold mb-4 text-red-600">Error Loading Profile</h1>
-          <p className="text-gray-600 mb-4">{error.message}</p>
+          <p className="text-neutral-600 mb-4">{error.message}</p>
         </div>
       </div>
     )
@@ -127,10 +127,10 @@ export default function AngelDashboardPage() {
       {!showOnboarding ? (
         <AngelInvestorDashboard />
       ) : (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100">
           <div className="text-center">
             <h1 className="text-xl font-bold mb-4">Should Show Onboarding</h1>
-            <p className="text-gray-600">But this shouldn't happen since all flags are true</p>
+            <p className="text-neutral-600">But this shouldn't happen since all flags are true</p>
           </div>
         </div>
       )}

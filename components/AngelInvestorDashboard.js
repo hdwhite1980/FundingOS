@@ -635,34 +635,34 @@ const AngelInvestorDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 shadow-sm">
+      <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 border-b border-green-200 shadow-lg">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-8 gap-6">
             <div className="flex items-center space-x-6">
-              <Logo variant="dark" size="lg" showText={false} />
+              <Logo variant="light" size="lg" showText={false} />
               <div>
-                <h1 className="text-4xl font-bold text-neutral-900 mb-2">Angel Investor Dashboard</h1>
-                <p className="text-neutral-600 text-lg">Welcome back, {currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'Angel Investor'}</p>
+                <h1 className="text-4xl font-bold text-white mb-2">Angel Investor Dashboard</h1>
+                <p className="text-green-100 text-lg">Welcome back, {currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'Angel Investor'}</p>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-8">
               <div className="text-right">
-                <p className="text-sm text-neutral-500 font-semibold mb-2">Portfolio Value</p>
-                <p className="text-3xl font-bold text-brand-600">
+                <p className="text-sm text-green-100 font-semibold mb-2">Portfolio Value</p>
+                <p className="text-3xl font-bold text-white">
                   ${(currentInvestorData.investor?.portfolio_value || 0).toLocaleString()}
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shadow-sm">
-                  <span className="text-green-700 font-semibold text-lg">
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm border border-white border-opacity-30">
+                  <span className="text-white font-semibold text-lg">
                     {(currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'AI').split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 border border-gray-200 hover:border-red-200"
+                  className="flex items-center space-x-2 px-4 py-2.5 text-sm text-white hover:text-red-200 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all duration-200 border border-white border-opacity-30 hover:border-red-200"
                   title="Logout"
                 >
                   <LogOut size={18} />
@@ -675,7 +675,7 @@ const AngelInvestorDashboard = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b border-neutral-200 shadow-sm">
+      <div className="bg-white border-b border-green-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
           <nav className="flex space-x-2 overflow-x-auto py-2">
             {[
@@ -691,8 +691,8 @@ const AngelInvestorDashboard = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'bg-brand-50 border-2 border-brand-200 text-brand-700 shadow-sm'
-                      : 'text-neutral-600 hover:text-brand-600 hover:bg-brand-25 border-2 border-transparent'
+                      ? 'bg-green-100 border-2 border-green-300 text-green-800 shadow-sm'
+                      : 'text-neutral-600 hover:text-green-700 hover:bg-green-50 border-2 border-transparent'
                   }`}
                 >
                   <Icon className="w-5 h-5 mr-3" />

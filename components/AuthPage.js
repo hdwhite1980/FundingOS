@@ -124,53 +124,47 @@ export default function AuthPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-brand-50/30 to-gold-50/30 flex">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 flex">
       {/* Left Side - Features */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-900 via-brand-800 to-neutral-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-900/95 via-brand-800/90 to-gold-900/95"></div>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-800 via-emerald-800 to-green-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-900/95 via-emerald-800/90 to-green-800/95"></div>
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundImage: `url("data:image/svg+xml,%3Csvv width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             backgroundSize: '60px 60px'
           }}></div>
         </div>
         
-        <div className="relative z-10 flex flex-col justify-center px-12 py-12">
+        <div className="relative z-10 flex flex-col justify-center px-8 sm:px-12 py-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
             {/* Logo */}
-            <div className="flex items-center mb-8">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mr-4">
-                <span className="text-white font-bold text-xl">W</span>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-white">WALI OS</h1>
-                <p className="text-sm text-blue-100 font-medium">powered by AHTS</p>
-              </div>
+            <div className="mb-8">
+              <Logo variant="light" size="lg" showText={true} />
             </div>
             
-            <h2 className="text-4xl font-bold text-white mb-6">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6">
               Unlock Your Funding Potential
             </h2>
-            <p className="text-xl text-neutral-200 mb-8 leading-relaxed">
+            <p className="text-lg sm:text-xl text-green-100 mb-6 sm:mb-8 leading-relaxed">
               The AI-powered financial platform that streamlines grant applications, 
               maximizes funding success, and accelerates your growth.
             </p>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {features.map((feature, index) => (
                 <motion.div
                   key={feature}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
-                  className="flex items-center text-neutral-200 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300"
+                  className="flex items-center text-green-100 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300"
                 >
-                  <CheckCircle className="w-5 h-5 text-gold-400 mr-3 flex-shrink-0" />
-                  <span className="font-medium">{feature}</span>
+                  <CheckCircle className="w-5 h-5 text-emerald-400 mr-3 flex-shrink-0" />
+                  <span className="font-medium text-sm sm:text-base">{feature}</span>
                 </motion.div>
               ))}
             </div>
@@ -179,17 +173,11 @@ export default function AuthPage() {
       </div>
 
       {/* Right Side - Auth Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-12 sm:px-12 lg:px-16">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-8 py-8 sm:py-12 lg:px-16">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center justify-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mr-3">
-              <span className="text-white font-bold text-xl">W</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">WALI OS</h1>
-              <p className="text-xs text-blue-500 font-medium">powered by AHTS</p>
-            </div>
+          <div className="lg:hidden flex justify-center mb-6 sm:mb-8">
+            <Logo variant="dark" size="lg" showText={true} />
           </div>
 
           <motion.div
@@ -219,14 +207,14 @@ export default function AuthPage() {
             {isSignUp && (
               <>
                 <div>
-                  <label className="form-label flex items-center">
-                    <User className="inline w-4 h-4 mr-2 text-brand-600" />
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
+                    <User className="inline w-4 h-4 mr-2 text-green-600" />
                     Full Name
                   </label>
                   <input
                     type="text"
                     name="fullName"
-                    className="form-input focus:ring-brand-500 focus:border-brand-500"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                     value={formData.fullName}
                     onChange={handleInputChange}
                     placeholder="Enter your full name"
@@ -235,14 +223,14 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="form-label flex items-center">
-                    <Building2 className="inline w-4 h-4 mr-2 text-brand-600" />
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
+                    <Building2 className="inline w-4 h-4 mr-2 text-green-600" />
                     Organization Name
                   </label>
                   <input
                     type="text"
                     name="organizationName"
-                    className="form-input focus:ring-brand-500 focus:border-brand-500"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                     value={formData.organizationName}
                     onChange={handleInputChange}
                     placeholder="Enter your organization name"
@@ -250,8 +238,8 @@ export default function AuthPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label flex items-center">Select Role</label>
-                  <div className='grid grid-cols-3 gap-3 text-sm'>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-3">Select Role</label>
+                  <div className='grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm'>
                     {[
                       { value: 'angel_investor', label: 'Angel Investor' },
                       { value: 'company', label: 'Company' },
@@ -261,7 +249,7 @@ export default function AuthPage() {
                         type='button'
                         key={r.value}
                         onClick={()=>setFormData(f=>({...f,userRole:r.value}))}
-                        className={`border-2 rounded-xl p-4 flex items-center justify-center hover:bg-brand-25 transition-all duration-200 font-semibold ${formData.userRole===r.value? 'border-brand-500 bg-brand-50 text-brand-700 shadow-sm':'border-neutral-300 text-neutral-600 hover:border-brand-300'}`}
+                        className={`border-2 rounded-xl p-3 sm:p-4 flex items-center justify-center hover:bg-green-25 transition-all duration-200 font-semibold text-xs sm:text-sm ${formData.userRole===r.value? 'border-green-500 bg-green-50 text-green-700 shadow-sm':'border-neutral-300 text-neutral-600 hover:border-green-300'}`}
                       >{r.label}</button>
                     ))}
                   </div>
@@ -270,14 +258,14 @@ export default function AuthPage() {
             )}
 
             <div>
-              <label className="form-label flex items-center">
-                <Mail className="inline w-4 h-4 mr-2 text-brand-600" />
+              <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
+                <Mail className="inline w-4 h-4 mr-2 text-green-600" />
                 Email Address
               </label>
               <input
                 type="email"
                 name="email"
-                className="form-input focus:ring-brand-500 focus:border-brand-500"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="Enter your email"
@@ -286,14 +274,14 @@ export default function AuthPage() {
             </div>
 
             <div>
-              <label className="form-label flex items-center">
-                <Lock className="inline w-4 h-4 mr-2 text-brand-600" />
+              <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
+                <Lock className="inline w-4 h-4 mr-2 text-green-600" />
                 Password
               </label>
               <input
                 type="password"
                 name="password"
-                className="form-input focus:ring-brand-500 focus:border-brand-500"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="Enter your password"
@@ -304,14 +292,14 @@ export default function AuthPage() {
 
             {isSignUp && (
               <div>
-                <label className="form-label flex items-center">
-                  <Lock className="inline w-4 h-4 mr-2 text-brand-600" />
+                <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
+                  <Lock className="inline w-4 h-4 mr-2 text-green-600" />
                   Confirm Password
                 </label>
                 <input
                   type="password"
                   name="confirmPassword"
-                  className="form-input focus:ring-brand-500 focus:border-brand-500"
+                  className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   placeholder="Confirm your password"
@@ -323,7 +311,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary btn-lg shadow-financial hover:shadow-lg"
+              className="w-full bg-green-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="flex items-center justify-center">
@@ -331,15 +319,15 @@ export default function AuthPage() {
                   Processing...
                 </div>
               ) : (
-                <>
+                <div className="flex items-center justify-center">
                   {isSignUp ? 'Create Account' : 'Sign In'}
                   <ArrowRight className="ml-2 w-5 h-5" />
-                </>
+                </div>
               )}
             </button>
           </motion.form>
 
-          <div className="text-center mt-8">
+          <div className="text-center mt-6 sm:mt-8">
             <button
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-brand-600 hover:text-brand-700 font-semibold transition-colors"

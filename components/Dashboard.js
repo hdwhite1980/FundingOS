@@ -432,22 +432,22 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   }
 
   // Enhanced stat card component with financial focus
-  const StatCard = ({ icon: Icon, title, value, subtitle, change, color = "brand", trend, isFinancial = false }) => (
+  const StatCard = ({ icon: Icon, title, value, subtitle, change, color = "green", trend, isFinancial = false }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card-financial p-6 hover:shadow-lg transition-all duration-300 group"
+      className="bg-white rounded-xl border border-green-100 shadow-sm hover:shadow-lg transition-all duration-300 group p-4 sm:p-6"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center mb-3">
-            <div className={`p-2 bg-${color}-100 rounded-xl mr-3 group-hover:scale-110 transition-transform`}>
-              <Icon className={`h-5 w-5 text-${color}-600`} />
+            <div className={`p-2 sm:p-3 bg-green-100 rounded-xl mr-3 group-hover:scale-110 transition-transform`}>
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-neutral-600">{title}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-neutral-700 truncate">{title}</p>
               {change && (
-                <div className={`flex items-center text-xs font-medium ${change.positive ? 'text-financial-success' : 'text-financial-danger'}`}>
+                <div className={`flex items-center text-xs font-medium mt-1 ${change.positive ? 'text-green-600' : 'text-red-600'}`}>
                   <TrendingUp className={`w-3 h-3 mr-1 ${change.positive ? '' : 'rotate-180'}`} />
                   {change.value}
                 </div>
@@ -455,12 +455,12 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             </div>
           </div>
           <div className="mb-2">
-            <p className={`text-2xl font-bold ${isFinancial ? 'text-brand-700' : 'text-neutral-900'}`}>
+            <p className="text-xl sm:text-2xl font-bold text-green-700">
               {isFinancial && typeof value === 'number' ? `$${value.toLocaleString()}` : value}
             </p>
           </div>
           {subtitle && (
-            <p className="text-sm text-neutral-500">{subtitle}</p>
+            <p className="text-xs sm:text-sm text-neutral-500 line-clamp-2">{subtitle}</p>
           )}
         </div>
       </div>
@@ -474,7 +474,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       title="AI Assistant"
       value="Ready"
       subtitle="Available for analysis"
-      color="gold"
+      color="green"
     />
   )
 
@@ -516,29 +516,29 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
   // Main dashboard render
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-brand-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
       
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Modern Navigation Tabs */}
         <div className="mb-8">
-          <div className="border-b border-neutral-200">
-            <nav className="flex space-x-8">
+          <div className="border-b border-green-200">
+            <nav className="flex space-x-2 sm:space-x-8 overflow-x-auto">
               {tabs.map(tab => {
                 const Icon = tab.icon
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`group py-4 px-2 border-b-2 font-semibold text-sm flex flex-col items-center transition-all duration-200 ${
+                    className={`group py-4 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm flex flex-col items-center transition-all duration-200 whitespace-nowrap ${
                       activeTab === tab.id
-                        ? 'border-brand-500 text-brand-600'
-                        : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                        ? 'border-green-600 text-green-700 bg-green-50'
+                        : 'border-transparent text-neutral-600 hover:text-green-700 hover:border-green-300 hover:bg-green-25'
                     }`}
                   >
-                    <Icon className="w-5 h-5 mb-1" />
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 mb-1" />
                     <span>{tab.label}</span>
-                    <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                    <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity mt-1 hidden sm:block">
                       {tab.description}
                     </span>
                   </button>
@@ -552,13 +552,13 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         {activeTab === 'overview' && (
           <>
             {/* Financial Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
               <StatCard
                 icon={Target}
                 title="Active Projects"
                 value={stats.totalProjects}
                 subtitle={stats.totalFunding > 0 ? `Seeking $${stats.totalFunding.toLocaleString()}` : "No funding requests yet"}
-                color="brand"
+                color="green"
               />
               <StatCard
                 icon={DollarSign}
@@ -1052,18 +1052,19 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 function CampaignModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Create Campaign</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-neutral-900">Create Campaign</h3>
+          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
         </div>
-        <div className="text-center py-6">
-          <Heart className="mx-auto h-12 w-12 text-pink-300 mb-4" />
-          <p className="text-gray-600 mb-4">Campaign creation feature is coming soon!</p>
-          <p className="text-sm text-gray-500">Set up crowdfunding campaigns on platforms like GoFundMe, Kickstarter, and more.</p>
+        <div className="text-center py-8">
+          <Heart className="mx-auto h-16 w-16 text-pink-400 mb-6" />
+          <h4 className="text-lg font-semibold text-neutral-900 mb-3">Campaign Creation Coming Soon!</h4>
+          <p className="text-neutral-600 mb-2">Set up crowdfunding campaigns on platforms like:</p>
+          <p className="text-sm text-neutral-500">GoFundMe • Kickstarter • Indiegogo • And more</p>
         </div>
         <div className="flex justify-end">
-          <button onClick={onClose} className="btn-primary">Got it</button>
+          <button onClick={onClose} className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-medium transition-colors">Got it</button>
         </div>
       </div>
     </div>
@@ -1073,18 +1074,19 @@ function CampaignModal({ onClose }) {
 function AngelModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Find Angel Investors</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-neutral-900">Find Angel Investors</h3>
+          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
         </div>
-        <div className="text-center py-6">
-          <Users className="mx-auto h-12 w-12 text-blue-300 mb-4" />
-          <p className="text-gray-600 mb-4">Angel investor matching is coming soon!</p>
-          <p className="text-sm text-gray-500">Connect with individual investors who are interested in funding projects like yours.</p>
+        <div className="text-center py-8">
+          <Users className="mx-auto h-16 w-16 text-green-400 mb-6" />
+          <h4 className="text-lg font-semibold text-neutral-900 mb-3">Angel Investor Matching Coming Soon!</h4>
+          <p className="text-neutral-600 mb-2">Connect with individual investors who are interested in</p>
+          <p className="text-sm text-neutral-500">funding projects like yours</p>
         </div>
         <div className="flex justify-end">
-          <button onClick={onClose} className="btn-primary">Got it</button>
+          <button onClick={onClose} className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-medium transition-colors">Got it</button>
         </div>
       </div>
     </div>
@@ -1094,10 +1096,10 @@ function AngelModal({ onClose }) {
 function ReitsModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Explore REITs</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-neutral-900">Explore REITs</h3>
+          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
         </div>
         <div className="text-center py-6">
           <TrendingUp className="mx-auto h-12 w-12 text-green-300 mb-4" />
