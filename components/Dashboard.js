@@ -6,7 +6,10 @@ import Header from './Header'
 import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
 import DonorManagement from './DonorManagement'
-import AngelInvestorDashboard from './AngelInvestorDashboard'
+// Focused funding source components
+import CampaignList from './CampaignList'
+import DirectDonationsList from './DirectDonationsList'
+import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
 import AIAgentInterface from './AIAgentInterface'
@@ -936,15 +939,19 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   )}
 
                   {activeFundingTab === 'campaigns' && (
-                    <DonorManagement 
-                      user={user} 
+                    <CampaignList
+                      user={user}
                       userProfile={userProfile}
-                      initialTab="campaigns"
+                      projects={projects}
                     />
                   )}
 
                   {activeFundingTab === 'angels' && (
-                    <AngelInvestorDashboard />
+                    <AngelInvestorOpportunities
+                      user={user}
+                      userProfile={userProfile}
+                      selectedProject={selectedProject}
+                    />
                   )}
 
                   {activeFundingTab === 'reits' && (
@@ -962,10 +969,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   )}
 
                   {activeFundingTab === 'donations' && (
-                    <DonorManagement 
-                      user={user} 
+                    <DirectDonationsList
+                      user={user}
                       userProfile={userProfile}
-                      initialTab="donors"
+                      projects={projects}
                     />
                   )}
                 </div>
