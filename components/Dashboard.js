@@ -574,45 +574,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Main dashboard render with FULL MOBILE RESPONSIVENESS
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* MOBILE-OPTIMIZED HEADER */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="p-1.5 sm:p-2 bg-emerald-600 rounded-lg">
-                  <Building className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-lg font-semibold text-slate-900">WALI-OS</h1>
-                  <p className="text-xs text-slate-500">Powered by AHTS</p>
-                </div>
-                <div className="sm:hidden">
-                  <h1 className="text-base font-semibold text-slate-900">WALI-OS</h1>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <button className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
-                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors relative">
-                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                {stats.pendingApplications > 0 && (
-                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
-                )}
-              </button>
-              <button className="hidden sm:block p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
-                <Settings className="w-5 h-5" />
-              </button>
-              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-emerald-600 rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm">
-                {userProfile.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Use the proper Header component */}
+      <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* MOBILE-RESPONSIVE NAVIGATION */}
