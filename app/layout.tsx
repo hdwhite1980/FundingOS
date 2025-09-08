@@ -16,8 +16,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <head>
-        <title>WALI OS - AI-Powered Grant Management</title>
-        <meta name="description" content="Streamline your grant applications with AI-powered assistance" />
+  <title>WALI-OS · Powered by AHTS</title>
+  <meta name="description" content="WALI-OS · Powered by AHTS" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

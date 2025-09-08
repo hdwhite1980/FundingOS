@@ -54,7 +54,7 @@ const Logo = ({
           <span className={`
             text-xs font-medium tracking-wide ${subtextColor}
           `}>
-            powered by AHTS
+            Powered by AHTS
           </span>
         </div>
       )}
