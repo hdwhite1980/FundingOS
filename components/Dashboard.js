@@ -584,11 +584,11 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   <Building className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
                 <div className="hidden sm:block">
-                  <h1 className="text-lg font-semibold text-slate-900">FundFlow</h1>
-                  <p className="text-xs text-slate-500">Grant Management Platform</p>
+                  <h1 className="text-lg font-semibold text-slate-900">WALI-OS</h1>
+                  <p className="text-xs text-slate-500">Powered by AHTS</p>
                 </div>
                 <div className="sm:hidden">
-                  <h1 className="text-base font-semibold text-slate-900">FundFlow</h1>
+                  <h1 className="text-base font-semibold text-slate-900">WALI-OS</h1>
                 </div>
               </div>
             </div>
