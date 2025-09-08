@@ -1,0 +1,696 @@
+import { supabase } from '../../../../lib/supabase'
+import { AIService } from '../../../../lib/aiService'
+import { NextResponse } from 'next/server'
+
+interface SAMOpportunity {
+  noticeId: string
+  title: string
+  solicitationNumber: string
+  department: string
+  subTier: string
+  office: string
+  postedDate: string
+  type: string
+  baseType: string
+  archiveType: string
+  archiveDate?: string
+  typeOfSetAsideDescription?: string
+  typeOfSetAside?: string
+  responseDeadLine?: string
+  naicsCode?: string
+  classificationCode?: string
+  active: string
+  award?: {
+    date: string
+    number: string
+    amount: string
+    awardee: {
+      name: string
+      location: {
+        streetAddress: string
+        city: { code: string; name: string }
+        state: { code: string }
+        zip: string
+        country: { code: string }
+      }
+      ueiSAM: string
+    }
+  }
+  pointOfContact?: Array<{
+    fax?: string
+    type: string
+    email?: string
+    phone?: string
+    title?: string
+    fullName?: string
+  }>
+  description?: string
+  organizationType?: string[]
+  officeAddress?: {
+    city: string
+    state: string
+    country: string
+  }
+}
+
+interface SearchConfiguration {
+  name: string;
+  params: {
+    limit: number;
+    api_key: string;
+    postedFrom: string;
+    postedTo: string;
+    ptype?: string; // presol, solicitation, award, etc.
+    ntype?: string; // notice type
+    deptname?: string;
+    subtier?: string;
+    state?: string;
+    city?: string;
+    keyword?: string;
+    naics?: string;
+    typeOfSetAside?: string;
+  };
+  metadata?: {
+    projectId?: string;
+    strategy?: string;
+    targetKeyword?: string;
+    contractType?: string;
+  };
+}
+
+const SAM_GOV_API_KEY = process.env.SAM_GOV_API_KEY
+
+async function getAIContractCategories(project: any, userProfile: any) {
+  try {
+    console.log(`Getting AI contract categories for project: ${project.name}`)
+    
+    const contractPrompt = `
+    Analyze this project for government contract opportunities:
+    
+    Project: ${project.name}
+    Type: ${project.project_type}
+    Description: ${project.description}
+    Organization: ${userProfile.organization_type}
+    Industry: ${userProfile.industry}
+    Small Business: ${userProfile.small_business}
+    Woman Owned: ${userProfile.woman_owned}
+    Veteran Owned: ${userProfile.veteran_owned}
+    Minority Owned: ${userProfile.minority_owned}
+    
+    Return JSON with:
+    {
+      "contract_types": ["presol", "solicitation", "award"],
+      "departments": ["DOD", "HHS", "GSA", "DHS", "DOE", "etc"],
+      "naics_codes": ["541511", "541330", "etc"],
+      "set_asides": ["SBA", "WOSB", "VOSB", "SDVOSB", "8A", "HubZone"],
+      "contract_keywords": ["IT services", "consulting", "construction"],
+      "geographic_focus": ["local", "state", "national"],
+      "contract_value_range": "micro|small|medium|large",
+      "competition_type": "full_open|set_aside|sole_source",
+      "reasoning": "explanation"
+    }
+    `
+    
+    const aiCategories = await AIService.categorizeForContracts(contractPrompt, project, userProfile)
+    
+    console.log(`AI contract categories for ${project.name}:`, aiCategories)
+    return aiCategories
+  } catch (error) {
+    console.error('AI contract categorization failed:', error)
+    return null
+  }
+}
+
+function getContractCategories(userProfile: any, userProjects: any[] = []) {
+  const departments = new Set<string>()
+  const naicsCodes = new Set<string>()
+  const setAsides = new Set<string>()
+  const keywords = new Set<string>()
+  
+  // Organization type mappings for contracts
+  if (userProfile.organization_type === 'for_profit') {
+    keywords.add('professional services')
+    keywords.add('consulting')
+    keywords.add('technical services')
+  }
+  
+  if (userProfile.organization_type === 'nonprofit') {
+    keywords.add('social services')
+    keywords.add('training')
+    keywords.add('program management')
+    departments.add('HHS')
+  }
+  
+  // Small business set-asides
+  if (userProfile.small_business) {
+    setAsides.add('SBA')
+  }
+  if (userProfile.woman_owned) {
+    setAsides.add('WOSB')
+  }
+  if (userProfile.veteran_owned) {
+    setAsides.add('VOSB')
+    setAsides.add('SDVOSB')
+  }
+  if (userProfile.minority_owned) {
+    setAsides.add('8A')
+  }
+  
+  // Industry-specific mappings
+  if (userProfile.industry) {
+    const industryMappings = {
+      'technology': {
+        departments: ['DOD', 'DHS', 'GSA'],
+        naics: ['541511', '541512', '541513'], // Computer systems design
+        keywords: ['IT services', 'software development', 'cybersecurity']
+      },
+      'healthcare': {
+        departments: ['HHS', 'VA'],
+        naics: ['621111', '621399'], // Healthcare services
+        keywords: ['medical services', 'healthcare consulting', 'clinical research']
+      },
+      'construction': {
+        departments: ['GSA', 'DOD', 'DOT'],
+        naics: ['236220', '237310'], // Construction
+        keywords: ['construction', 'renovation', 'infrastructure']
+      },
+      'consulting': {
+        departments: ['DOD', 'DHS', 'DOE'],
+        naics: ['541611', '541618'], // Management consulting
+        keywords: ['management consulting', 'strategic planning', 'analysis']
+      },
+      'education': {
+        departments: ['ED', 'DOD'],
+        naics: ['611710', '541612'], // Educational support
+        keywords: ['training', 'education services', 'curriculum development']
+      },
+      'engineering': {
+        departments: ['DOD', 'DOT', 'DOE'],
+        naics: ['541330', '541380'], // Engineering services
+        keywords: ['engineering', 'technical services', 'design']
+      }
+    }
+    
+    const mapping = industryMappings[userProfile.industry.toLowerCase()]
+    if (mapping) {
+      mapping.departments.forEach(dept => departments.add(dept))
+      mapping.naics.forEach(naics => naicsCodes.add(naics))
+      mapping.keywords.forEach(keyword => keywords.add(keyword))
+    }
+  }
+  
+  // Project-specific contract categories
+  userProjects.forEach(project => {
+    if (project.project_type) {
+      const projectMappings = {
+        'infrastructure': {
+          departments: ['DOT', 'GSA'],
+          keywords: ['infrastructure', 'construction', 'maintenance']
+        },
+        'technology': {
+          departments: ['DHS', 'DOD'],
+          keywords: ['technology', 'IT services', 'software']
+        },
+        'research': {
+          departments: ['DOD', 'DOE', 'HHS'],
+          keywords: ['research', 'development', 'analysis']
+        },
+        'consulting': {
+          departments: ['DOD', 'DHS'],
+          keywords: ['consulting', 'advisory', 'strategic planning']
+        }
+      }
+      
+      const mapping = projectMappings[project.project_type]
+      if (mapping) {
+        mapping.departments?.forEach(dept => departments.add(dept))
+        mapping.keywords?.forEach(keyword => keywords.add(keyword))
+      }
+    }
+  })
+  
+  // Default categories if none found
+  if (departments.size === 0) {
+    departments.add('DOD')
+    departments.add('GSA')
+    departments.add('HHS')
+  }
+  
+  if (keywords.size === 0) {
+    keywords.add('professional services')
+    keywords.add('consulting')
+  }
+  
+  return {
+    departments: Array.from(departments),
+    naicsCodes: Array.from(naicsCodes),
+    setAsides: Array.from(setAsides),
+    keywords: Array.from(keywords)
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    console.log('Starting AI-enhanced SAM.gov sync...')
+    
+    if (!SAM_GOV_API_KEY) {
+      throw new Error('SAM_GOV_API_KEY environment variable is required')
+    }
+    
+    // Get user profiles and projects
+    const { data: userProfiles, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('*')
+
+    const { data: userProjects, error: projectError } = await supabase
+      .from('projects')
+      .select('*')
+
+    if (profileError) {
+      console.error('Error fetching user profiles:', profileError)
+    }
+    if (projectError) {
+      console.error('Error fetching user projects:', projectError)
+    }
+
+    // Use AI to determine contract strategies
+    const aiContractStrategies: Array<{ project: any; userProfile: any; aiCategories: any }> = []
+    
+    if (userProjects && userProfiles) {
+      for (const project of userProjects) {
+        const userProfile = userProfiles.find(p => p.id === project.user_id)
+        if (userProfile) {
+          const aiCategories = await getAIContractCategories(project, userProfile)
+          
+          if (aiCategories) {
+            aiContractStrategies.push({
+              project,
+              userProfile,
+              aiCategories
+            })
+          }
+        }
+      }
+    }
+
+    console.log(`AI contract strategies generated: ${aiContractStrategies.length}`)
+
+    // Fallback contract strategy
+    const smartDepartments = new Set<string>()
+    const smartNaics = new Set<string>()
+    const smartSetAsides = new Set<string>()
+    const smartKeywords = new Set<string>()
+
+    if (userProfiles) {
+      for (const profile of userProfiles) {
+        const userProjectsForProfile = userProjects?.filter(p => p.user_id === profile.id) || []
+        const relevant = getContractCategories(profile, userProjectsForProfile)
+        
+        relevant.departments.forEach(dept => smartDepartments.add(dept))
+        relevant.naicsCodes.forEach(naics => smartNaics.add(naics))
+        relevant.setAsides.forEach(setAside => smartSetAsides.add(setAside))
+        relevant.keywords.forEach(keyword => smartKeywords.add(keyword))
+      }
+    }
+
+    console.log('Fallback contract strategy:', {
+      departments: Array.from(smartDepartments),
+      naics: Array.from(smartNaics),
+      setAsides: Array.from(smartSetAsides),
+      keywords: Array.from(smartKeywords).slice(0, 5)
+    })
+
+    // Create search configurations
+    const searchConfigurations: SearchConfiguration[] = []
+    
+    // Recent opportunities (last 30 days)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const fromDate = thirtyDaysAgo.toISOString().split('T')[0].replace(/-/g, '/')
+    
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+
+    // AI-driven searches
+    aiContractStrategies.forEach(({ project, userProfile, aiCategories }) => {
+      // Department-specific searches
+      aiCategories.departments?.slice(0, 3).forEach((department: string) => {
+        searchConfigurations.push({
+          name: `AI-Department: ${department} for ${project.name}`,
+          params: {
+            limit: 50,
+            api_key: SAM_GOV_API_KEY,
+            postedFrom: fromDate,
+            postedTo: today,
+            deptname: department,
+            ptype: 'o' // solicitations only
+          },
+          metadata: {
+            projectId: project.id,
+            strategy: 'ai-department',
+            targetKeyword: department,
+            contractType: 'solicitation'
+          }
+        })
+      })
+
+      // Set-aside specific searches
+      aiCategories.set_asides?.slice(0, 2).forEach((setAside: string) => {
+        searchConfigurations.push({
+          name: `AI-SetAside: ${setAside} for ${project.name}`,
+          params: {
+            limit: 30,
+            api_key: SAM_GOV_API_KEY,
+            postedFrom: fromDate,
+            postedTo: today,
+            typeOfSetAside: setAside,
+            ptype: 'o'
+          },
+          metadata: {
+            projectId: project.id,
+            strategy: 'ai-set-aside',
+            targetKeyword: setAside,
+            contractType: 'set-aside'
+          }
+        })
+      })
+
+      // NAICS code searches
+      aiCategories.naics_codes?.slice(0, 2).forEach((naics: string) => {
+        searchConfigurations.push({
+          name: `AI-NAICS: ${naics} for ${project.name}`,
+          params: {
+            limit: 25,
+            api_key: SAM_GOV_API_KEY,
+            postedFrom: fromDate,
+            postedTo: today,
+            naics: naics,
+            ptype: 'o'
+          },
+          metadata: {
+            projectId: project.id,
+            strategy: 'ai-naics',
+            targetKeyword: naics,
+            contractType: 'naics-specific'
+          }
+        })
+      })
+
+      // Keyword searches
+      aiCategories.contract_keywords?.slice(0, 2).forEach((keyword: string) => {
+        searchConfigurations.push({
+          name: `AI-Keyword: ${keyword} for ${project.name}`,
+          params: {
+            limit: 20,
+            api_key: SAM_GOV_API_KEY,
+            postedFrom: fromDate,
+            postedTo: today,
+            keyword: keyword,
+            ptype: 'o'
+          },
+          metadata: {
+            projectId: project.id,
+            strategy: 'ai-keyword',
+            targetKeyword: keyword,
+            contractType: 'keyword-based'
+          }
+        })
+      })
+    })
+
+    // Rule-based fallback searches
+    if (aiContractStrategies.length === 0 || searchConfigurations.length < 5) {
+      console.log('Adding rule-based contract searches...')
+      
+      // Department-based searches
+      Array.from(smartDepartments).slice(0, 3).forEach(department => {
+        searchConfigurations.push({
+          name: `Fallback-Department: ${department}`,
+          params: {
+            limit: 100,
+            api_key: SAM_GOV_API_KEY,
+            postedFrom: fromDate,
+            postedTo: today,
+            deptname: department,
+            ptype: 'o'
+          },
+          metadata: {
+            strategy: 'fallback-department',
+            targetKeyword: department,
+            contractType: 'solicitation'
+          }
+        })
+      })
+
+      // Set-aside searches
+      Array.from(smartSetAsides).slice(0, 2).forEach(setAside => {
+        searchConfigurations.push({
+          name: `Fallback-SetAside: ${setAside}`,
+          params: {
+            limit: 60,
+            api_key: SAM_GOV_API_KEY,
+            postedFrom: fromDate,
+            postedTo: today,
+            typeOfSetAside: setAside,
+            ptype: 'o'
+          },
+          metadata: {
+            strategy: 'fallback-set-aside',
+            targetKeyword: setAside,
+            contractType: 'set-aside'
+          }
+        })
+      })
+
+      // Keyword searches
+      Array.from(smartKeywords).slice(0, 3).forEach(keyword => {
+        searchConfigurations.push({
+          name: `Fallback-Keyword: ${keyword}`,
+          params: {
+            limit: 40,
+            api_key: SAM_GOV_API_KEY,
+            postedFrom: fromDate,
+            postedTo: today,
+            keyword: keyword,
+            ptype: 'o'
+          },
+          metadata: {
+            strategy: 'fallback-keyword',
+            targetKeyword: keyword,
+            contractType: 'keyword-based'
+          }
+        })
+      })
+    }
+
+    // Emergency fallback
+    if (searchConfigurations.length === 0) {
+      searchConfigurations.push({
+        name: "Emergency Contract Search",
+        params: {
+          limit: 200,
+          api_key: SAM_GOV_API_KEY,
+          postedFrom: fromDate,
+          postedTo: today,
+          ptype: 'o'
+        },
+        metadata: {
+          strategy: 'emergency-fallback',
+          contractType: 'all'
+        }
+      })
+    }
+
+    console.log(`Executing ${searchConfigurations.length} SAM.gov search configurations...`)
+
+    let allOpportunities: (SAMOpportunity & { _aiMetadata?: any })[] = []
+    let searchResults: Array<{
+      name: string
+      count?: number
+      error?: string
+      strategy?: string
+      projectId?: string
+    }> = []
+
+    // Execute searches
+    for (const config of searchConfigurations) {
+      try {
+        console.log(`Executing: ${config.name}`)
+        
+        // Build query parameters
+        const queryParams = new URLSearchParams()
+        Object.entries(config.params).forEach(([key, value]) => {
+          if (value !== undefined && value !== '') {
+            queryParams.append(key, value.toString())
+          }
+        })
+        
+        const response = await fetch(
+          `https://api.sam.gov/prod/opportunities/v2/search?${queryParams.toString()}`
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const opportunities: SAMOpportunity[] = data.opportunitiesData || []
+          
+          console.log(`${config.name}: ${opportunities.length} opportunities found`)
+          
+          searchResults.push({
+            name: config.name,
+            count: opportunities.length,
+            strategy: config.metadata?.strategy,
+            projectId: config.metadata?.projectId
+          })
+
+          if (opportunities.length > 0) {
+            const enhancedOpportunities = opportunities.map(opp => ({
+              ...opp,
+              _aiMetadata: config.metadata
+            }))
+
+            // Filter duplicates
+            const newOpportunities = enhancedOpportunities.filter(opp => 
+              !allOpportunities.some(existing => existing.noticeId === opp.noticeId)
+            )
+            
+            allOpportunities.push(...newOpportunities)
+            console.log(`Added ${newOpportunities.length} new unique opportunities`)
+          }
+        } else {
+          console.error(`SAM.gov API error for ${config.name}:`, response.status, response.statusText)
+          searchResults.push({
+            name: config.name,
+            error: `API Error: ${response.status}`,
+            strategy: config.metadata?.strategy
+          })
+        }
+      } catch (error) {
+        console.error(`SAM.gov search failed for ${config.name}:`, error)
+        searchResults.push({
+          name: config.name,
+          error: (error as Error).message,
+          strategy: config.metadata?.strategy
+        })
+      }
+    }
+
+    console.log(`Total unique SAM.gov opportunities found: ${allOpportunities.length}`)
+
+    if (allOpportunities.length === 0) {
+      return NextResponse.json({
+        success: true,
+        imported: 0,
+        message: 'No contract opportunities found with current search criteria',
+        search_results: searchResults
+      })
+    }
+
+    // Transform to opportunities format
+    const processedOpportunities = allOpportunities.map((opp) => {
+      const contact = opp.pointOfContact?.[0]
+      const awardAmount = opp.award?.amount ? parseFloat(opp.award.amount) : null
+      const responseDeadline = opp.responseDeadLine ? new Date(opp.responseDeadLine).toISOString() : null
+      
+      return {
+        external_id: opp.noticeId,
+        source: 'sam_gov',
+        title: opp.title || 'Government Contract Opportunity',
+        sponsor: opp.department,
+        agency: opp.subTier || opp.office || opp.department,
+        description: opp.description || `Contract opportunity: ${opp.title}`,
+        amount_min: awardAmount,
+        amount_max: awardAmount,
+        credit_percentage: null,
+        deadline_date: responseDeadline,
+        deadline_type: responseDeadline ? 'fixed' : 'rolling',
+        match_requirement_percentage: 0,
+        eligibility_criteria: opp.organizationType || ['for_profit'],
+        geography: opp.officeAddress?.state ? [opp.officeAddress.state.toLowerCase()] : ['nationwide'],
+        project_types: ['contract', 'services'],
+        organization_types: ['for_profit', 'nonprofit'],
+        industry_focus: opp.naicsCode ? [opp.naicsCode] : ['general'],
+        minority_business: opp.typeOfSetAside?.includes('8A') || false,
+        woman_owned_business: opp.typeOfSetAside?.includes('WOSB') || false,
+        veteran_owned_business: opp.typeOfSetAside?.includes('VOSB') || false,
+        small_business_only: opp.typeOfSetAside?.includes('SBA') || false,
+        cfda_number: null,
+        source_url: `https://sam.gov/opp/${opp.noticeId}/view`,
+        application_process: 'See SAM.gov for detailed submission requirements',
+        required_documents: ['technical_proposal', 'price_proposal', 'past_performance'],
+        contact_email: contact?.email || null,
+        contact_phone: contact?.phone || null,
+        competition_level: opp.typeOfSetAside ? 'set_aside' : 'competitive',
+        funding_instrument: 'contract',
+        raw_data: opp,
+        ai_metadata: opp._aiMetadata || null,
+        last_updated: new Date().toISOString()
+      }
+    })
+
+    // Filter valid opportunities
+    const validOpportunities = processedOpportunities.filter(opp => {
+      return opp.external_id && opp.title && opp.sponsor
+    })
+
+    console.log(`Processing ${validOpportunities.length} valid contract opportunities`)
+
+    // Store in database
+    const { data: inserted, error } = await supabase
+      .from('opportunities')
+      .upsert(validOpportunities, { 
+        onConflict: 'external_id,source',
+        ignoreDuplicates: false 
+      })
+      .select('id, title, sponsor, amount_min')
+
+    if (error) {
+      console.error('Database upsert error:', error)
+      throw error
+    }
+
+    console.log(`Successfully inserted ${inserted?.length || 0} contract opportunities`)
+
+    return NextResponse.json({
+      success: true,
+      imported: inserted?.length || 0,
+      message: `Successfully imported ${inserted?.length || 0} government contract opportunities`,
+      summary: {
+        total_fetched: allOpportunities.length,
+        total_processed: processedOpportunities.length,
+        total_valid: validOpportunities.length,
+        total_imported: inserted?.length || 0,
+        ai_strategies_used: aiContractStrategies.length,
+        total_search_configurations: searchConfigurations.length,
+        source: 'sam_gov',
+        last_sync: new Date().toISOString()
+      },
+      ai_insights: aiContractStrategies.map(strategy => ({
+        project_name: strategy.project.name,
+        contract_types: strategy.aiCategories.contract_types,
+        departments: strategy.aiCategories.departments,
+        naics_codes: strategy.aiCategories.naics_codes,
+        set_asides: strategy.aiCategories.set_asides,
+        contract_keywords: strategy.aiCategories.contract_keywords,
+        reasoning: strategy.aiCategories.reasoning
+      })),
+      search_results: searchResults,
+      sample_contracts: inserted?.slice(0, 5).map(contract => ({
+        title: contract.title,
+        amount: contract.amount_min,
+        sponsor: contract.sponsor
+      })) || []
+    })
+
+  } catch (error: any) {
+    console.error('SAM.gov sync error:', error)
+    return NextResponse.json({ 
+      success: false,
+      error: 'Failed to sync with SAM.gov API',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  return GET(request)
+}
