@@ -45,6 +45,48 @@ export default async function handler(req, res) {
           // Analyze message intent
           const messageIntent = analyzeMessageIntent(message)
           console.log('Message intent:', messageIntent)
+
+          // Check if user is requesting web search or if we need more opportunities
+          const needsWebSearch = detectWebSearchIntent(message) || 
+            (messageIntent.includes('analyze_opportunities') && (!opportunities || opportunities.length < 5))
+          
+          if (needsWebSearch) {
+            console.log('Triggering web search for opportunities...')
+            
+            try {
+              // Perform web search for opportunities
+              const searchResults = await performWebSearch(userId, message, projects, userContext.profile)
+              
+              if (searchResults.success && searchResults.opportunities.length > 0) {
+                // Generate response about web search results
+                const response = await generateWebSearchResponse(message, searchResults, projects)
+                
+                // Store conversation with search context
+                await supabase.from('agent_conversations').insert([{
+                  user_id: userId,
+                  user_message: message,
+                  agent_response: response,
+                  context_type: 'web_search',
+                  context_data: { 
+                    search_query: searchResults.query,
+                    results_found: searchResults.opportunitiesFound,
+                    search_sources: searchResults.searchSources
+                  },
+                  created_at: new Date().toISOString()
+                }])
+                
+                res.json({ 
+                  message: response,
+                  webSearchResults: searchResults.opportunities,
+                  searchPerformed: true
+                })
+                return
+              }
+            } catch (searchError) {
+              console.error('Web search failed:', searchError)
+              // Continue with regular chat if search fails
+            }
+          }
           
           // Handle opportunity analysis requests
           if (messageIntent.includes('analyze_opportunities') && opportunities?.length > 0 && projects?.length > 0) {
@@ -735,6 +777,130 @@ function analyzeMessageIntent(message) {
   }
   
   return intents
+}
+
+// Detect if user is requesting web search
+function detectWebSearchIntent(message) {
+  const lowerMessage = message.toLowerCase()
+  
+  const searchKeywords = [
+    'search online',
+    'search the internet',
+    'search web',
+    'find online',
+    'look online',
+    'search for more',
+    'find more opportunities',
+    'web search',
+    'internet search',
+    'search outside',
+    'external search',
+    'broader search'
+  ]
+  
+  const searchPhrases = [
+    'need more opportunities',
+    'not enough opportunities',
+    'find additional',
+    'search beyond',
+    'look elsewhere',
+    'other sources'
+  ]
+  
+  return searchKeywords.some(keyword => lowerMessage.includes(keyword)) ||
+         searchPhrases.some(phrase => lowerMessage.includes(phrase))
+}
+
+// Perform web search for opportunities
+async function performWebSearch(userId, message, projects, userProfile) {
+  try {
+    // Build search query based on message and user context
+    let searchQuery = message
+    
+    // If message is general, build query from user context
+    if (message.length < 50 && projects?.length > 0) {
+      const projectTypes = projects.map(p => p.project_type).join(' ')
+      const organizationType = userProfile?.organization_type || 'nonprofit'
+      searchQuery = `${projectTypes} grants ${organizationType} funding opportunities`
+    }
+    
+    // Call our search API endpoint
+    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai/agent/search-opportunities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        searchQuery,
+        projectType: projects?.[0]?.project_type,
+        organizationType: userProfile?.organization_type,
+        location: userProfile?.city && userProfile?.state ? `${userProfile.city}, ${userProfile.state}` : null,
+        fundingAmount: projects?.[0]?.funding_needed,
+        searchDepth: 'thorough'
+      })
+    })
+    
+    if (response.ok) {
+      return await response.json()
+    } else {
+      throw new Error('Search API request failed')
+    }
+  } catch (error) {
+    console.error('Web search error:', error)
+    return { success: false, opportunities: [] }
+  }
+}
+
+// Generate response for web search results
+async function generateWebSearchResponse(originalMessage, searchResults, projects) {
+  const { query, opportunitiesFound, opportunities } = searchResults
+  
+  if (opportunitiesFound === 0) {
+    return `I searched the internet for funding opportunities related to your request: "${originalMessage}"
+
+Unfortunately, I didn't find any relevant opportunities online at the moment. This could mean:
+• The search terms might need to be more specific
+• Most current opportunities are already in our federal database
+• New opportunities may not be publicly listed yet
+
+I'll continue monitoring and will alert you when new opportunities become available. You can also try asking me to search for specific types of funding like "search for environmental grants" or "find education funding opportunities."`
+  }
+  
+  let response = `Great news! I searched the internet and found **${opportunitiesFound} new funding opportunities** that might interest you.\n\n`
+  
+  response += `🔍 **Search Results for:** "${query}"\n\n`
+  
+  // Show top results
+  const topResults = opportunities.slice(0, 3)
+  response += `**Top Discoveries:**\n\n`
+  
+  topResults.forEach((opp, index) => {
+    response += `${index + 1}. **${opp.title}**\n`
+    response += `   • Source: ${new URL(opp.source_url).hostname}\n`
+    response += `   • Relevance: ${opp.relevance_score || 'High'} match\n`
+    if (opp.amount_info) {
+      response += `   • Funding: ${opp.amount_info}\n`
+    }
+    if (opp.deadline_info) {
+      response += `   • Deadline: ${opp.deadline_info}\n`
+    }
+    response += `   • Details: ${opp.description.substring(0, 150)}...\n`
+    response += `   • Link: ${opp.source_url}\n\n`
+  })
+  
+  if (opportunitiesFound > 3) {
+    response += `And ${opportunitiesFound - 3} more opportunities discovered!\n\n`
+  }
+  
+  response += `**Next Steps:**\n`
+  response += `1. Review these opportunities and visit the links for full details\n`
+  response += `2. Check application requirements and deadlines\n`
+  response += `3. I've saved these discoveries for future reference\n\n`
+  
+  response += `Would you like me to analyze how these new opportunities match your specific projects, or search for more opportunities in a particular area?`
+  
+  return response
 }
 
 // Comprehensive Opportunity Analysis
