@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DollarSign, Search, Plus, Users, Heart, ArrowUpRight } from 'lucide-react'
-import StatCard from './ui/StatCard'
 import ModalShell from './ui/ModalShell'
 import { directUserServices } from '../lib/supabase'
 import toast from 'react-hot-toast'
@@ -48,7 +47,7 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
         setStats({
           totalDonations: donorStats.totalDonations || donationData.length,
           totalAmount: donorStats.totalRaised || donationData.reduce((s, d) => s + (d.amount || 0), 0),
-            avgDonation: donorStats.avgDonationAmount || (donationData.length > 0 ? Math.round(donationData.reduce((s, d) => s + (d.amount || 0), 0) / donationData.length) : 0),
+          avgDonation: donorStats.avgDonationAmount || (donationData.length > 0 ? Math.round(donationData.reduce((s, d) => s + (d.amount || 0), 0) / donationData.length) : 0),
           donors: donorStats.totalDonors || 0
         })
       } else {
@@ -94,95 +93,108 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
     )
   })
 
+  // Modern StatCard component following design system
+  const ModernStatCard = ({ icon: Icon, label, value, iconColor = "text-emerald-600", iconBg = "bg-emerald-50" }) => (
+    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+      <div className="flex items-center space-x-3 mb-4">
+        <div className={`p-2.5 ${iconBg} rounded-lg`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+        </div>
+        <span className="text-sm font-medium text-slate-600">{label}</span>
+      </div>
+      <div className="space-y-1">
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+      </div>
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 bg-neutral-50 rounded-2xl">
-      <div className="mb-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-brand-50 rounded-lg">
-                <DollarSign className="w-5 h-5 text-brand-600" />
-              </div>
-              <h2 className="text-2xl font-bold tracking-tight text-neutral-900">Direct Donations</h2>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-emerald-50 rounded-lg">
+              <DollarSign className="w-5 h-5 text-emerald-600" />
             </div>
-            <p className="text-sm text-neutral-600 ml-0 md:ml-11">One-time and recurring donations from supporters</p>
+            <h2 className="text-2xl font-bold text-slate-900">Direct Donations</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-              <input
-                type="text"
-                className="pl-10 pr-3 py-2.5 rounded-md bg-white border border-neutral-200 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 placeholder-neutral-400"
-                placeholder="Search donations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button
-              onClick={() => setShowAddDonation(true)}
-              className="inline-flex items-center px-4 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Record Donation
-            </button>
-          </div>
+          <p className="text-sm text-slate-600">One-time and recurring donations from supporters</p>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            icon={DollarSign}
-            iconColor="text-brand-600"
-            iconBg="bg-brand-50"
-            label="Total Donated"
-            value={`$${(stats.totalAmount || 0).toLocaleString()}`}
-          />
-          <StatCard
-            icon={Users}
-            iconColor="text-emerald-600"
-            iconBg="bg-emerald-50"
-            label="Donors"
-            value={stats.donors}
-          />
-          <StatCard
-            icon={Heart}
-            iconColor="text-pink-600"
-            iconBg="bg-pink-50"
-            label="Donations"
-            value={stats.totalDonations}
-          />
-            <StatCard
-              icon={ArrowUpRight}
-              iconColor="text-amber-600"
-              iconBg="bg-amber-50"
-              label="Avg Donation"
-              value={`$${(stats.avgDonation || 0).toLocaleString()}`}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              className="pl-10 pr-3 py-2 rounded-md bg-white border border-slate-200 text-sm w-64 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
+              placeholder="Search donations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
+          </div>
+          <button
+            onClick={() => setShowAddDonation(true)}
+            className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2 text-sm flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Record Donation</span>
+          </button>
         </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <ModernStatCard
+          icon={DollarSign}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+          label="Total Donated"
+          value={`$${(stats.totalAmount || 0).toLocaleString()}`}
+        />
+        <ModernStatCard
+          icon={Users}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+          label="Donors"
+          value={stats.donors}
+        />
+        <ModernStatCard
+          icon={Heart}
+          iconColor="text-red-600"
+          iconBg="bg-red-50"
+          label="Donations"
+          value={stats.totalDonations}
+        />
+        <ModernStatCard
+          icon={ArrowUpRight}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+          label="Avg Donation"
+          value={`$${(stats.avgDonation || 0).toLocaleString()}`}
+        />
       </div>
 
       {/* Donation List */}
       <div className="space-y-6">
         {filteredDonations.length === 0 ? (
-          <div className="bg-white border border-neutral-200 rounded-xl p-12 text-center">
-            <div className="mx-auto w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-              <DollarSign className="w-6 h-6 text-neutral-400" />
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+            <div className="mx-auto w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center mb-4">
+              <DollarSign className="w-6 h-6 text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
               {donations.length === 0 ? 'No donations yet' : 'No donations found'}
             </h3>
-            <p className="text-neutral-500 mb-6 text-sm max-w-md mx-auto">
+            <p className="text-slate-600 mb-6 text-sm max-w-md mx-auto">
               {donations.length === 0
                 ? 'Record donations you receive from supporters manually to build your donor history.'
                 : 'Try adjusting your search terms or clearing the filter.'}
@@ -190,49 +202,49 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
             {donations.length === 0 && (
               <button
                 onClick={() => setShowAddDonation(true)}
-                className="inline-flex items-center px-4 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors"
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 flex items-center space-x-2 mx-auto"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Record Your First Donation
+                <Plus className="w-4 h-4" />
+                <span>Record Your First Donation</span>
               </button>
             )}
           </div>
         ) : (
-          <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <table className="min-w-full text-sm">
-              <thead className="bg-neutral-50 text-neutral-500 uppercase text-[11px] tracking-wide">
+              <thead className="bg-slate-50 text-slate-600 uppercase text-xs font-medium tracking-wider">
                 <tr>
-                  <th className="px-6 py-3 text-left font-medium">Donor</th>
-                  <th className="px-6 py-3 text-left font-medium">Amount</th>
-                  <th className="px-6 py-3 text-left font-medium">Date</th>
+                  <th className="px-6 py-3 text-left">Donor</th>
+                  <th className="px-6 py-3 text-left">Amount</th>
+                  <th className="px-6 py-3 text-left">Date</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-slate-100">
                 {filteredDonations.map((donation, index) => (
                   <motion.tr
                     key={donation.id || index}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, delay: index * 0.02 }}
-                    className="hover:bg-neutral-50 transition-colors"
+                    className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-6 py-4 align-top">
                       <div className="space-y-1">
-                        <p className="font-medium text-neutral-900 leading-tight">{donation.donor_name || donation.donor?.name || 'Anonymous'}</p>
+                        <p className="font-medium text-slate-900 leading-tight">{donation.donor_name || donation.donor?.name || 'Anonymous'}</p>
                         {donation.note && (
-                          <p className="text-xs text-neutral-500 line-clamp-1">{donation.note}</p>
+                          <p className="text-xs text-slate-500 line-clamp-1">{donation.note}</p>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 align-top">
-                      <span className="font-semibold text-emerald-600">${donation.amount?.toLocaleString() || '0'}</span>
+                      <span className="font-bold text-emerald-600">${donation.amount?.toLocaleString() || '0'}</span>
                     </td>
-                    <td className="px-6 py-4 align-top text-neutral-500">
+                    <td className="px-6 py-4 align-top text-slate-500">
                       {donation.date ? new Date(donation.date).toLocaleDateString() : (donation.created_at ? new Date(donation.created_at).toLocaleDateString() : '-')}
                     </td>
                     <td className="px-6 py-4 align-top text-right">
-                      <button className="text-brand-600 hover:text-brand-700 text-xs font-medium transition-colors">View</button>
+                      <button className="text-emerald-600 hover:text-emerald-700 text-xs font-medium transition-colors">View</button>
                     </td>
                   </motion.tr>
                 ))}
@@ -310,118 +322,116 @@ function AddDonationModal({ user, donors = [], ensureDonor, onClose, onDonationR
 
   return (
     <ModalShell title="Record Donation" subtitle="Add a new direct contribution" onClose={onClose}>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="block text-xs font-medium uppercase tracking-wide text-neutral-600">Donor</label>
-            {!creatingNewDonor && (
-              <div className="flex gap-2">
-                <select
-                  className="flex-1 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                  value={formData.donor_id}
-                  onChange={(e) => setFormData({...formData, donor_id: e.target.value})}
-                >
-                  <option value="">Select existing donor</option>
-                  {donors.map(d => (
-                    <option key={d.id} value={d.id}>{d.name || 'Unnamed Donor'}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setCreatingNewDonor(true)}
-                  className="px-3 py-2 rounded-md bg-neutral-100 text-neutral-700 text-xs font-medium hover:bg-neutral-200 transition-colors"
-                >New</button>
-              </div>
-            )}
-            {creatingNewDonor && (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="flex-1 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                  value={formData.donor_name}
-                  onChange={(e) => setFormData({...formData, donor_name: e.target.value})}
-                  placeholder="Enter donor name"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreatingNewDonor(false)
-                    setFormData(f => ({ ...f, donor_name: '', donor_id: '' }))
-                  }}
-                  className="px-3 py-2 rounded-md bg-neutral-100 text-neutral-700 text-xs font-medium hover:bg-neutral-200 transition-colors"
-                >Cancel</button>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div className="space-y-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-neutral-600">Amount ($)</label>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Donor</label>
+          {!creatingNewDonor && (
+            <div className="flex gap-2">
+              <select
+                className="flex-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                value={formData.donor_id}
+                onChange={(e) => setFormData({...formData, donor_id: e.target.value})}
+              >
+                <option value="">Select existing donor</option>
+                {donors.map(d => (
+                  <option key={d.id} value={d.id}>{d.name || 'Unnamed Donor'}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setCreatingNewDonor(true)}
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-md font-medium transition-colors px-3 py-2 text-xs"
+              >New</button>
+            </div>
+          )}
+          {creatingNewDonor && (
+            <div className="flex gap-2">
               <input
-                type="number"
-                required
-                min="1"
-                className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                placeholder="0"
+                type="text"
+                className="flex-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                value={formData.donor_name}
+                onChange={(e) => setFormData({...formData, donor_name: e.target.value})}
+                placeholder="Enter donor name"
               />
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatingNewDonor(false)
+                  setFormData(f => ({ ...f, donor_name: '', donor_id: '' }))
+                }}
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-md font-medium transition-colors px-3 py-2 text-xs"
+              >Cancel</button>
             </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-neutral-600">Date</label>
-              <input
-                type="date"
-                className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
-              />
-            </div>
-          </div>
+          )}
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-xs font-medium uppercase tracking-wide text-neutral-600">Link to Project</label>
-            <select
-              className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-              value={formData.project_id}
-              onChange={(e) => setFormData({...formData, project_id: e.target.value})}
-            >
-              <option value="">Select a project (optional)</option>
-              {projects.map(project => (
-                <option key={project.id} value={project.id}>{project.name}</option>
-              ))}
-            </select>
+            <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Amount ($)</label>
+            <input
+              type="number"
+              required
+              min="1"
+              className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              value={formData.amount}
+              onChange={(e) => setFormData({...formData, amount: e.target.value})}
+              placeholder="0"
+            />
           </div>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-neutral-600">Note (optional)</label>
-              <textarea
-                rows={3}
-                className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 resize-none"
-                value={formData.note}
-                onChange={(e) => setFormData({...formData, note: e.target.value})}
-                placeholder="Add a note about this donation"
-              />
-            </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-md bg-neutral-100 text-neutral-700 text-sm font-medium hover:bg-neutral-200 transition-colors disabled:opacity-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors disabled:opacity-50"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Record Donation'}
-            </button>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Date</label>
+            <input
+              type="date"
+              className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              value={formData.date}
+              onChange={(e) => setFormData({...formData, date: e.target.value})}
+            />
           </div>
-        </form>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Link to Project</label>
+          <select
+            className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            value={formData.project_id}
+            onChange={(e) => setFormData({...formData, project_id: e.target.value})}
+          >
+            <option value="">Select a project (optional)</option>
+            {projects.map(project => (
+              <option key={project.id} value={project.id}>{project.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Note (optional)</label>
+          <textarea
+            rows={3}
+            className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+            value={formData.note}
+            onChange={(e) => setFormData({...formData, note: e.target.value})}
+            placeholder="Add a note about this donation"
+          />
+        </div>
+
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Record Donation'}
+          </button>
+        </div>
+      </form>
     </ModalShell>
   )
 }
-
-// Local StatCard removed in favor of shared ui/StatCard

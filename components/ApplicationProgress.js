@@ -44,7 +44,6 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
     try {
       setLoading(true)
       
-      // Use directUserServices with user.id instead of session-based services
       if (!user?.id) {
         console.warn('No user ID available')
         setLoading(false)
@@ -70,15 +69,12 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
     try {
       console.log('Submitting application data:', submissionData)
       
-      // Clean up the data - remove documents for now since file upload isn't implemented
       const cleanData = {
         ...submissionData
       }
       
-      // Remove documents array since it's not implemented yet
       delete cleanData.documents
       
-      // Ensure required fields have values
       if (!cleanData.project_id) {
         throw new Error('Project is required')
       }
@@ -91,9 +87,7 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
       
       const newSubmission = await directUserServices.applications.createApplication(user.id, cleanData)
       
-      // Refresh both submissions and stats
       await loadSubmissions()
-      await loadStats()
       
       setShowCreateModal(false)
       toast.success('Application submission tracked!')
@@ -111,11 +105,10 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
       })
       
       if (notes) {
-        // Status update logging will be implemented later
         console.log('Status update notes:', notes)
       }
       
-      loadSubmissions() // Reload to get updated data
+      loadSubmissions()
       toast.success('Status updated successfully!')
     } catch (error) {
       toast.error('Failed to update status: ' + error.message)
@@ -124,13 +117,11 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 
   const handleUploadDocument = async (submissionId, files, documentType) => {
     try {
-      // Handle both single file and multiple files
       const filesToUpload = Array.isArray(files) ? files : [files]
       
-        // Handle document upload - simplified for now
-        toast.success(`${filesToUpload.length} document(s) will be uploaded (feature coming soon)!`)
-        
-        loadSubmissions()
+      toast.success(`${filesToUpload.length} document(s) will be uploaded (feature coming soon)!`)
+      
+      loadSubmissions()
       toast.success(`${filesToUpload.length} document(s) uploaded successfully!`)
     } catch (error) {
       toast.error('Failed to upload document: ' + error.message)
@@ -139,13 +130,13 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      'submitted': 'bg-green-100 text-green-800',
-      'under_review': 'bg-yellow-100 text-yellow-800',
-      'approved': 'bg-green-100 text-green-800',
-      'denied': 'bg-red-100 text-red-800',
-      'withdrawn': 'bg-gray-100 text-gray-800'
+      'submitted': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'under_review': 'bg-amber-100 text-amber-700 border-amber-200',
+      'approved': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'denied': 'bg-red-100 text-red-700 border-red-200',
+      'withdrawn': 'bg-slate-100 text-slate-700 border-slate-200'
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+    return colors[status] || 'bg-slate-100 text-slate-700 border-slate-200'
   }
 
   const getStatusIcon = (status) => {
@@ -172,23 +163,24 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
     }).format(amount || 0)
   }
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = "blue" }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="card"
-    >
-      <div className="card-body flex items-center">
-        <div className={`p-3 bg-${color}-100 rounded-lg mr-4`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
+  // Modern StatCard component following design system
+  const ModernStatCard = ({ icon: Icon, title, value, subtitle, color = "emerald" }) => (
+    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+      <div className="flex items-center space-x-3 mb-4">
+        <div className={`p-2.5 bg-slate-50 rounded-lg`}>
+          <Icon className={`w-5 h-5 ${
+            color === 'emerald' ? 'text-emerald-600' : 
+            color === 'amber' ? 'text-amber-600' : 
+            'text-slate-600'
+          }`} />
         </div>
-        <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
-        </div>
+        <span className="text-sm font-medium text-slate-600">{title}</span>
       </div>
-    </motion.div>
+      <div className="space-y-1">
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+        {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+      </div>
+    </div>
   )
 
   const SubmissionCard = ({ submission }) => {
@@ -198,101 +190,99 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card hover:shadow-lg transition-all duration-300"
+        className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300"
       >
-        <div className="card-body">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-1">
-                {submission.opportunity?.title || submission.opportunity_title || 'Unknown Opportunity'}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {submission.opportunity?.sponsor || 'No sponsor info'} • {submission.projects?.name || 'No project linked'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Application ID: {submission.application_id || 'Pending'}
-              </p>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(submission.status)}`}>
-                {getStatusIcon(submission.status)}
-                <span className="ml-1 capitalize">{submission.status.replace('_', ' ')}</span>
-              </span>
-            </div>
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">
+              {submission.opportunity?.title || submission.opportunity_title || 'Unknown Opportunity'}
+            </h3>
+            <p className="text-sm text-slate-600">
+              {submission.opportunity?.sponsor || 'No sponsor info'} • {submission.projects?.name || 'No project linked'}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Application ID: {submission.application_id || 'Pending'}
+            </p>
           </div>
+          
+          <div className="flex items-center space-x-2">
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusColor(submission.status)}`}>
+              {getStatusIcon(submission.status)}
+              <span className="ml-1 capitalize">{submission.status.replace('_', ' ')}</span>
+            </span>
+          </div>
+        </div>
 
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-gray-500">Submitted Amount</p>
-                <p className="font-semibold">{formatCurrency(submission.submitted_amount)}</p>
-              </div>
-              {submission.award_amount && (
-                <div>
-                  <p className="text-xs text-gray-500">Award Amount</p>
-                  <p className="font-semibold text-green-600">{formatCurrency(submission.award_amount)}</p>
-                </div>
-              )}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-medium text-slate-600">Submitted Amount</p>
+              <p className="font-bold text-slate-900">{formatCurrency(submission.submitted_amount)}</p>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            {submission.award_amount && (
               <div>
-                <p className="text-xs text-gray-500">Submission Date</p>
-                <p className="text-sm">{format(new Date(submission.submission_date), 'MMM d, yyyy')}</p>
-              </div>
-              {submission.response_date && (
-                <div>
-                  <p className="text-xs text-gray-500">Response Date</p>
-                  <p className="text-sm">{format(new Date(submission.response_date), 'MMM d, yyyy')}</p>
-                </div>
-              )}
-            </div>
-
-            {submission.next_report_due && (
-              <div className={`p-3 rounded-lg ${
-                daysUntilDeadline < 7 ? 'bg-red-50 border border-red-200' :
-                daysUntilDeadline < 30 ? 'bg-yellow-50 border border-yellow-200' :
-                'bg-green-50 border border-green-200'
-              }`}>
-                <p className="text-xs font-medium">Next Report Due</p>
-                <p className="text-sm">{format(new Date(submission.next_report_due), 'MMM d, yyyy')}</p>
-                <p className="text-xs text-gray-600">
-                  {daysUntilDeadline > 0 ? `${daysUntilDeadline} days remaining` : 'Overdue'}
-                </p>
+                <p className="text-xs font-medium text-slate-600">Award Amount</p>
+                <p className="font-bold text-emerald-600">{formatCurrency(submission.award_amount)}</p>
               </div>
             )}
+          </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                {submission.documents?.length > 0 && (
-                  <span className="flex items-center">
-                    <Paperclip className="w-4 h-4 mr-1" />
-                    {submission.documents.length} docs
-                  </span>
-                )}
-                {submission.status_updates?.length > 0 && (
-                  <span className="flex items-center">
-                    <MessageSquare className="w-4 h-4 mr-1" />
-                    {submission.status_updates.length} updates
-                  </span>
-                )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-medium text-slate-600">Submission Date</p>
+              <p className="text-sm text-slate-900">{format(new Date(submission.submission_date), 'MMM d, yyyy')}</p>
+            </div>
+            {submission.response_date && (
+              <div>
+                <p className="text-xs font-medium text-slate-600">Response Date</p>
+                <p className="text-sm text-slate-900">{format(new Date(submission.response_date), 'MMM d, yyyy')}</p>
               </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setSelectedSubmission(submission)}
-                  className="btn-secondary btn-sm"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setShowDocumentModal(submission)}
-                  className="btn-secondary btn-sm"
-                >
-                  <Upload className="w-4 h-4" />
-                </button>
-              </div>
+            )}
+          </div>
+
+          {submission.next_report_due && (
+            <div className={`p-3 rounded-lg border ${
+              daysUntilDeadline < 7 ? 'bg-red-50 border-red-200' :
+              daysUntilDeadline < 30 ? 'bg-amber-50 border-amber-200' :
+              'bg-emerald-50 border-emerald-200'
+            }`}>
+              <p className="text-xs font-medium text-slate-700">Next Report Due</p>
+              <p className="text-sm text-slate-900">{format(new Date(submission.next_report_due), 'MMM d, yyyy')}</p>
+              <p className="text-xs text-slate-600">
+                {daysUntilDeadline > 0 ? `${daysUntilDeadline} days remaining` : 'Overdue'}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            <div className="flex items-center space-x-2 text-sm text-slate-600">
+              {submission.documents?.length > 0 && (
+                <span className="flex items-center">
+                  <Paperclip className="w-4 h-4 mr-1" />
+                  {submission.documents.length} docs
+                </span>
+              )}
+              {submission.status_updates?.length > 0 && (
+                <span className="flex items-center">
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  {submission.status_updates.length} updates
+                </span>
+              )}
+            </div>
+            
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setSelectedSubmission(submission)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setShowDocumentModal(submission)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -302,10 +292,10 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading application data...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading application data...</p>
         </div>
       </div>
     )
@@ -313,106 +303,106 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Authentication Required</h3>
-          <p className="text-gray-600">Please log in to view your application progress.</p>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">Authentication Required</h3>
+          <p className="text-slate-600">Please log in to view your application progress.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Application Progress</h1>
-          <p className="text-gray-600">Track your grant applications from submission to award</p>
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">Application Progress</h1>
+        <p className="text-sm text-slate-600">Track your grant applications from submission to award</p>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            icon={FileText}
-            title="Total Applications"
-            value={stats.totalSubmissions || 0}
-            color="blue"
-          />
-          <StatCard
-            icon={DollarSign}
-            title="Total Requested"
-            value={formatCurrency(stats.totalRequested)}
-            color="green"
-          />
-          <StatCard
-            icon={TrendingUp}
-            title="Total Awarded"
-            value={formatCurrency(stats.totalAwarded)}
-            color="emerald"
-          />
-          <StatCard
-            icon={CheckCircle}
-            title="Success Rate"
-            value={`${Math.round(stats.successRate || 0)}%`}
-            color="purple"
-          />
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <ModernStatCard
+          icon={FileText}
+          title="Total Applications"
+          value={stats.totalSubmissions || 0}
+          color="emerald"
+        />
+        <ModernStatCard
+          icon={DollarSign}
+          title="Total Requested"
+          value={formatCurrency(stats.totalRequested)}
+          color="emerald"
+        />
+        <ModernStatCard
+          icon={TrendingUp}
+          title="Total Awarded"
+          value={formatCurrency(stats.totalAwarded)}
+          color="emerald"
+        />
+        <ModernStatCard
+          icon={CheckCircle}
+          title="Success Rate"
+          value={`${Math.round(stats.successRate || 0)}%`}
+          color="amber"
+        />
+      </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search applications..."
-                className="form-input pl-10 w-64"
-              />
-            </div>
-            
-            <select
-              className="form-input"
-              onChange={(e) => setFilters({...filters, status: e.target.value})}
-            >
-              <option value="">All Status</option>
-              <option value="submitted">Submitted</option>
-              <option value="under_review">Under Review</option>
-              <option value="approved">Approved</option>
-              <option value="denied">Denied</option>
-            </select>
+      {/* Controls */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex space-x-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search applications..."
+              className="w-full pl-10 pr-3 py-2 bg-white border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            />
           </div>
           
+          <select
+            className="bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            onChange={(e) => setFilters({...filters, status: e.target.value})}
+          >
+            <option value="">All Status</option>
+            <option value="submitted">Submitted</option>
+            <option value="under_review">Under Review</option>
+            <option value="approved">Approved</option>
+            <option value="denied">Denied</option>
+          </select>
+        </div>
+        
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Track Application</span>
+        </button>
+      </div>
+
+      {/* Applications Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {(submissions || []).filter(submission => submission && submission.id).map(submission => (
+          <SubmissionCard key={submission.id} submission={submission} />
+        ))}
+      </div>
+
+      {(!submissions || submissions.length === 0) && (
+        <div className="text-center py-12">
+          <div className="mx-auto w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center mb-4">
+            <FileText className="w-6 h-6 text-slate-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">No applications tracked</h3>
+          <p className="text-slate-600 mb-6">Start tracking your grant applications to monitor progress.</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="btn-primary flex items-center"
+            className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Track Application
+            Track First Application
           </button>
         </div>
-
-        {/* Applications Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(submissions || []).filter(submission => submission && submission.id).map(submission => (
-            <SubmissionCard key={submission.id} submission={submission} />
-          ))}
-        </div>
-
-        {(!submissions || submissions.length === 0) && (
-          <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No applications tracked</h3>
-            <p className="mt-1 text-gray-500">Start tracking your grant applications to monitor progress.</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-primary mt-4"
-            >
-              Track First Application
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Modals */}
       {showCreateModal && (
@@ -456,21 +446,19 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    // Clean up form data
     const cleanData = {
       project_id: formData.project_id,
       opportunity_title: formData.opportunity_title?.trim() || 'Manual Entry',
       application_id: formData.application_id?.trim() || null,
       submitted_amount: parseFloat(formData.submitted_amount),
       submission_date: formData.submission_date,
-      status: 'submitted', // Explicitly set status
+      status: 'submitted',
       notes: formData.notes?.trim() || null
     }
     
-    // Remove any empty strings or undefined values (but keep opportunity_title)
     Object.keys(cleanData).forEach(key => {
       if (cleanData[key] === '' || cleanData[key] === undefined) {
-        if (key !== 'opportunity_title') { // Keep opportunity_title even if it's "Manual Entry"
+        if (key !== 'opportunity_title') {
           delete cleanData[key]
         }
       }
@@ -485,16 +473,16 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Track New Application</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Track New Application</h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="form-label">Project *</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Project *</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.project_id}
                 onChange={(e) => setFormData({...formData, project_id: e.target.value})}
                 required
@@ -509,10 +497,10 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Grant Opportunity</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Grant Opportunity</label>
               <input
                 type="text"
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Enter opportunity title or ID"
                 value={formData.opportunity_title}
                 onChange={(e) => setFormData({...formData, opportunity_title: e.target.value})}
@@ -520,10 +508,10 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Application ID</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Application ID</label>
               <input
                 type="text"
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.application_id}
                 onChange={(e) => setFormData({...formData, application_id: e.target.value})}
                 placeholder="Grant agency's application ID"
@@ -532,10 +520,10 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Submitted Amount *</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Submitted Amount *</label>
                 <input
                   type="number"
-                  className="form-input"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.submitted_amount}
                   onChange={(e) => setFormData({...formData, submitted_amount: e.target.value})}
                   min="0"
@@ -544,10 +532,10 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
                 />
               </div>
               <div>
-                <label className="form-label">Submission Date *</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Submission Date *</label>
                 <input
                   type="date"
-                  className="form-input"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.submission_date}
                   onChange={(e) => setFormData({...formData, submission_date: e.target.value})}
                   required
@@ -555,10 +543,9 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
               </div>
             </div>
 
-            {/* File Upload Section */}
             <div>
-              <label className="form-label">Upload Application Documents</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Upload Application Documents</label>
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 mt-1">
                 <input
                   type="file"
                   multiple
@@ -566,16 +553,16 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
                   onChange={(e) => setFormData({...formData, documents: Array.from(e.target.files)})}
                   className="w-full"
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-slate-500 mt-2">
                   Supported formats: PDF, Word, Excel, Text. You can select multiple files.
                 </p>
               </div>
             </div>
 
             <div>
-              <label className="form-label">Notes</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Notes</label>
               <textarea
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                 rows="3"
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
@@ -584,10 +571,17 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
-              <button type="button" onClick={onClose} className="btn-secondary">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
+              <button 
+                type="submit" 
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Track Application
               </button>
             </div>
@@ -632,16 +626,16 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+        className="bg-white rounded-xl shadow-xl max-w-md w-full"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Upload Documents</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Upload Documents</h3>
           
           <form onSubmit={handleUpload} className="space-y-4">
             <div>
-              <label className="form-label">Document Type</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Document Type</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
               >
@@ -658,8 +652,8 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
             </div>
 
             <div>
-              <label className="form-label">Files</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Files</label>
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 mt-1">
                 <input
                   type="file"
                   multiple
@@ -667,22 +661,21 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
                   className="w-full"
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-slate-500 mt-2">
                   Supported formats: PDF, Word, Excel, Text, Images. Multiple files allowed.
                 </p>
               </div>
             </div>
 
-            {/* File Preview */}
             {files.length > 0 && (
               <div className="space-y-2">
-                <label className="form-label">Selected Files:</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Selected Files:</label>
                 {files.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-md">
                     <div className="flex items-center">
-                      <Paperclip className="w-4 h-4 mr-2 text-gray-500" />
-                      <span className="text-sm">{file.name}</span>
-                      <span className="text-xs text-gray-500 ml-2">
+                      <Paperclip className="w-4 h-4 mr-2 text-slate-500" />
+                      <span className="text-sm text-slate-900">{file.name}</span>
+                      <span className="text-xs text-slate-500 ml-2">
                         ({(file.size / 1024 / 1024).toFixed(2)} MB)
                       </span>
                     </div>
@@ -699,12 +692,16 @@ function DocumentUploadModal({ submission, onClose, onUpload }) {
             )}
 
             <div className="flex justify-end space-x-3 pt-4">
-              <button type="button" onClick={onClose} className="btn-secondary">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Cancel
               </button>
               <button 
                 type="submit" 
-                className="btn-primary"
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
                 disabled={files.length === 0 || uploading}
               >
                 {uploading ? (
@@ -744,13 +741,13 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      'submitted': 'bg-green-100 text-green-800',
-      'under_review': 'bg-yellow-100 text-yellow-800',
-      'approved': 'bg-green-100 text-green-800',
-      'denied': 'bg-red-100 text-red-800',
-      'withdrawn': 'bg-gray-100 text-gray-800'
+      'submitted': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'under_review': 'bg-amber-100 text-amber-700 border-amber-200',
+      'approved': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'denied': 'bg-red-100 text-red-700 border-red-200',
+      'withdrawn': 'bg-slate-100 text-slate-700 border-slate-200'
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+    return colors[status] || 'bg-slate-100 text-slate-700 border-slate-200'
   }
 
   return (
@@ -758,53 +755,53 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold">Application Details</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <h3 className="text-lg font-semibold text-slate-900">Application Details</h3>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
               <XCircle className="w-5 h-5" />
             </button>
           </div>
 
           <div className="space-y-6">
             <div>
-              <h4 className="font-medium text-gray-900 mb-2">Basic Information</h4>
+              <h4 className="font-medium text-slate-900 mb-4">Basic Information</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-gray-500">Application ID</p>
-                  <p className="font-medium">{submission.application_id || 'Pending'}</p>
+                  <p className="text-slate-500 font-medium">Application ID</p>
+                  <p className="text-slate-900">{submission.application_id || 'Pending'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Current Status</p>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(submission.status)}`}>
+                  <p className="text-slate-500 font-medium">Current Status</p>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusColor(submission.status)}`}>
                     {submission.status.replace('_', ' ')}
                   </span>
                 </div>
                 <div>
-                  <p className="text-gray-500">Submitted Amount</p>
-                  <p className="font-medium">{formatCurrency(submission.submitted_amount)}</p>
+                  <p className="text-slate-500 font-medium">Submitted Amount</p>
+                  <p className="text-slate-900">{formatCurrency(submission.submitted_amount)}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Submission Date</p>
-                  <p className="font-medium">{format(new Date(submission.submission_date), 'MMM d, yyyy')}</p>
+                  <p className="text-slate-500 font-medium">Submission Date</p>
+                  <p className="text-slate-900">{format(new Date(submission.submission_date), 'MMM d, yyyy')}</p>
                 </div>
               </div>
             </div>
 
             {submission.award_amount && (
               <div>
-                <h4 className="font-medium text-gray-900 mb-2">Award Information</h4>
+                <h4 className="font-medium text-slate-900 mb-4">Award Information</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-500">Award Amount</p>
-                    <p className="font-medium text-green-600">{formatCurrency(submission.award_amount)}</p>
+                    <p className="text-slate-500 font-medium">Award Amount</p>
+                    <p className="font-bold text-emerald-600">{formatCurrency(submission.award_amount)}</p>
                   </div>
                   {submission.response_date && (
                     <div>
-                      <p className="text-gray-500">Response Date</p>
-                      <p className="font-medium">{format(new Date(submission.response_date), 'MMM d, yyyy')}</p>
+                      <p className="text-slate-500 font-medium">Response Date</p>
+                      <p className="text-slate-900">{format(new Date(submission.response_date), 'MMM d, yyyy')}</p>
                     </div>
                   )}
                 </div>
@@ -812,12 +809,12 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
             )}
 
             <div>
-              <h4 className="font-medium text-gray-900 mb-2">Update Status</h4>
+              <h4 className="font-medium text-slate-900 mb-4">Update Status</h4>
               <form onSubmit={handleStatusUpdate} className="space-y-4">
                 <div>
-                  <label className="form-label">New Status</label>
+                  <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">New Status</label>
                   <select
-                    className="form-input"
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value)}
                   >
@@ -830,9 +827,9 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
                 </div>
 
                 <div>
-                  <label className="form-label">Notes</label>
+                  <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Notes</label>
                   <textarea
-                    className="form-input"
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                     rows="3"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -841,10 +838,17 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
                 </div>
 
                 <div className="flex justify-end space-x-3">
-                  <button type="button" onClick={onClose} className="btn-secondary">
+                  <button 
+                    type="button" 
+                    onClick={onClose} 
+                    className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="btn-primary">
+                  <button 
+                    type="submit" 
+                    className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+                  >
                     Update Status
                   </button>
                 </div>

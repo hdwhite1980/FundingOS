@@ -54,11 +54,11 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
     try {
       setLoading(true)
       const [donorsData, donationsData, campaignsData, investorsData, statsData] = await Promise.all([
-        directUserServices.donors.getDonors(user.id, { search: searchQuery, ...filters }),
-        directUserServices.donors.getDonations(user.id),
-        directUserServices.campaigns.getCampaigns(user.id, { search: searchQuery, ...filters }),
-        directUserServices.investors.getInvestors(user.id, { search: searchQuery, ...filters }),
-        directUserServices.donors.getDonorStats(user.id)
+        directUserServices.donors?.getDonors(user.id, { search: searchQuery, ...filters }) || Promise.resolve([]),
+        directUserServices.donors?.getDonations(user.id) || Promise.resolve([]),
+        directUserServices.campaigns?.getCampaigns(user.id, { search: searchQuery, ...filters }) || Promise.resolve([]),
+        directUserServices.investors?.getInvestors(user.id, { search: searchQuery, ...filters }) || Promise.resolve([]),
+        directUserServices.donors?.getDonorStats(user.id) || Promise.resolve({})
       ])
 
       setDonors(donorsData)
@@ -85,10 +85,10 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
         },
       })
       
-      const success = await directUserServices.donors.refreshAllDonorStats(user.id)
+      const success = await directUserServices.donors?.refreshAllDonorStats(user.id)
       
       if (success) {
-        await loadData() // Reload all data
+        await loadData()
         toast.success('Donor statistics refreshed successfully!')
       } else {
         toast.error('Failed to refresh donor statistics')
@@ -100,11 +100,11 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
 
   const handleCreateDonor = async (donorData) => {
     try {
-      const newDonor = await directUserServices.donors.createDonor(user.id, donorData)
+      const newDonor = await directUserServices.donors?.createDonor(user.id, donorData)
       setDonors([newDonor, ...donors])
       setShowCreateModal(false)
       toast.success('Donor added successfully!')
-      loadData() // Refresh stats
+      loadData()
     } catch (error) {
       toast.error('Failed to create donor: ' + error.message)
     }
@@ -112,16 +112,16 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
 
   const handleCreateDonation = async (donationData) => {
     try {
-      const newDonation = await directUserServices.donors.createDonation(user.id, {
+      const newDonation = await directUserServices.donors?.createDonation(user.id, {
         ...donationData,
         amount: parseFloat(donationData.amount),
-        net_amount: parseFloat(donationData.amount) // Simplified
+        net_amount: parseFloat(donationData.amount)
       })
       setDonations([newDonation, ...donations])
       setShowDonationModal(false)
       setSelectedDonor(null)
       toast.success('Donation recorded successfully!')
-      loadData() // Refresh donor stats
+      loadData()
     } catch (error) {
       toast.error('Failed to record donation: ' + error.message)
     }
@@ -129,81 +129,33 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
 
   const handleCreateCampaign = async (campaignData) => {
     try {
-      const newCampaign = await directUserServices.campaigns.createCampaign(user.id, campaignData)
+      const newCampaign = await directUserServices.campaigns?.createCampaign(user.id, campaignData)
       setCampaigns([newCampaign, ...campaigns])
       setShowCampaignModal(false)
       toast.success('Campaign created successfully!')
     } catch (error) {
       toast.error('Failed to create campaign: ' + error.message)
-      console.error('Create campaign error:', error)
     }
   }
 
   const handleCreateInvestor = async (investorData) => {
     try {
-      const newInvestor = await directUserServices.investors.createInvestor(user.id, investorData)
+      const newInvestor = await directUserServices.investors?.createInvestor(user.id, investorData)
       setInvestors([newInvestor, ...investors])
       setShowCreateModal(false)
       toast.success('Investor created successfully!')
     } catch (error) {
       toast.error('Failed to create investor: ' + error.message)
-      console.error('Create investor error:', error)
-    }
-  }
-
-  const handleUpdateCampaign = async (campaignId, updates) => {
-    try {
-      const updatedCampaign = await directUserServices.campaigns.updateCampaign(user.id, campaignId, updates)
-      setCampaigns(campaigns.map(c => c.id === campaignId ? updatedCampaign : c))
-      toast.success('Campaign updated successfully!')
-    } catch (error) {
-      toast.error('Failed to update campaign: ' + error.message)
-      console.error('Update campaign error:', error)
-    }
-  }
-
-  const handleDeleteCampaign = async (campaignId) => {
-    if (window.confirm('Are you sure you want to delete this campaign?')) {
-      try {
-        await directUserServices.campaigns.deleteCampaign(user.id, campaignId)
-        setCampaigns(campaigns.filter(c => c.id !== campaignId))
-        toast.success('Campaign deleted successfully!')
-        loadData() // Refresh stats
-      } catch (error) {
-        toast.error('Failed to delete campaign: ' + error.message)
-        console.error('Delete campaign error:', error)
-      }
-    }
-  }
-
-  const handleUpdateInvestor = async (investorId, updates) => {
-    try {
-      const updatedInvestor = await directUserServices.investors.updateInvestor(user.id, investorId, updates)
-      setInvestors(investors.map(i => i.id === investorId ? updatedInvestor : i))
-      toast.success('Investor updated successfully!')
-    } catch (error) {
-      toast.error('Failed to update investor: ' + error.message)
-      console.error('Update investor error:', error)
-    }
-  }
-
-  const handleUpdateDonor = async (donorId, updates) => {
-    try {
-      const updatedDonor = await directUserServices.donors.updateDonor(user.id, donorId, updates)
-      setDonors(donors.map(d => d.id === donorId ? updatedDonor : d))
-      toast.success('Donor updated successfully!')
-    } catch (error) {
-      toast.error('Failed to update donor: ' + error.message)
     }
   }
 
   const handleDeleteDonor = async (donorId) => {
     if (window.confirm('Are you sure you want to delete this donor?')) {
       try {
-        await directUserServices.donors.deleteDonor(user.id, donorId)
+        await directUserServices.donors?.deleteDonor(user.id, donorId)
         setDonors(donors.filter(d => d.id !== donorId))
         toast.success('Donor deleted successfully!')
-        loadData() // Refresh stats
+        loadData()
       } catch (error) {
         toast.error('Failed to delete donor: ' + error.message)
       }
@@ -213,28 +165,13 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
   const handleDeleteInvestor = async (investorId) => {
     if (window.confirm('Are you sure you want to delete this investor?')) {
       try {
-        await directUserServices.investors.deleteInvestor(user.id, investorId)
+        await directUserServices.investors?.deleteInvestor(user.id, investorId)
         setInvestors(investors.filter(i => i.id !== investorId))
         toast.success('Investor deleted successfully!')
-        loadData() // Refresh stats
+        loadData()
       } catch (error) {
         toast.error('Failed to delete investor: ' + error.message)
       }
-    }
-  }
-
-  const syncCampaign = async (campaignId) => {
-    try {
-      toast('Campaign sync feature coming in a future update', {
-        icon: 'ℹ️',
-        style: {
-          borderRadius: '10px',
-          background: '#3b82f6',
-          color: '#fff',
-        },
-      })
-    } catch (error) {
-      toast.error('Failed to sync campaign data')
     }
   }
 
@@ -245,109 +182,109 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
     }).format(amount || 0)
   }
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = "blue" }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="card"
-    >
-      <div className="card-body flex items-center">
-        <div className={`p-3 bg-${color}-100 rounded-lg mr-4`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
+  // Modern StatCard component following design system
+  const ModernStatCard = ({ icon: Icon, title, value, subtitle, color = "emerald" }) => (
+    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+      <div className="flex items-center space-x-3 mb-4">
+        <div className={`p-2.5 bg-slate-50 rounded-lg`}>
+          <Icon className={`w-5 h-5 ${
+            color === 'emerald' ? 'text-emerald-600' : 
+            color === 'amber' ? 'text-amber-600' : 
+            color === 'red' ? 'text-red-600' : 
+            'text-slate-600'
+          }`} />
         </div>
-        <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
-        </div>
+        <span className="text-sm font-medium text-slate-600">{title}</span>
       </div>
-    </motion.div>
+      <div className="space-y-1">
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+        {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+      </div>
+    </div>
   )
 
   const DonorCard = ({ donor }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card hover:shadow-lg transition-all duration-300"
+      className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300"
     >
-      <div className="card-body">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
-                  {donor.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{donor.name}</h3>
-                <p className="text-sm text-gray-600 capitalize">{donor.donor_type}</p>
-              </div>
-              {donor.is_major_donor && (
-                <Star className="w-5 h-5 text-yellow-500 fill-current" />
-              )}
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">
+                {donor.name.charAt(0).toUpperCase()}
+              </span>
             </div>
-
-            <div className="space-y-2">
-              {donor.email && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <Mail className="w-4 h-4 mr-2" />
-                  {donor.email}
-                </div>
-              )}
-              {donor.phone && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <Phone className="w-4 h-4 mr-2" />
-                  {donor.phone}
-                </div>
-              )}
-              {donor.city && donor.state && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  {donor.city}, {donor.state}
-                </div>
-              )}
-              {donor.last_donation_date && (
-                <div className="flex items-center text-sm text-gray-600">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Last: {new Date(donor.last_donation_date).toLocaleDateString()}
-                </div>
-              )}
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">{donor.name}</h3>
+              <p className="text-sm text-slate-600 capitalize">{donor.donor_type}</p>
             </div>
+            {donor.is_major_donor && (
+              <Star className="w-5 h-5 text-amber-500 fill-current" />
+            )}
+          </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <div>
-                <p className="text-lg font-bold text-green-600">
-                  {formatCurrency(donor.total_donated)}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {donor.donation_count} donation{donor.donation_count !== 1 ? 's' : ''}
-                </p>
+          <div className="space-y-2 mb-4">
+            {donor.email && (
+              <div className="flex items-center text-sm text-slate-600">
+                <Mail className="w-4 h-4 mr-2" />
+                {donor.email}
               </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => {
-                    setSelectedDonor(donor)
-                    setShowDonationModal(true)
-                  }}
-                  className="btn-primary btn-sm"
-                >
-                  Add Donation
-                </button>
-                <button
-                  onClick={() => setSelectedDonor(donor)}
-                  className="btn-secondary btn-sm"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteDonor(donor.id)}
-                  className="btn-secondary btn-sm text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+            )}
+            {donor.phone && (
+              <div className="flex items-center text-sm text-slate-600">
+                <Phone className="w-4 h-4 mr-2" />
+                {donor.phone}
               </div>
+            )}
+            {donor.city && donor.state && (
+              <div className="flex items-center text-sm text-slate-600">
+                <MapPin className="w-4 h-4 mr-2" />
+                {donor.city}, {donor.state}
+              </div>
+            )}
+            {donor.last_donation_date && (
+              <div className="flex items-center text-sm text-slate-600">
+                <Calendar className="w-4 h-4 mr-2" />
+                Last: {new Date(donor.last_donation_date).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-lg font-bold text-emerald-600">
+                {formatCurrency(donor.total_donated)}
+              </p>
+              <p className="text-xs text-slate-500">
+                {donor.donation_count} donation{donor.donation_count !== 1 ? 's' : ''}
+              </p>
+            </div>
+            
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  setSelectedDonor(donor)
+                  setShowDonationModal(true)
+                }}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm"
+              >
+                Add Donation
+              </button>
+              <button
+                onClick={() => setSelectedDonor(donor)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteDonor(donor.id)}
+                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -360,11 +297,11 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       const type = investor.type || 'individual';
       switch(type) {
         case 'angel':
-          return <TrendingUp className="w-5 h-5 text-blue-600" />;
+          return <TrendingUp className="w-5 h-5 text-emerald-600" />;
         case 'venture_capital':
-          return <Users className="w-5 h-5 text-green-600" />;
+          return <Users className="w-5 h-5 text-emerald-600" />;
         default:
-          return <Users className="w-5 h-5 text-gray-600" />;
+          return <Users className="w-5 h-5 text-slate-600" />;
       }
     };
 
@@ -384,79 +321,76 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card hover:shadow-lg transition-all duration-300"
+        className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300"
       >
-        <div className="card-body">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
-                    {(investor.name || '').charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{investor.name || 'Unknown Investor'}</h3>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    {getInvestorTypeIcon()}
-                    <span>{getInvestorTypeLabel()}</span>
-                  </div>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">
+                  {(investor.name || '').charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">{investor.name || 'Unknown Investor'}</h3>
+                <div className="flex items-center space-x-2 text-sm text-slate-500">
+                  {getInvestorTypeIcon()}
+                  <span>{getInvestorTypeLabel()}</span>
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                {investor.email && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Mail className="w-4 h-4 mr-2" />
-                    {investor.email}
-                  </div>
-                )}
-                {investor.phone && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Phone className="w-4 h-4 mr-2" />
-                    {investor.phone}
-                  </div>
-                )}
-                {investor.focus_areas && (
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium">Focus:</span> {investor.focus_areas}
-                  </div>
-                )}
+            <div className="space-y-2 mb-4">
+              {investor.email && (
+                <div className="flex items-center text-sm text-slate-600">
+                  <Mail className="w-4 h-4 mr-2" />
+                  {investor.email}
+                </div>
+              )}
+              {investor.phone && (
+                <div className="flex items-center text-sm text-slate-600">
+                  <Phone className="w-4 h-4 mr-2" />
+                  {investor.phone}
+                </div>
+              )}
+              {investor.focus_areas && (
+                <div className="text-sm text-slate-600">
+                  <span className="font-medium">Focus:</span> {investor.focus_areas}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg font-bold text-emerald-600">
+                  {formatCurrency(investor.total_invested || 0)}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {investor.investment_count || 0} investment{(investor.investment_count || 0) !== 1 ? 's' : ''}
+                </p>
               </div>
-
-              <div className="flex items-center justify-between mt-4">
-                <div>
-                  <p className="text-lg font-bold text-green-600">
-                    {formatCurrency(investor.total_invested || 0)}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {investor.investment_count || 0} investment{(investor.investment_count || 0) !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => {
-                      setSelectedInvestor(investor)
-                      // Future: Open investment modal
-                    }}
-                    className="btn-primary btn-sm"
-                  >
-                    New Investment
-                  </button>
-                  <button
-                    onClick={() => setSelectedInvestor(investor)}
-                    className="btn-secondary btn-sm"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteInvestor(investor.id)}
-                    className="btn-secondary btn-sm text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    setSelectedInvestor(investor)
+                  }}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm"
+                >
+                  New Investment
+                </button>
+                <button
+                  onClick={() => setSelectedInvestor(investor)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteInvestor(investor.id)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -474,74 +408,72 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card hover:shadow-lg transition-all duration-300"
+        className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300"
       >
-        <div className="card-body">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-1">{campaign.title}</h3>
-              <p className="text-sm text-gray-600 capitalize">{campaign.platform}</p>
-              {campaign.project && (
-                <p className="text-xs text-gray-500">{campaign.project.name}</p>
-              )}
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                campaign.status === 'active' ? 'bg-green-100 text-green-800' :
-                campaign.status === 'completed' ? 'bg-green-100 text-green-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {campaign.status}
-              </span>
-              <button
-                onClick={() => syncCampaign(campaign.id)}
-                className="btn-secondary btn-sm"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Progress</span>
-                <span>{Math.round(progressPercentage)}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>{formatCurrency(campaign.raised_amount)}</span>
-                <span>{formatCurrency(campaign.goal_amount)}</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-500">
-              {campaign.supporter_count} supporter{campaign.supporter_count !== 1 ? 's' : ''}
-            </p>
-
-            <div className="flex items-center justify-between">
-              <a
-                href={campaign.campaign_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary btn-sm flex items-center"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                View Campaign
-              </a>
-            </div>
-
-            {campaign.last_sync && (
-              <p className="text-xs text-gray-500">
-                Last sync: {new Date(campaign.last_sync).toLocaleDateString()}
-              </p>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">{campaign.title}</h3>
+            <p className="text-sm text-slate-600 capitalize">{campaign.platform}</p>
+            {campaign.project && (
+              <p className="text-xs text-slate-500">{campaign.project.name}</p>
             )}
           </div>
+          <div className="flex items-center space-x-2">
+            <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${
+              campaign.status === 'active' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+              campaign.status === 'completed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+              'bg-slate-100 text-slate-700 border-slate-200'
+            }`}>
+              {campaign.status}
+            </span>
+            <button
+              onClick={() => {}}
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-slate-600">Progress</span>
+              <span className="font-medium text-slate-900">{Math.round(progressPercentage)}%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-lg h-8 overflow-hidden">
+              <div 
+                className="bg-emerald-500 h-8 rounded-lg transition-all duration-700 ease-out"
+                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs text-slate-500 mt-2">
+              <span>{formatCurrency(campaign.raised_amount)}</span>
+              <span>{formatCurrency(campaign.goal_amount)}</span>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-600">
+            {campaign.supporter_count} supporter{campaign.supporter_count !== 1 ? 's' : ''}
+          </p>
+
+          <div className="flex items-center justify-between">
+            <a
+              href={campaign.campaign_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-3 py-2 text-sm flex items-center space-x-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>View Campaign</span>
+            </a>
+          </div>
+
+          {campaign.last_sync && (
+            <p className="text-xs text-slate-500">
+              Last sync: {new Date(campaign.last_sync).toLocaleDateString()}
+            </p>
+          )}
         </div>
       </motion.div>
     )
@@ -549,388 +481,391 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Donor Management</h1>
-              <p className="text-gray-600">Track donors, donations, and crowdfunding campaigns</p>
-            </div>
-            <button
-              onClick={refreshStats}
-              className="btn-secondary flex items-center"
-              title="Refresh all donor statistics"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Stats
-            </button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Donor Management</h1>
+          <p className="text-sm text-slate-600">Track donors, donations, and crowdfunding campaigns</p>
         </div>
+        <button
+          onClick={refreshStats}
+          className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 flex items-center space-x-2"
+          title="Refresh all donor statistics"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span>Refresh Stats</span>
+        </button>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            icon={Users}
-            title="Total Donors"
-            value={stats.totalDonors || 0}
-            subtitle={`${stats.majorDonors || 0} major donors`}
-            color="blue"
-          />
-          <StatCard
-            icon={DollarSign}
-            title="Total Raised"
-            value={formatCurrency(stats.totalRaised)}
-            subtitle={`${formatCurrency(stats.thisYearRaised)} this year`}
-            color="green"
-          />
-          <StatCard
-            icon={Heart}
-            title="Total Donations"
-            value={stats.totalDonations || 0}
-            subtitle={`${formatCurrency(stats.avgDonationAmount)} average`}
-            color="red"
-          />
-          <StatCard
-            icon={Star}
-            title="Major Donors"
-            value={stats.majorDonors || 0}
-            subtitle="$1,000+ lifetime"
-            color="yellow"
-          />
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <ModernStatCard
+          icon={Users}
+          title="Total Donors"
+          value={stats.totalDonors || 0}
+          subtitle={`${stats.majorDonors || 0} major donors`}
+          color="emerald"
+        />
+        <ModernStatCard
+          icon={DollarSign}
+          title="Total Raised"
+          value={formatCurrency(stats.totalRaised)}
+          subtitle={`${formatCurrency(stats.thisYearRaised)} this year`}
+          color="emerald"
+        />
+        <ModernStatCard
+          icon={Heart}
+          title="Total Donations"
+          value={stats.totalDonations || 0}
+          subtitle={`${formatCurrency(stats.avgDonationAmount)} average`}
+          color="red"
+        />
+        <ModernStatCard
+          icon={Star}
+          title="Major Donors"
+          value={stats.majorDonors || 0}
+          subtitle="$1,000+ lifetime"
+          color="amber"
+        />
+      </div>
 
-        {/* Tabs */}
-        <div className="flex space-x-1 mb-8">
+      {/* Tabs */}
+      <div className="mb-8">
+        <nav className="flex space-x-1 bg-slate-100 rounded-lg p-1 max-w-fit">
           {[
-            { id: 'donors', label: 'Donors', icon: Users, description: 'Companies & Organizations' },
-            { id: 'investors', label: 'Investors', icon: TrendingUp, description: 'Individual Investors' },
-            { id: 'campaigns', label: 'Campaigns', icon: Heart, description: 'Crowdfunding Campaigns' },
-            { id: 'donations', label: 'Donations', icon: DollarSign, description: 'Transaction History' }
+            { id: 'donors', label: 'Donors', icon: Users },
+            { id: 'investors', label: 'Investors', icon: TrendingUp },
+            { id: 'campaigns', label: 'Campaigns', icon: Heart },
+            { id: 'donations', label: 'Donations', icon: DollarSign }
           ].map(tab => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'bg-green-100 text-green-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
-                <Icon className="w-4 h-4 mr-2" />
-                {tab.label}
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
               </button>
             )
           })}
-        </div>
-
-        {/* Content */}
-        {activeTab === 'donors' && (
-          <div className="space-y-6">
-            {/* Search and Actions */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1 max-w-md">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search donors..."
-                    className="form-input pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex space-x-3">
-                <button className="btn-secondary flex items-center">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import
-                </button>
-                <button className="btn-secondary flex items-center">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </button>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn-primary flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Donor
-                </button>
-              </div>
-            </div>
-
-            {/* Donors Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {donors.map(donor => (
-                <DonorCard key={donor.id} donor={donor} />
-              ))}
-            </div>
-
-            {donors.length === 0 && (
-              <div className="text-center py-12">
-                <Users className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No donors yet</h3>
-                <p className="mt-1 text-gray-500">Get started by adding your first donor.</p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn-primary mt-4"
-                >
-                  Add First Donor
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'investors' && (
-          <div className="space-y-6">
-            {/* Search and Actions */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1 max-w-md">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search investors..."
-                    className="form-input pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex space-x-3">
-                <button className="btn-secondary flex items-center">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import
-                </button>
-                <button className="btn-secondary flex items-center">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </button>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn-primary flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Investor
-                </button>
-              </div>
-            </div>
-
-            {/* Investors Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {investors.map(investor => (
-                <InvestorCard key={investor.id} investor={investor} />
-              ))}
-            </div>
-
-            {investors.length === 0 && (
-              <div className="text-center py-12">
-                <TrendingUp className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No investors yet</h3>
-                <p className="mt-1 text-gray-500">Connect with individual investors interested in your projects.</p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn-primary mt-4"
-                >
-                  Add First Investor
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'campaigns' && (
-          <div className="space-y-6">
-            {/* Campaign Controls */}
-            <div className="flex justify-between mb-6">
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setShowCampaignModal(true)}
-                  className="btn-primary flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Link Campaign
-                </button>
-              </div>
-            </div>
-
-            {/* Campaigns Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {campaigns.map(campaign => (
-                <CampaignCard key={campaign.id} campaign={campaign} />
-              ))}
-            </div>
-
-            {campaigns.length === 0 && (
-              <div className="text-center py-12">
-                <Heart className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No campaigns yet</h3>
-                <p className="mt-1 text-gray-500">Connect your crowdfunding campaigns to track progress.</p>
-                <button
-                  onClick={() => setShowCampaignModal(true)}
-                  className="btn-primary mt-4"
-                >
-                  Link First Campaign
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'donations' && (
-          <div className="space-y-6">
-            {/* Donation Controls */}
-            <div className="flex items-center justify-between">
-              <div className="flex space-x-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search donations..."
-                    className="form-input pl-10 w-64"
-                  />
-                </div>
-                
-                <select className="form-input">
-                  <option value="">All Projects</option>
-                  {projects.map(project => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="flex space-x-3">
-                <button className="btn-secondary flex items-center">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </button>
-                <button
-                  onClick={() => setShowDonationModal(true)}
-                  className="btn-primary flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Record Donation
-                </button>
-              </div>
-            </div>
-
-            {/* Donations Table */}
-            {donations.length > 0 ? (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Donor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Project
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Method
-                      </th>
-                      <th className="relative px-6 py-3">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {donations.map((donation) => (
-                      <tr key={donation.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs font-semibold">
-                                {donation.donor?.name?.charAt(0)?.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
-                                {donation.donor?.name || 'Unknown Donor'}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {donation.donor?.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-green-600">
-                            {formatCurrency(donation.amount)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(donation.donation_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {donation.project?.name || 'General'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 capitalize">
-                            {donation.payment_method?.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button 
-                            onClick={() => {
-                              setSelectedDonation(donation)
-                              setShowDonationDetailModal(true)
-                            }}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">No donations yet</h3>
-                <p className="mt-1 text-gray-500">Start recording donations to track your fundraising progress.</p>
-                <button
-                  onClick={() => setShowDonationModal(true)}
-                  className="btn-primary mt-4"
-                >
-                  Record First Donation
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        </nav>
       </div>
+
+      {/* Content */}
+      {activeTab === 'donors' && (
+        <div className="space-y-6">
+          {/* Search and Actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search donors..."
+                  className="w-full pl-10 pr-3 py-2 bg-white border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2">
+                <Upload className="w-4 h-4" />
+                <span>Import</span>
+              </button>
+              <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2">
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Donor</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Donors Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {donors.map(donor => (
+              <DonorCard key={donor.id} donor={donor} />
+            ))}
+          </div>
+
+          {donors.length === 0 && (
+            <div className="text-center py-12">
+              <div className="mx-auto w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center mb-4">
+                <Users className="w-6 h-6 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">No donors yet</h3>
+              <p className="text-slate-600 mb-6">Get started by adding your first donor.</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
+              >
+                Add First Donor
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'investors' && (
+        <div className="space-y-6">
+          {/* Search and Actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search investors..."
+                  className="w-full pl-10 pr-3 py-2 bg-white border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2">
+                <Upload className="w-4 h-4" />
+                <span>Import</span>
+              </button>
+              <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2">
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Investor</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Investors Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {investors.map(investor => (
+              <InvestorCard key={investor.id} investor={investor} />
+            ))}
+          </div>
+
+          {investors.length === 0 && (
+            <div className="text-center py-12">
+              <div className="mx-auto w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center mb-4">
+                <TrendingUp className="w-6 h-6 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">No investors yet</h3>
+              <p className="text-slate-600 mb-6">Connect with individual investors interested in your projects.</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
+              >
+                Add First Investor
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'campaigns' && (
+        <div className="space-y-6">
+          {/* Campaign Controls */}
+          <div className="flex justify-between">
+            <button
+              onClick={() => setShowCampaignModal(true)}
+              className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Link Campaign</span>
+            </button>
+          </div>
+
+          {/* Campaigns Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {campaigns.map(campaign => (
+              <CampaignCard key={campaign.id} campaign={campaign} />
+            ))}
+          </div>
+
+          {campaigns.length === 0 && (
+            <div className="text-center py-12">
+              <div className="mx-auto w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center mb-4">
+                <Heart className="w-6 h-6 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">No campaigns yet</h3>
+              <p className="text-slate-600 mb-6">Connect your crowdfunding campaigns to track progress.</p>
+              <button
+                onClick={() => setShowCampaignModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
+              >
+                Link First Campaign
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'donations' && (
+        <div className="space-y-6">
+          {/* Donation Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search donations..."
+                  className="pl-10 pr-3 py-2 bg-white border border-slate-200 rounded-md text-sm w-64 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              
+              <select className="bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                <option value="">All Projects</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2">
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+              <button
+                onClick={() => setShowDonationModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Record Donation</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Donations Table */}
+          {donations.length > 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Donor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Method
+                    </th>
+                    <th className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-100">
+                  {donations.map((donation) => (
+                    <tr key={donation.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">
+                              {donation.donor?.name?.charAt(0)?.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-slate-900">
+                              {donation.donor?.name || 'Unknown Donor'}
+                            </div>
+                            <div className="text-sm text-slate-500">
+                              {donation.donor?.email}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-emerald-600">
+                          {formatCurrency(donation.amount)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                        {new Date(donation.donation_date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                        {donation.project?.name || 'General'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 border border-slate-200 capitalize">
+                          {donation.payment_method?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button 
+                          onClick={() => {
+                            setSelectedDonation(donation)
+                            setShowDonationDetailModal(true)
+                          }}
+                          className="text-slate-600 hover:text-slate-900"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="mx-auto w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center mb-4">
+                <DollarSign className="w-6 h-6 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">No donations yet</h3>
+              <p className="text-slate-600 mb-6">Start recording donations to track your fundraising progress.</p>
+              <button
+                onClick={() => setShowDonationModal(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
+              >
+                Record First Donation
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modals */}
       {showCreateModal && (
         <CreateDonorModal
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateDonor}
-          donor={selectedDonor}
         />
       )}
 
@@ -993,17 +928,17 @@ function CreateDonorModal({ onClose, onSubmit }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+        className="bg-white rounded-xl shadow-xl max-w-md w-full"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Add New Donor</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Add New Donor</h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="form-label">Name *</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Name *</label>
               <input
                 type="text"
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 required
@@ -1012,19 +947,19 @@ function CreateDonorModal({ onClose, onSubmit }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Email</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Email</label>
                 <input
                   type="email"
-                  className="form-input"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                 />
               </div>
               <div>
-                <label className="form-label">Phone</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Phone</label>
                 <input
                   type="tel"
-                  className="form-input"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 />
@@ -1032,9 +967,9 @@ function CreateDonorModal({ onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Type</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Type</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.donor_type}
                 onChange={(e) => setFormData({...formData, donor_type: e.target.value})}
               >
@@ -1046,10 +981,10 @@ function CreateDonorModal({ onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Address</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Address</label>
               <input
                 type="text"
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Street address"
                 value={formData.address_line1}
                 onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
@@ -1060,7 +995,7 @@ function CreateDonorModal({ onClose, onSubmit }) {
               <div>
                 <input
                   type="text"
-                  className="form-input"
+                  className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="City"
                   value={formData.city}
                   onChange={(e) => setFormData({...formData, city: e.target.value})}
@@ -1069,7 +1004,7 @@ function CreateDonorModal({ onClose, onSubmit }) {
               <div>
                 <input
                   type="text"
-                  className="form-input"
+                  className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="State"
                   value={formData.state}
                   onChange={(e) => setFormData({...formData, state: e.target.value})}
@@ -1078,7 +1013,7 @@ function CreateDonorModal({ onClose, onSubmit }) {
               <div>
                 <input
                   type="text"
-                  className="form-input"
+                  className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   placeholder="ZIP"
                   value={formData.zip_code}
                   onChange={(e) => setFormData({...formData, zip_code: e.target.value})}
@@ -1087,9 +1022,9 @@ function CreateDonorModal({ onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Notes</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Notes</label>
               <textarea
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                 rows="3"
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
@@ -1098,10 +1033,17 @@ function CreateDonorModal({ onClose, onSubmit }) {
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
-              <button type="button" onClick={onClose} className="btn-secondary">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
+              <button 
+                type="submit" 
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Add Donor
               </button>
             </div>
@@ -1128,7 +1070,7 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
     onSubmit({
       ...formData,
       amount: parseFloat(formData.amount),
-      net_amount: parseFloat(formData.amount) // Simplified for now
+      net_amount: parseFloat(formData.amount)
     })
   }
 
@@ -1137,16 +1079,16 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+        className="bg-white rounded-xl shadow-xl max-w-md w-full"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Record Donation</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Record Donation</h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="form-label">Donor *</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Donor *</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.donor_id}
                 onChange={(e) => setFormData({...formData, donor_id: e.target.value})}
                 required
@@ -1161,9 +1103,9 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
             </div>
 
             <div>
-              <label className="form-label">Project</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Project</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.project_id}
                 onChange={(e) => setFormData({...formData, project_id: e.target.value})}
               >
@@ -1178,10 +1120,10 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Amount *</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Amount *</label>
                 <input
                   type="number"
-                  className="form-input"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.amount}
                   onChange={(e) => setFormData({...formData, amount: e.target.value})}
                   min="0"
@@ -1190,10 +1132,10 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
                 />
               </div>
               <div>
-                <label className="form-label">Date *</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Date *</label>
                 <input
                   type="date"
-                  className="form-input"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.donation_date}
                   onChange={(e) => setFormData({...formData, donation_date: e.target.value})}
                   required
@@ -1202,9 +1144,9 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
             </div>
 
             <div>
-              <label className="form-label">Payment Method</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Payment Method</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.payment_method}
                 onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
               >
@@ -1218,9 +1160,9 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
 
             {formData.payment_method === 'crowdfunding' && (
               <div>
-                <label className="form-label">Platform</label>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Platform</label>
                 <select
-                  className="form-input"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.external_platform}
                   onChange={(e) => setFormData({...formData, external_platform: e.target.value})}
                 >
@@ -1234,9 +1176,9 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
             )}
 
             <div>
-              <label className="form-label">Notes</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Notes</label>
               <textarea
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                 rows="3"
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
@@ -1245,10 +1187,17 @@ function CreateDonationModal({ donors, projects, selectedDonor, onClose, onSubmi
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
-              <button type="button" onClick={onClose} className="btn-secondary">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
+              <button 
+                type="submit" 
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Record Donation
               </button>
             </div>
@@ -1282,17 +1231,17 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+        className="bg-white rounded-xl shadow-xl max-w-md w-full"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Link Campaign</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Link Campaign</h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="form-label">Campaign Title *</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Campaign Title *</label>
               <input
                 type="text"
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
                 required
@@ -1300,9 +1249,9 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Platform *</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Platform *</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.platform}
                 onChange={(e) => setFormData({...formData, platform: e.target.value})}
                 required
@@ -1316,10 +1265,10 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Campaign URL *</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Campaign URL *</label>
               <input
                 type="url"
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.campaign_url}
                 onChange={(e) => setFormData({...formData, campaign_url: e.target.value})}
                 placeholder="https://..."
@@ -1328,9 +1277,9 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Associated Project</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Associated Project</label>
               <select
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.project_id}
                 onChange={(e) => setFormData({...formData, project_id: e.target.value})}
               >
@@ -1344,10 +1293,10 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Goal Amount</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Goal Amount</label>
               <input
                 type="number"
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 value={formData.goal_amount}
                 onChange={(e) => setFormData({...formData, goal_amount: e.target.value})}
                 min="0"
@@ -1357,9 +1306,9 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label className="form-label">Description</label>
+              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Description</label>
               <textarea
-                className="form-input"
+                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                 rows="3"
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
@@ -1368,10 +1317,17 @@ function LinkCampaignModal({ projects, onClose, onSubmit }) {
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
-              <button type="button" onClick={onClose} className="btn-secondary">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
+              <button 
+                type="submit" 
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
                 Link Campaign
               </button>
             </div>
@@ -1395,14 +1351,14 @@ function DonationDetailModal({ donation, onClose }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-lg max-w-md w-full"
+        className="bg-white rounded-xl shadow-xl max-w-md w-full"
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Donation Details</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Donation Details</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-slate-400 hover:text-slate-600"
             >
               ✕
             </button>
@@ -1410,20 +1366,20 @@ function DonationDetailModal({ donation, onClose }) {
           
           <div className="space-y-4">
             {/* Donor Info */}
-            <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
+            <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-lg">
+              <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">
                   {donation.donor?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </span>
               </div>
               <div>
-                <h4 className="font-medium text-gray-900">
+                <h4 className="font-medium text-slate-900">
                   {donation.donor?.name || 'Unknown Donor'}
                 </h4>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-slate-600">
                   {donation.donor?.email || 'No email provided'}
                 </p>
-                <p className="text-xs text-gray-500 capitalize">
+                <p className="text-xs text-slate-500 capitalize">
                   {donation.donor?.donor_type || 'Individual'}
                 </p>
               </div>
@@ -1431,39 +1387,39 @@ function DonationDetailModal({ donation, onClose }) {
 
             {/* Donation Amount */}
             <div className="text-center py-4">
-              <p className="text-3xl font-bold text-green-600">
+              <p className="text-3xl font-bold text-emerald-600">
                 {formatCurrency(donation.amount)}
               </p>
-              <p className="text-sm text-gray-500">Donation Amount</p>
+              <p className="text-sm text-slate-500">Donation Amount</p>
             </div>
 
             {/* Details Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">Date</label>
-                <p className="text-sm text-gray-900">
+                <label className="text-sm font-medium text-slate-700">Date</label>
+                <p className="text-sm text-slate-900">
                   {new Date(donation.donation_date).toLocaleDateString()}
                 </p>
               </div>
               
               <div>
-                <label className="text-sm font-medium text-gray-700">Payment Method</label>
-                <p className="text-sm text-gray-900 capitalize">
+                <label className="text-sm font-medium text-slate-700">Payment Method</label>
+                <p className="text-sm text-slate-900 capitalize">
                   {donation.payment_method?.replace('_', ' ') || 'Not specified'}
                 </p>
               </div>
 
               <div className="col-span-2">
-                <label className="text-sm font-medium text-gray-700">Project</label>
-                <p className="text-sm text-gray-900">
+                <label className="text-sm font-medium text-slate-700">Project</label>
+                <p className="text-sm text-slate-900">
                   {donation.project?.name || 'General Donation'}
                 </p>
               </div>
 
               {donation.external_platform && (
                 <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-700">Platform</label>
-                  <p className="text-sm text-gray-900 capitalize">
+                  <label className="text-sm font-medium text-slate-700">Platform</label>
+                  <p className="text-sm text-slate-900 capitalize">
                     {donation.external_platform}
                   </p>
                 </div>
@@ -1471,8 +1427,8 @@ function DonationDetailModal({ donation, onClose }) {
 
               {donation.notes && (
                 <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-700">Notes</label>
-                  <p className="text-sm text-gray-900">
+                  <label className="text-sm font-medium text-slate-700">Notes</label>
+                  <p className="text-sm text-slate-900">
                     {donation.notes}
                   </p>
                 </div>
@@ -1480,12 +1436,12 @@ function DonationDetailModal({ donation, onClose }) {
             </div>
 
             {/* Timestamps */}
-            <div className="pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500">
+            <div className="pt-4 border-t border-slate-200">
+              <p className="text-xs text-slate-500">
                 Created: {new Date(donation.created_at).toLocaleString()}
               </p>
               {donation.updated_at && donation.updated_at !== donation.created_at && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   Updated: {new Date(donation.updated_at).toLocaleString()}
                 </p>
               )}
@@ -1493,7 +1449,10 @@ function DonationDetailModal({ donation, onClose }) {
           </div>
 
           <div className="flex justify-end pt-4">
-            <button onClick={onClose} className="btn-primary">
+            <button 
+              onClick={onClose} 
+              className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+            >
               Close
             </button>
           </div>

@@ -57,12 +57,12 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
 
   if (projects.length === 0) {
     return (
-      <div className="empty-state">
-        <div className="empty-state-icon">
-          <Target />
+      <div className="text-center py-6">
+        <div className="mx-auto w-12 h-12 rounded-lg bg-slate-50 flex items-center justify-center mb-4">
+          <Target className="w-6 h-6 text-slate-400" />
         </div>
-        <h3 className="empty-state-title">No projects yet</h3>
-        <p className="empty-state-description">
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">No projects yet</h3>
+        <p className="text-sm text-slate-600">
           Create your first project to start finding funding opportunities.
         </p>
       </div>
@@ -70,24 +70,24 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {projects.map((project, index) => (
         <div
           key={project.id}
           className={`
-            group relative p-4 sm:p-5 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md
+            group relative p-6 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md
             ${selectedProject?.id === project.id
-              ? 'border-green-300 bg-green-50 shadow-sm ring-1 ring-green-200'
-              : 'border-neutral-200 hover:border-green-300 hover:bg-green-25 bg-white'
+              ? 'border-emerald-300 bg-emerald-50 shadow-sm ring-2 ring-emerald-100'
+              : 'border-slate-200 hover:border-emerald-300 hover:bg-slate-50 bg-white'
             }
           `}
           onClick={() => handleProjectClick(project)}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className={`font-bold text-lg ${
-                  selectedProject?.id === project.id ? 'text-green-900' : 'text-neutral-900'
+              <div className="flex items-start justify-between mb-4">
+                <h3 className={`text-lg font-semibold ${
+                  selectedProject?.id === project.id ? 'text-emerald-900' : 'text-slate-900'
                 }`}>
                   {project.name}
                 </h3>
@@ -97,18 +97,18 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
                   <button
                     type="button"
                     onClick={(e) => handleActionClick(e, project.id)}
-                    className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
                   >
                     <MoreVertical className="w-4 h-4" />
                   </button>
                   
                   {/* Actions Dropdown */}
                   {showActionsFor === project.id && (
-                    <div className="absolute right-0 top-10 z-50 bg-white rounded-xl shadow-xl border border-neutral-200 min-w-[140px] overflow-hidden">
+                    <div className="absolute right-0 top-10 z-50 bg-white rounded-lg shadow-xl border border-slate-200 min-w-[140px] overflow-hidden">
                       <button
                         type="button"
                         onClick={(e) => handleEdit(e, project)}
-                        className="w-full text-left px-4 py-3 text-sm text-neutral-700 hover:bg-green-50 hover:text-green-700 flex items-center transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center"
                       >
                         <Edit3 className="w-4 h-4 mr-3" />
                         Edit Project
@@ -116,7 +116,7 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
                       <button
                         type="button"
                         onClick={(e) => handleDelete(e, project)}
-                        className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors border-t border-neutral-100"
+                        className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors border-t border-slate-100"
                       >
                         <Trash2 className="w-4 h-4 mr-3" />
                         Delete Project
@@ -126,14 +126,56 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
                 </div>
               </div>
               
-              <div className="flex items-center justify-between">
-                <div className="flex items-center text-neutral-600">
-                  <DollarSign className="w-4 h-4 mr-2 text-green-600" />
-                  <span className="font-semibold">${project.funding_needed?.toLocaleString()}</span>
+              {/* Project Details */}
+              <div className="space-y-3">
+                {/* Funding Amount */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center text-slate-600">
+                    <DollarSign className="w-4 h-4 mr-2 text-emerald-600" />
+                    <span className="text-sm font-medium">
+                      ${project.funding_needed?.toLocaleString() || '0'} needed
+                    </span>
+                  </div>
+                  
+                  {/* Project Type Badge */}
+                  {project.project_type && (
+                    <div className="inline-flex items-center px-2.5 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-xs font-medium">
+                      <Target className="w-3 h-3 mr-1" />
+                      {project.project_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                  <Target className="w-3 h-3 mr-1" />
-                  {project.project_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+
+                {/* Project Description */}
+                {project.description && (
+                  <p className="text-sm text-slate-600 line-clamp-2">
+                    {project.description}
+                  </p>
+                )}
+
+                {/* Additional Details */}
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center space-x-4">
+                    {project.location && (
+                      <div className="flex items-center">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        <span>{project.location}</span>
+                      </div>
+                    )}
+                    {project.created_at && (
+                      <div className="flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        <span>Created {new Date(project.created_at).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Selection Indicator */}
+                  {selectedProject?.id === project.id && (
+                    <div className="flex items-center text-emerald-600">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

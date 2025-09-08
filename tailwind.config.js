@@ -8,57 +8,71 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // New WALI OS Brand Colors - Green, Gold, Gray
-        brand: {
-          // Primary Green - Security, Growth, Money
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',  // Main brand green
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+        // Modern SaaS Design System - Professional Color Palette
+        emerald: {
+          // Primary color - emerald for success, actions, and brand
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981',  // Primary emerald
+          600: '#059669',  // Darker emerald for hover states
+          700: '#047857',  // Darkest emerald
+          800: '#065f46',
+          900: '#064e3b',
         },
-        gold: {
-          // Gold - Achievement, Reward, Premium
-          50: '#fffdf7',
-          100: '#fffbeb',
-          200: '#fef3c7',
-          300: '#fde68a',
-          400: '#fcd34d',
-          500: '#f59e0b',  // Main gold
-          600: '#d97706',
+        amber: {
+          // Secondary color - amber for highlights and warnings
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',  // Secondary amber
+          500: '#f59e0b',  // Primary amber
+          600: '#d97706',  // Darker amber for hover states
           700: '#b45309',
           800: '#92400e',
           900: '#78350f',
         },
-        financial: {
-          // Financial UI Colors
-          success: '#22c55e',
-          warning: '#f59e0b',
-          danger: '#ef4444',
-          info: '#3b82f6',
-          growth: '#10b981',
-          profit: '#22c55e',
-          loss: '#ef4444',
+        slate: {
+          // Neutral professional palette - slate grays
+          50: '#f8fafc',   // Main background
+          100: '#f1f5f9',  // Light surface
+          200: '#e2e8f0',  // Borders
+          300: '#cbd5e1',  // Hover borders
+          400: '#94a3b8',  // Icons/placeholders
+          500: '#64748b',  // Secondary text
+          600: '#475569',  // Labels
+          700: '#334155',  // Dark text
+          800: '#1e293b',
+          900: '#0f172a',  // Primary text
         },
-        neutral: {
-          // Professional Gray Scale
-          25: '#fcfcfd',
-          50: '#f9fafb',
-          100: '#f3f4f6',
-          200: '#e5e7eb',
-          300: '#d1d5db',
-          400: '#9ca3af',
-          500: '#6b7280',
-          600: '#4b5563',
-          700: '#374151',
-          800: '#1f2937',
-          900: '#111827',
-          950: '#030712',
+        red: {
+          // Error states
+          50: '#fef2f2',
+          100: '#fee2e2',
+          200: '#fecaca',
+          300: '#fca5a5',
+          400: '#f87171',
+          500: '#ef4444',
+          600: '#dc2626',  // Error color
+          700: '#b91c1c',
+          800: '#991b1b',
+          900: '#7f1d1d',
+        },
+        blue: {
+          // Information states
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',  // Info color
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
         },
       },
       fontFamily: {
@@ -85,22 +99,28 @@ module.exports = {
         '128': '32rem',
       },
       borderRadius: {
-        'xl': '0.75rem',
-        '2xl': '1rem',
-        '3xl': '1.5rem',
+        'xl': '0.75rem',   // 12px
+        '2xl': '1rem',     // 16px
+        '3xl': '1.5rem',   // 24px
       },
       boxShadow: {
-        'financial': '0 4px 6px -1px rgba(34, 197, 94, 0.1), 0 2px 4px -1px rgba(34, 197, 94, 0.06)',
-        'gold': '0 4px 6px -1px rgba(245, 158, 11, 0.1), 0 2px 4px -1px rgba(245, 158, 11, 0.06)',
-        'elegant': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-        'premium': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        // Professional shadow system
+        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'DEFAULT': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        // Subtle brand shadows for special elements
+        'emerald': '0 4px 6px -1px rgba(16, 185, 129, 0.1), 0 2px 4px -1px rgba(16, 185, 129, 0.06)',
+        'amber': '0 4px 6px -1px rgba(245, 158, 11, 0.1), 0 2px 4px -1px rgba(245, 158, 11, 0.06)',
       },
       animation: {
+        // Professional animations - subtle and purposeful
         'fade-in': 'fadeIn 0.5s ease-out forwards',
         'slide-up': 'slideUp 0.4s ease-out forwards',
         'scale-in': 'scaleIn 0.3s ease-out forwards',
         'pulse-slow': 'pulse 3s infinite',
-        'float': 'float 6s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -115,16 +135,22 @@ module.exports = {
           '0%': { opacity: '0', transform: 'scale(0.95)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-20px)' },
-        },
       },
       backgroundImage: {
+        // Subtle gradients for professional use
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'brand-gradient': 'linear-gradient(135deg, #22c55e 0%, #f59e0b 100%)',
-        'financial-gradient': 'linear-gradient(135deg, #16a34a 0%, #22c55e 50%, #f59e0b 100%)',
+      },
+      transitionDuration: {
+        // Professional transition timings
+        '200': '200ms',
+        '300': '300ms',
+        '700': '700ms',
+      },
+      transitionTimingFunction: {
+        // Professional easing functions
+        'out': 'cubic-bezier(0, 0, 0.2, 1)',
+        'in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
     },
   },
