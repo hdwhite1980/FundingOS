@@ -16,7 +16,8 @@ import {
   Calendar,
   Heart,
   ExternalLink,
-  Star
+  Star,
+  Clock
 } from 'lucide-react'
 
 // This component shows opportunities CREATED by angel investors that companies can browse

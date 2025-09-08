@@ -126,8 +126,8 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Left Side - Features */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-800 via-brand-800 to-brand-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-900/95 via-brand-800/90 to-brand-800/95"></div>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-800 via-emerald-800 to-emerald-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/95 via-emerald-800/90 to-emerald-800/95"></div>
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvv width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
@@ -149,7 +149,7 @@ export default function AuthPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6">
               Unlock Your Funding Potential
             </h2>
-            <p className="text-lg sm:text-xl text-green-100 mb-6 sm:mb-8 leading-relaxed">
+            <p className="text-lg sm:text-xl text-emerald-100 mb-6 sm:mb-8 leading-relaxed">
               The AI-powered financial platform that streamlines grant applications, 
               maximizes funding success, and accelerates your growth.
             </p>
@@ -161,7 +161,7 @@ export default function AuthPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
-                  className="flex items-center text-green-100 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300"
+                  className="flex items-center text-emerald-100 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300"
                 >
                   <CheckCircle className="w-5 h-5 text-emerald-400 mr-3 flex-shrink-0" />
                   <span className="font-medium text-sm sm:text-base">{feature}</span>
@@ -258,8 +258,8 @@ export default function AuthPage() {
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
-                <Mail className="inline w-4 h-4 mr-2 text-green-600" />
+              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                <Mail className="inline w-4 h-4 mr-2 text-emerald-600" />
                 Email Address
               </label>
               <input
@@ -274,8 +274,8 @@ export default function AuthPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
-                <Lock className="inline w-4 h-4 mr-2 text-green-600" />
+              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                <Lock className="inline w-4 h-4 mr-2 text-emerald-600" />
                 Password
               </label>
               <input
@@ -292,8 +292,8 @@ export default function AuthPage() {
 
             {isSignUp && (
               <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
-                  <Lock className="inline w-4 h-4 mr-2 text-green-600" />
+                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                  <Lock className="inline w-4 h-4 mr-2 text-emerald-600" />
                   Confirm Password
                 </label>
                 <input
@@ -330,7 +330,7 @@ export default function AuthPage() {
           <div className="text-center mt-6 sm:mt-8">
             <button
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-brand-600 hover:text-brand-700 font-semibold transition-colors"
+              className="text-emerald-600 hover:text-emerald-700 font-semibold transition-colors"
             >
               {isSignUp
                 ? 'Already have an account? Sign in'
@@ -341,24 +341,24 @@ export default function AuthPage() {
 
           {isSignUp && (
             <div className="mt-8 text-center">
-              <p className="text-sm text-neutral-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 By creating an account, you agree to our{' '}
-                <a href="#" className="text-brand-600 hover:text-brand-700 font-medium">Terms of Service</a>
+                <a href="#" className="text-emerald-600 hover:text-emerald-700 font-medium">Terms of Service</a>
                 {' '}and{' '}
-                <a href="#" className="text-brand-600 hover:text-brand-700 font-medium">Privacy Policy</a>.
+                <a href="#" className="text-emerald-600 hover:text-emerald-700 font-medium">Privacy Policy</a>.
               </p>
             </div>
           )}
 
           {/* Trust Indicators */}
-          <div className="mt-8 pt-8 border-t border-neutral-200">
-            <p className="text-center text-sm text-neutral-500 mb-4">Trusted by leading organizations</p>
+          <div className="mt-8 pt-8 border-t border-slate-200">
+            <p className="text-center text-sm text-slate-500 mb-4">Trusted by leading organizations</p>
             <div className="flex items-center justify-center space-x-6 opacity-60">
-              <div className="text-xs font-semibold text-neutral-400">NONPROFITS</div>
-              <div className="w-1 h-1 bg-neutral-300 rounded-full"></div>
-              <div className="text-xs font-semibold text-neutral-400">MUNICIPALITIES</div>
-              <div className="w-1 h-1 bg-neutral-300 rounded-full"></div>
-              <div className="text-xs font-semibold text-neutral-400">STARTUPS</div>
+              <div className="text-xs font-semibold text-slate-400">NONPROFITS</div>
+              <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+              <div className="text-xs font-semibold text-slate-400">MUNICIPALITIES</div>
+              <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+              <div className="text-xs font-semibold text-slate-400">STARTUPS</div>
             </div>
           </div>
         </div>
