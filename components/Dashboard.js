@@ -1,4 +1,4 @@
-// Dashboard.js - Updated with Modern SaaS Design System
+// Dashboard.js - Modern Overview Page with Real API Integration
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -6,7 +6,6 @@ import Header from './Header'
 import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
 import DonorManagement from './DonorManagement'
-// Focused funding source components
 import CampaignList from './CampaignList'
 import DirectDonationsList from './DirectDonationsList'
 import { StatCard } from './ui/StatCard'
@@ -14,9 +13,7 @@ import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
 import AIAgentInterface from './AIAgentInterface'
-import { 
-  directUserServices
-} from '../lib/supabase'
+import { directUserServices } from '../lib/supabase'
 import { 
   Plus, 
   Target, 
@@ -32,16 +29,28 @@ import {
   CheckCircle,
   Brain,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Building,
+  Edit3,
+  MoreVertical,
+  Trash2,
+  Search,
+  Filter,
+  ArrowUp,
+  ArrowDown,
+  ChevronRight,
+  BarChart3,
+  PieChart,
+  Activity,
+  Bell,
+  Settings,
+  Calendar
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Dashboard({ user, userProfile: initialUserProfile, onProfileUpdate }) {
-  // Remove useAuth dependency - use props instead
+  // State management
   const [userProfile, setUserProfile] = useState(initialUserProfile)
-  const [profileLoading, setProfileLoading] = useState(false)
-  
-  // Dashboard state
   const [projects, setProjects] = useState([])
   const [opportunities, setOpportunities] = useState([])
   const [projectOpportunities, setProjectOpportunities] = useState([])
@@ -53,44 +62,41 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [lastSyncTime, setLastSyncTime] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [activeFundingTab, setActiveFundingTab] = useState('grants')
-  
-  // Modal states for funding tab
-  const [showReitsModal, setShowReitsModal] = useState(false)
+  const [timeframe, setTimeframe] = useState('30d')
   
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
   
   // Enhanced stats for all features
   const [stats, setStats] = useState({
-    // Project stats
     totalProjects: 0,
     activeOpportunities: 0,
     totalFunding: 0,
     successRate: 0,
-    // Donor stats
     totalDonors: 0,
     totalDonated: 0,
     avgDonationAmount: 0,
     majorDonors: 0,
-    // Application stats
     totalSubmissions: 0,
     totalRequested: 0,
     totalAwarded: 0,
     applicationSuccessRate: 0,
-    // New combined stats
     totalReceived: 0,
-    receivedBreakdown: { funding: 0, donations: 0, campaigns: 0 }
+    receivedBreakdown: { funding: 0, donations: 0, campaigns: 0 },
+    pendingApplications: 0
   })
 
-  // Financial insights for information hub
+  // Financial insights and activity
   const [insights, setInsights] = useState([])
+  const [recentActivity, setRecentActivity] = useState([])
   const [aiActivity, setAiActivity] = useState([])
 
-  // Updated tabs array with cleaner, more focused navigation
+  // Tab configuration
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: Target, description: 'Financial summary & insights' },
-    { id: 'opportunities', label: 'Funding', icon: Zap, description: 'Grants, campaigns, investors & REITs' },
-    { id: 'applications', label: 'Pipeline', icon: FileText, description: 'Active applications' },
+    { id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Financial summary & insights' },
+    { id: 'opportunities', label: 'Projects & Funding', icon: Target, description: 'Grants, campaigns, investors' },
+    { id: 'applications', label: 'Applications', icon: FileText, description: 'Active applications' },
+    { id: 'analytics', label: 'Analytics', icon: PieChart, description: 'Performance metrics' },
     { id: 'donations', label: 'Donors & Investors', icon: Heart, description: 'Donor & investor management' },
     { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }
   ]
@@ -128,8 +134,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         return
       }
 
-      console.log('loadDashboardData: Loading data for user:', user.id) // Debug log
-      
       // Load core data
       const [userProjects, allOpportunities] = await Promise.all([
         directUserServices.projects.getProjects(user.id),
@@ -137,8 +141,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           organizationType: userProfile?.organization_type || 'nonprofit'
         })
       ])
-      
-      console.log('loadDashboardData: Core data loaded, projects:', userProjects.length, 'opportunities:', allOpportunities.length) // Debug log
       
       setProjects(userProjects)
       setOpportunities(allOpportunities)
@@ -148,8 +150,12 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         setSelectedProject(userProjects[0])
       }
 
-      // Load enhanced stats
-      await loadEnhancedStats(userProjects, allOpportunities)
+      // Load enhanced stats and activity
+      await Promise.all([
+        loadEnhancedStats(userProjects, allOpportunities),
+        loadRecentActivity(userProjects),
+        loadAiActivity(userProjects, allOpportunities)
+      ])
       
     } catch (error) {
       toast.error('Failed to load dashboard data')
@@ -159,42 +165,16 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     }
   }
 
-  // Separate function for refreshing data after sync
-  const refreshDataAfterSync = async () => {
-    try {
-      console.log('Refreshing data after sync...')
-      
-      // Only reload opportunities, keep other data intact
-      const newOpportunities = await directUserServices.opportunities.getOpportunities({
-        organizationType: userProfile.organization_type
-      })
-      setOpportunities(newOpportunities)
-      
-      // Recalculate stats with new opportunities
-      await loadEnhancedStats(projects, newOpportunities)
-      
-    } catch (error) {
-      console.error('Error refreshing data after sync:', error)
-    }
-  }
-
   const loadEnhancedStats = async (userProjects, allOpportunities) => {
     try {
-      if (!user?.id) {
-        console.warn('loadEnhancedStats: No user.id available')
-        return
-      }
+      if (!user?.id) return
 
-      console.log('loadEnhancedStats: Loading stats for user:', user.id) // Debug log
-      
       const [donorStats, applicationStats, totalReceivedStats, financialInsights] = await Promise.all([
         directUserServices.donors.getDonorStats(user.id),
         directUserServices.applications.getSubmissionStats(user.id),
         directUserServices.donors.getTotalAmountReceived(user.id),
         directUserServices.donors.getFinancialInsights(user.id)
       ])
-
-      console.log('loadEnhancedStats: Stats loaded successfully', { totalReceivedStats }) // Debug log
 
       // Calculate project stats
       const totalProjects = userProjects.length
@@ -207,57 +187,101 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       )
 
       setStats({
-        // Project stats
         totalProjects,
         activeOpportunities,
         totalFunding,
         successRate: totalProjects > 0 ? Math.round((totalProjects * 0.3)) : 0,
-        // Donor stats
         totalDonors: donorStats.totalDonors || 0,
         totalDonated: donorStats.totalRaised || 0,
         avgDonationAmount: donorStats.avgDonationAmount || 0,
         majorDonors: donorStats.majorDonors || 0,
-        // Application stats
         totalSubmissions: applicationStats.totalSubmissions || 0,
         totalRequested: applicationStats.totalRequested || 0,
         totalAwarded: applicationStats.totalAwarded || 0,
         applicationSuccessRate: applicationStats.successRate || 0,
-        // Combined total received stats
         totalReceived: totalReceivedStats.totalReceived || 0,
-        receivedBreakdown: totalReceivedStats.breakdown || { funding: 0, donations: 0, campaigns: 0 }
+        receivedBreakdown: totalReceivedStats.breakdown || { funding: 0, donations: 0, campaigns: 0 },
+        pendingApplications: applicationStats.pendingApplications || 0
       })
 
-      // Set insights for information hub
       setInsights(financialInsights)
+      
+    } catch (error) {
+      console.error('Error loading enhanced stats:', error)
+    }
+  }
 
-      // Generate AI activity insights
-      const aiActivities = []
-      if (activeOpportunities > 0 && totalProjects > 0) {
-        aiActivities.push({
+  const loadRecentActivity = async (userProjects) => {
+    try {
+      if (!user?.id) return
+
+      // Load recent activity from various sources
+      const [recentApplications, recentDonations, recentGrants] = await Promise.all([
+        directUserServices.applications.getRecentActivity(user.id, 5),
+        directUserServices.donors.getRecentDonations(user.id, 5),
+        directUserServices.projects.getRecentGrantActivity(user.id, 5)
+      ])
+
+      // Combine and sort activity by timestamp
+      const allActivity = [
+        ...recentApplications.map(app => ({
+          title: "Grant application submitted",
+          description: `${app.project_name} - ${app.grant_title}`,
+          time: app.created_at,
+          type: "success",
+          amount: app.amount_requested ? `$${app.amount_requested.toLocaleString()}` : null
+        })),
+        ...recentDonations.map(donation => ({
+          title: "Donation received",
+          description: `From ${donation.donor_name || 'Anonymous donor'}`,
+          time: donation.created_at,
+          type: "success",
+          amount: `$${donation.amount.toLocaleString()}`
+        })),
+        ...recentGrants.map(grant => ({
+          title: "Grant opportunity matched",
+          description: `AI identified new opportunity for ${grant.project_name}`,
+          time: grant.created_at,
+          type: "info"
+        }))
+      ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 6)
+
+      setRecentActivity(allActivity)
+      
+    } catch (error) {
+      console.error('Error loading recent activity:', error)
+      setRecentActivity([])
+    }
+  }
+
+  const loadAiActivity = async (userProjects, allOpportunities) => {
+    try {
+      const activities = []
+      
+      if (allOpportunities.length > 0 && userProjects.length > 0) {
+        activities.push({
           type: 'matching',
           title: 'Opportunity Analysis',
-          description: `${activeOpportunities} opportunities being analyzed for ${totalProjects} projects`,
-          icon: 'zap',
+          description: `${allOpportunities.length} opportunities being analyzed for ${userProjects.length} projects`,
           color: 'blue',
           timestamp: new Date()
         })
       }
       
-      if (applicationStats.totalSubmissions > 0) {
-        aiActivities.push({
+      if (stats.totalSubmissions > 0) {
+        activities.push({
           type: 'tracking',
           title: 'Application Monitoring',
-          description: `Tracking ${applicationStats.totalSubmissions} applications with ${applicationStats.successRate}% success rate`,
-          icon: 'eye',
+          description: `Tracking ${stats.totalSubmissions} applications with ${stats.applicationSuccessRate}% success rate`,
           color: 'green',
           timestamp: new Date()
         })
       }
       
-      setAiActivity(aiActivities)
+      setAiActivity(activities)
       
     } catch (error) {
-      console.error('Error loading enhanced stats:', error)
+      console.error('Error loading AI activity:', error)
     }
   }
 
@@ -282,58 +306,21 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         setLastSyncTime(new Date())
         
         toast.dismiss(toastId)
-        
-        const successMessage = (
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">✓</span>
-              </div>
-            </div>
-            <div>
-              <div className="font-semibold text-gray-900">Sync Complete!</div>
-              <div className="text-sm text-gray-600">
-                <strong>{result.imported}</strong> new opportunities imported in <strong>{syncTime}s</strong>
-              </div>
-              {result.summary?.agencies && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Sources: {result.summary.agencies.slice(0, 3).join(', ')}
-                  {result.summary.agencies.length > 3 && ` +${result.summary.agencies.length - 3} more`}
-                </div>
-              )}
-            </div>
-          </div>
-        )
-        
-        toast.success(successMessage, {
+        toast.success(`Sync Complete! ${result.imported} new opportunities imported in ${syncTime}s`, {
           duration: 6000,
           style: {
             background: '#f0fdf4',
             color: '#166534',
             border: '1px solid #bbf7d0',
-            minWidth: '320px',
           },
         })
         
-        // Only refresh data after successful sync
-        await refreshDataAfterSync()
-        
-        // Show AI matching notification for selected project
-        if (selectedProject && result.imported > 0) {
-          setTimeout(() => {
-            toast.success(
-              `AI is analyzing ${result.imported} new opportunities for "${selectedProject.name}"`,
-              {
-                duration: 4000,
-                style: {
-                  background: '#eff6ff',
-                  color: '#1e40af',
-                  border: '1px solid #bfdbfe',
-                },
-              }
-            )
-          }, 1000)
-        }
+        // Reload opportunities data
+        const newOpportunities = await directUserServices.opportunities.getOpportunities({
+          organizationType: userProfile.organization_type
+        })
+        setOpportunities(newOpportunities)
+        await loadEnhancedStats(projects, newOpportunities)
         
       } else {
         toast.dismiss(toastId)
@@ -358,6 +345,258 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     return time.toLocaleDateString()
   }
 
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffInMinutes = Math.round((now - time) / 1000 / 60)
+    
+    if (diffInMinutes < 1) return 'Just now'
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.round(diffInMinutes / 60)}h ago`
+    if (diffInMinutes < 10080) return `${Math.round(diffInMinutes / 1440)}d ago`
+    return time.toLocaleDateString()
+  }
+
+  // Enhanced component for funding progress visualization
+  const FundingProgressCard = () => {
+    const totalGoal = stats.totalFunding
+    const totalSecured = stats.totalAwarded
+    const totalPending = stats.totalRequested - stats.totalAwarded
+    const securedPercent = totalGoal > 0 ? (totalSecured / totalGoal) * 100 : 0
+    const pendingPercent = totalGoal > 0 ? (totalPending / totalGoal) * 100 : 0
+
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <div className="flex items-center mb-3">
+              <div className="p-2.5 bg-slate-50 rounded-lg">
+                <DollarSign className="h-5 w-5 text-slate-700" />
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-slate-600">Funding Progress</p>
+                <div className="flex items-center mt-1 text-xs font-medium text-emerald-600">
+                  <ArrowUp className="w-3 h-3 mr-1" />
+                  {stats.applicationSuccessRate}% success rate
+                </div>
+              </div>
+            </div>
+            <div className="mb-4">
+              <div className="flex items-baseline space-x-2">
+                <p className="text-2xl font-bold text-slate-900">
+                  ${totalSecured > 1000000 ? (totalSecured / 1000000).toFixed(1) + 'M' : (totalSecured / 1000).toFixed(0) + 'K'}
+                </p>
+                <p className="text-sm text-slate-500">
+                  of ${totalGoal > 1000000 ? (totalGoal / 1000000).toFixed(1) + 'M' : (totalGoal / 1000).toFixed(0) + 'K'} goal
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Visualization */}
+        <div className="space-y-4">
+          <div className="relative">
+            <div className="w-full bg-slate-100 rounded-lg h-6 overflow-hidden">
+              <div className="relative h-full flex">
+                {/* Secured funding */}
+                <div
+                  className="bg-emerald-500 h-full transition-all duration-700 ease-out"
+                  style={{ width: `${Math.min(securedPercent, 100)}%` }}
+                  title={`Secured: $${totalSecured.toLocaleString()}`}
+                />
+                {/* Pending funding */}
+                <div
+                  className="bg-amber-300 h-full opacity-60 transition-all duration-700 ease-out"
+                  style={{ width: `${Math.min(pendingPercent, 100 - securedPercent)}%` }}
+                  title={`Pending: $${totalPending.toLocaleString()}`}
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
+              <span>$0</span>
+              <span>{securedPercent.toFixed(0)}% secured</span>
+              <span>${(totalGoal / 1000000).toFixed(1)}M goal</span>
+            </div>
+          </div>
+
+          {/* Breakdown */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-medium text-slate-600 mb-2">Secured</p>
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
+                  <span className="text-slate-700">Grants Awarded</span>
+                </div>
+                <span className="font-medium text-slate-900">${(totalSecured / 1000).toFixed(0)}K</span>
+              </div>
+            </div>
+            
+            <div>
+              <p className="text-xs font-medium text-slate-600 mb-2">Pending</p>
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-amber-300 mr-2" />
+                  <span className="text-slate-700">Applications</span>
+                </div>
+                <span className="font-medium text-slate-500">${(totalPending / 1000).toFixed(0)}K</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-xs">
+            <div>
+              <span className="text-slate-500">Applications: </span>
+              <span className="font-medium text-slate-700">{stats.totalSubmissions}</span>
+            </div>
+            <div>
+              <span className="text-slate-500">Success Rate: </span>
+              <span className="font-medium text-emerald-600">{stats.applicationSuccessRate}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const MetricCard = ({ icon: Icon, title, value, subtitle, change, trend = "neutral" }) => (
+    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center mb-3">
+            <div className="p-2.5 bg-slate-50 rounded-lg">
+              <Icon className="h-5 w-5 text-slate-700" />
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium text-slate-600">{title}</p>
+              {change && (
+                <div className={`flex items-center mt-1 text-xs font-medium ${
+                  trend === 'up' ? 'text-emerald-600' : 
+                  trend === 'down' ? 'text-red-600' : 'text-slate-500'
+                }`}>
+                  {trend === 'up' && <ArrowUp className="w-3 h-3 mr-1" />}
+                  {trend === 'down' && <ArrowDown className="w-3 h-3 mr-1" />}
+                  {change}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mb-2">
+            <p className="text-2xl font-bold text-slate-900">{value}</p>
+          </div>
+          {subtitle && (
+            <p className="text-sm text-slate-500">{subtitle}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  const ProjectCard = ({ project, isSelected, onClick, onEdit, onDelete }) => {
+    const [showActions, setShowActions] = useState(false)
+    
+    const getStatusConfig = (status) => {
+      switch (status) {
+        case 'active': 
+          return { 
+            color: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
+            dot: 'bg-emerald-500',
+            progress: 'bg-emerald-500'
+          }
+        case 'planning': 
+          return { 
+            color: 'bg-amber-100 text-amber-700 border-amber-200', 
+            dot: 'bg-amber-500',
+            progress: 'bg-amber-500'
+          }
+        case 'funded': 
+          return { 
+            color: 'bg-blue-100 text-blue-700 border-blue-200', 
+            dot: 'bg-blue-500',
+            progress: 'bg-blue-500'
+          }
+        default: 
+          return { 
+            color: 'bg-slate-100 text-slate-700 border-slate-200', 
+            dot: 'bg-slate-500',
+            progress: 'bg-slate-500'
+          }
+      }
+    }
+
+    const statusConfig = getStatusConfig(project.status || 'active')
+    const progress = 45 // Default progress since it's not in your schema
+
+    return (
+      <div
+        className={`relative bg-white rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md group ${
+          isSelected
+            ? 'border-emerald-300 ring-2 ring-emerald-100 shadow-sm'
+            : 'border-slate-200 hover:border-emerald-200'
+        }`}
+        onClick={onClick}
+      >
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center mb-2">
+                <div className={`w-2 h-2 rounded-full ${statusConfig.dot} mr-3`} />
+                <h3 className="text-lg font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  {project.name}
+                </h3>
+              </div>
+              <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">{project.description}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-900">
+                ${project.funding_needed ? (project.funding_needed / 1000).toFixed(0) : 0}K
+              </p>
+              <p className="text-xs text-slate-500">Funding Goal</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-900">{opportunities.filter(opp => opp.eligible_for_project).length}</p>
+              <p className="text-xs text-slate-500">Matched Grants</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-900">{stats.totalSubmissions}</p>
+              <p className="text-xs text-slate-500">Applications</p>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs font-medium text-slate-600">Project Progress</span>
+              <span className="text-xs font-semibold text-slate-900">{progress}%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2">
+              <div 
+                className={`h-full ${statusConfig.progress} rounded-full transition-all duration-700 ease-out`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center text-slate-500 text-xs">
+              <Calendar className="w-3 h-3 mr-1" />
+              Created: {new Date(project.created_at).toLocaleDateString()}
+            </div>
+            
+            <div className={`px-2.5 py-1 rounded-md text-xs font-medium border ${statusConfig.color}`}>
+              Active
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Handle project operations
   const handleProjectCreated = async (newProject) => {
     const updatedProjects = [newProject, ...projects]
     setProjects(updatedProjects)
@@ -365,14 +604,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     setShowCreateModal(false)
     setEditingProject(null)
     toast.success('Project created successfully!')
-    
-    // Recalculate stats
     await loadEnhancedStats(updatedProjects, opportunities)
-    
-    // Trigger AI opportunity matching
-    setTimeout(() => {
-      toast.success('AI is analyzing opportunities for your new project...')
-    }, 1000)
   }
 
   const handleProjectUpdated = async (updatedProject) => {
@@ -386,14 +618,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     setEditingProject(null)
     setShowCreateModal(false)
     toast.success('Project updated successfully!')
-    
-    // Recalculate stats
     await loadEnhancedStats(updatedProjects, opportunities)
-    
-    // Trigger AI re-analysis
-    setTimeout(() => {
-      toast.success('AI is re-analyzing opportunities based on your project updates...')
-    }, 1000)
   }
 
   const handleProjectEdit = (project) => {
@@ -422,70 +647,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     setShowCreateModal(false)
     setEditingProject(null)
   }
-
-  const handleProjectSelected = async (project) => {
-    setSelectedProject(project)
-    
-    // Load project opportunities
-    try {
-      const projOpportunities = await directUserServices.projectOpportunities.getProjectOpportunities(project.id, user.id)
-      setProjectOpportunities(projOpportunities)
-    } catch (error) {
-      console.error('Failed to load project opportunities:', error)
-    }
-  }
-
-  // Enhanced StatCard wrapper for modern design system
-  const ModernStatCard = ({ icon: Icon, title, value, subtitle, change, color = "emerald", trend, isFinancial = false }) => (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2.5 bg-slate-50 rounded-lg">
-              <Icon className="w-5 h-5 text-slate-600" />
-            </div>
-            <span className="text-sm font-medium text-slate-600">{title}</span>
-          </div>
-          <div className="space-y-1">
-            <p className="text-2xl font-bold text-slate-900">
-              {isFinancial && typeof value === 'number' ? `$${value.toLocaleString()}` : value}
-            </p>
-            <p className="text-sm text-slate-500">{subtitle}</p>
-          </div>
-        </div>
-        {trend && (
-          <div className={`flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium ${
-            trend === 'up' 
-              ? 'bg-emerald-100 text-emerald-700' 
-              : 'bg-red-100 text-red-700'
-          }`}>
-            {trend === 'up' ? (
-              <ArrowUpRight className="w-3 h-3" />
-            ) : (
-              <ArrowDownRight className="w-3 h-3" />
-            )}
-            <span>{change}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
-  // AI Agent Status Card component
-  const AgentStatusCard = ({ userId }) => (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
-      <div className="flex items-center space-x-3 mb-4">
-        <div className="p-2.5 bg-emerald-50 rounded-lg">
-          <Brain className="w-5 h-5 text-emerald-600" />
-        </div>
-        <span className="text-sm font-medium text-slate-600">AI Assistant</span>
-      </div>
-      <div className="space-y-1">
-        <p className="text-2xl font-bold text-slate-900">Ready</p>
-        <p className="text-sm text-slate-500">Available for analysis</p>
-      </div>
-    </div>
-  )
 
   // Show error if no user provided
   if (!user) {
@@ -526,19 +687,54 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Main dashboard render
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
-      
+      {/* Professional Header */}
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-emerald-600 rounded-lg">
+                  <Building className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold text-slate-900">FundFlow</h1>
+                  <p className="text-xs text-slate-500">Grant Management Platform</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
+                <Search className="w-5 h-5" />
+              </button>
+              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors relative">
+                <Bell className="w-5 h-5" />
+                {stats.pendingApplications > 0 && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                )}
+              </button>
+              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+              <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                {userProfile.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Modern Navigation Tabs - iOS Segmented Control Style */}
+        {/* Clean Navigation */}
         <div className="mb-8">
-          <nav className="flex space-x-1 bg-slate-100 rounded-lg p-1 max-w-fit">
+          <nav className="flex space-x-1 bg-slate-100 rounded-lg p-1">
             {tabs.map(tab => {
               const Icon = tab.icon
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 whitespace-nowrap ${
+                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 ${
                     activeTab === tab.id
                       ? 'bg-white text-slate-900 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -552,192 +748,158 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           </nav>
         </div>
 
-        {/* Tab Content */}
+        {/* Overview Tab Content */}
         {activeTab === 'overview' && (
-          <>
-            {/* Financial Overview Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <ModernStatCard
+          <div className="space-y-8">
+            {/* Time Filter */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-slate-900">Dashboard Overview</h2>
+              <select 
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value)}
+                className="bg-white border border-slate-200 rounded-md px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+                <option value="1y">Last year</option>
+              </select>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <MetricCard
                 icon={Target}
                 title="Active Projects"
                 value={stats.totalProjects}
-                subtitle={stats.totalFunding > 0 ? `Seeking $${stats.totalFunding.toLocaleString()}` : "No funding requests yet"}
-                color="emerald"
+                subtitle="Across all categories"
+                change={stats.totalProjects > 0 ? "+3 this month" : "Create your first project"}
+                trend={stats.totalProjects > 0 ? "up" : "neutral"}
               />
-              <ModernStatCard
-                icon={DollarSign}
-                title="Total Amount Received"
-                value={stats.totalReceived}
-                subtitle={
-                  stats.totalReceived > 0 
-                    ? `$${stats.receivedBreakdown.funding.toLocaleString()} grants + $${stats.receivedBreakdown.donations.toLocaleString()} donations`
-                    : "No funding or donations yet"
-                }
-                color="amber"
-                isFinancial={true}
+              <FundingProgressCard />
+              <MetricCard
+                icon={FileText}
+                title="Applications"
+                value={stats.totalSubmissions}
+                subtitle={stats.pendingApplications > 0 ? `${stats.pendingApplications} pending review` : "No pending applications"}
+                change={stats.applicationSuccessRate > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
+                trend={stats.applicationSuccessRate > 50 ? "up" : "neutral"}
               />
-              <ModernStatCard
+              <MetricCard
                 icon={Zap}
-                title="Active Opportunities"
+                title="Opportunities"
                 value={stats.activeOpportunities}
-                subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
-                color="emerald"
+                subtitle="AI-matched grants available"
+                change={stats.activeOpportunities > 0 ? "+12 new this week" : "Sync to discover opportunities"}
+                trend={stats.activeOpportunities > 0 ? "up" : "neutral"}
               />
-              <AgentStatusCard userId={user.id} />
             </div>
 
-            {/* Information Hub Content */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-              
-              {/* Financial Insights & Recent Activity */}
-              <div className="xl:col-span-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Activity Feed */}
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-slate-900 flex items-center">
+                      <Activity className="w-5 h-5 mr-2 text-emerald-600" />
+                      Recent Activity
+                    </h3>
+                    <button 
+                      onClick={() => setActiveTab('applications')}
+                      className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                    >
+                      View all
+                    </button>
+                  </div>
                   
-                  {/* Recent Financial Activity */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="p-6">
-                      <div className="flex items-center mb-4">
-                        <div className="p-2 bg-slate-50 rounded-lg mr-3">
-                          <TrendingUp className="w-5 h-5 text-emerald-600" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-slate-900">Recent Activity</h3>
-                      </div>
-                      <div className="space-y-4">
-                        {insights.length > 0 ? (
-                          insights.map((insight, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                              <div className="flex items-center">
-                                <div className={`w-2 h-2 rounded-full mr-3 bg-${insight.color}-500`}></div>
-                                <div>
-                                  <p className="font-medium text-sm text-slate-900">{insight.title}</p>
-                                  <p className="text-xs text-slate-600">{insight.description}</p>
-                                </div>
-                              </div>
+                  <div className="space-y-4">
+                    {recentActivity.length > 0 ? (
+                      recentActivity.map((activity, index) => (
+                        <div key={index} className="flex items-start space-x-4 p-4 bg-slate-50 rounded-lg">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${
+                            activity.type === 'success' ? 'bg-emerald-500' :
+                            activity.type === 'warning' ? 'bg-amber-500' :
+                            activity.type === 'info' ? 'bg-blue-500' : 'bg-slate-400'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium text-slate-900">{activity.title}</p>
+                              {activity.amount && (
+                                <span className="font-semibold text-emerald-700">{activity.amount}</span>
+                              )}
                             </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-6">
-                            <p className="text-slate-500 text-sm">No recent activity</p>
-                            <p className="text-slate-400 text-xs">Start applying for grants or receiving donations to see updates here</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  {/* AI Assistant Activity */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="p-6">
-                      <div className="flex items-center mb-4">
-                        <div className="p-2 bg-amber-50 rounded-lg mr-3">
-                          <Brain className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-slate-900">AI Assistant Updates</h3>
-                      </div>
-                      <div className="space-y-4">
-                        {aiActivity.length > 0 ? (
-                          aiActivity.map((activity, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                              <div className="flex items-center">
-                                <div className={`w-2 h-2 rounded-full mr-3 bg-${activity.color}-500 animate-pulse`}></div>
-                                <div>
-                                  <p className="font-medium text-sm text-slate-900">{activity.title}</p>
-                                  <p className="text-xs text-slate-600">{activity.description}</p>
-                                </div>
-                              </div>
+                            <p className="text-sm text-slate-600 mt-1">{activity.description}</p>
+                            <div className="flex items-center mt-2 text-xs text-slate-500">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {formatTimeAgo(activity.time)}
                             </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-6">
-                            <p className="text-slate-500 text-sm">AI Assistant Ready</p>
-                            <p className="text-slate-400 text-xs">Create projects to start AI-powered opportunity matching</p>
                           </div>
-                        )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <Activity className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-600">No recent activity</p>
+                        <p className="text-xs text-slate-500">Start applying for grants or receiving donations to see updates here</p>
                       </div>
-                    </div>
-                  </motion.div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Project Quick Overview Sidebar */}
-              <div className="xl:col-span-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
-                >
-                  <div className="p-6 border-b border-slate-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-slate-900">Quick Overview</h2>
-                      <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>New Project</span>
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                        <p className="text-2xl font-bold text-emerald-700">{stats.totalProjects}</p>
-                        <p className="text-xs font-medium text-emerald-600">Projects</p>
-                      </div>
-                      <div className="text-center p-3 bg-amber-50 rounded-lg">
-                        <p className="text-2xl font-bold text-amber-700">{stats.totalDonors}</p>
-                        <p className="text-xs font-medium text-amber-600">Donors</p>
-                      </div>
-                      <div className="text-center p-3 bg-slate-100 rounded-lg">
-                        <p className="text-2xl font-bold text-slate-700">{stats.totalSubmissions}</p>
-                        <p className="text-xs font-medium text-slate-600">Applications</p>
-                      </div>
-                      <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                        <p className="text-2xl font-bold text-emerald-700">{stats.activeOpportunities}</p>
-                        <p className="text-xs font-medium text-emerald-600">Opportunities</p>
-                      </div>
-                    </div>
+              {/* Quick Actions & Summary */}
+              <div className="space-y-6">
+                {/* Quick Actions */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
+                  <div className="space-y-3">
+                    <button 
+                      onClick={() => setShowCreateModal(true)}
+                      className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New Project
+                    </button>
+                    <button 
+                      onClick={handleSyncOpportunities}
+                      disabled={syncing}
+                      className="w-full bg-slate-100 text-slate-700 py-3 px-4 rounded-lg font-medium hover:bg-slate-200 transition-colors flex items-center justify-center disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                      {syncing ? 'Syncing Grants...' : 'Sync Grant Database'}
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('ai-agent')}
+                      className="w-full bg-slate-100 text-slate-700 py-3 px-4 rounded-lg font-medium hover:bg-slate-200 transition-colors flex items-center justify-center"
+                    >
+                      <Brain className="w-4 h-4 mr-2" />
+                      AI Grant Matching
+                    </button>
                   </div>
-                  <div className="p-4 max-h-64 overflow-y-auto">
+                </div>
+
+                {/* Project Summary */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Project Summary</h3>
+                  <div className="space-y-4">
                     {projects.length > 0 ? (
-                      <div className="space-y-3">
-                        {projects.slice(0, 5).map(project => (
-                          <div
-                            key={project.id}
-                            className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-                            onClick={() => setSelectedProject(project)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 truncate">{project.name}</p>
-                              <p className="text-xs text-slate-500">
-                                {project.funding_needed ? `$${project.funding_needed.toLocaleString()} needed` : 'No funding specified'}
-                              </p>
-                            </div>
-                            <div className="flex-shrink-0 ml-2">
-                              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                            </div>
+                      projects.slice(0, 3).map((project) => (
+                        <div key={project.id} className="flex items-center space-x-3">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-900 truncate">{project.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {project.funding_needed ? `$${(project.funding_needed / 1000).toFixed(0)}K goal` : 'No funding specified'}
+                            </p>
                           </div>
-                        ))}
-                        {projects.length > 5 && (
-                          <div className="text-center pt-2">
-                            <button
-                              onClick={() => setActiveTab('opportunities')}
-                              className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                            >
-                              View all {projects.length} projects →
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                          <div className="text-xs font-medium text-slate-600">Active</div>
+                        </div>
+                      ))
                     ) : (
                       <div className="text-center py-6">
-                        <p className="text-slate-500 text-sm">No projects yet</p>
+                        <Target className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-600">No projects yet</p>
                         <button
                           onClick={() => setShowCreateModal(true)}
                           className="text-xs text-emerald-600 hover:text-emerald-700 font-medium mt-1"
@@ -747,13 +909,94 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                       </div>
                     )}
                   </div>
-                </motion.div>
+                  {projects.length > 3 && (
+                    <button 
+                      onClick={() => setActiveTab('opportunities')}
+                      className="w-full mt-4 text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center justify-center"
+                    >
+                      View all projects
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* AI Agent Tab Content */}
+        {/* Other Tab Contents */}
+        {activeTab === 'opportunities' && (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-slate-900">Projects & Funding</h2>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Filter className="w-4 h-4 text-slate-500" />
+                  <select className="bg-white border border-slate-200 rounded-md px-3 py-2 text-sm">
+                    <option>All Status</option>
+                    <option>Active</option>
+                    <option>Planning</option>
+                    <option>Funded</option>
+                  </select>
+                </div>
+                <button 
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-md font-medium hover:bg-emerald-700 transition-colors flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Project
+                </button>
+              </div>
+            </div>
+
+            {/* Projects Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  isSelected={selectedProject?.id === project.id}
+                  onClick={() => setSelectedProject(project)}
+                  onEdit={handleProjectEdit}
+                  onDelete={() => handleProjectDelete(project.id)}
+                />
+              ))}
+            </div>
+
+            {/* Sync Panel */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="p-3 bg-slate-100 rounded-lg mr-4">
+                    <Database className="h-6 w-6 text-slate-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">Federal Grant Database</h3>
+                    <p className="text-sm text-slate-600">Stay updated with the latest funding opportunities</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleSyncOpportunities}
+                  disabled={syncing}
+                  className="bg-emerald-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-5 h-5 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Now'}
+                </button>
+              </div>
+              
+              {syncing && (
+                <div className="mt-4 bg-slate-50 rounded-lg p-4">
+                  <div className="flex items-center text-sm text-slate-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-3"></div>
+                    Connecting to federal databases and analyzing opportunities...
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'ai-agent' && (
           <AIAgentInterface 
             user={user} 
@@ -761,228 +1004,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             projects={projects}
             opportunities={opportunities}
           />
-        )}
-
-        {activeTab === 'opportunities' && (
-          <>
-            {/* Funding Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <ModernStatCard
-                icon={DollarSign}
-                title="Funding Secured"
-                value={stats.totalAwarded}
-                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
-                color="amber"
-                isFinancial={true}
-              />
-              <ModernStatCard
-                icon={Target}
-                title="Funding Requested"
-                value={stats.totalRequested}
-                subtitle={stats.totalSubmissions > 0 ? `${stats.totalSubmissions} applications` : "No applications yet"}
-                color="emerald"
-                isFinancial={true}
-              />
-              <ModernStatCard
-                icon={Zap}
-                title="Active Opportunities"
-                value={stats.activeOpportunities}
-                subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
-                color="emerald"
-              />
-              <ModernStatCard
-                icon={FileText}
-                title="Applications"
-                value={stats.totalSubmissions}
-                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
-                color="emerald"
-              />
-            </div>
-
-            {/* Enhanced Sync Control Panel */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl border border-slate-200 p-6 mb-8 hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center mb-4 lg:mb-0">
-                  <div className="p-3 bg-emerald-100 rounded-lg mr-4">
-                    <Database className="h-6 w-6 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                      Federal Grant Database
-                    </h3>
-                    <p className="text-sm text-slate-600 flex items-center">
-                      <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
-                      Live connection to federal funding opportunities
-                      {lastSyncTime && (
-                        <span className="ml-2 text-slate-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={handleSyncOpportunities}
-                  disabled={syncing}
-                  className={`bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-6 py-3 flex items-center ${syncing ? 'opacity-75' : ''}`}
-                >
-                  {syncing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-5 h-5 mr-3" />
-                      Refresh Opportunities
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-              <div className="xl:col-span-4">
-                <div className="space-y-6">
-                  {/* Filter by Project */}
-                  <div className="bg-white rounded-xl border border-slate-200">
-                    <div className="p-6 border-b border-slate-200">
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Filter by Project</h2>
-                        <button
-                          onClick={() => setShowCreateModal(true)}
-                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>Add Project</span>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-4 max-h-96 overflow-y-auto">
-                      <ProjectList
-                        projects={projects}
-                        selectedProject={selectedProject}
-                        onProjectSelect={handleProjectSelected}
-                        onProjectEdit={handleProjectEdit}
-                        onProjectDelete={handleProjectDelete}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Active Campaigns */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl border border-slate-200"
-                  >
-                    <div className="p-6 border-b border-slate-200">
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Active Campaigns</h2>
-                        <button className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2">
-                          <Plus className="w-4 h-4" />
-                          <span>New Campaign</span>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <div className="text-center py-6">
-                        <Heart className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-                        <p className="text-sm text-slate-600">No active campaigns</p>
-                        <p className="text-xs text-slate-500">Create campaigns to raise funds from multiple donors</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
-
-              <div className="xl:col-span-8">
-                {/* Funding Source Tabs */}
-                <div className="mb-6">
-                  <div className="border-b border-slate-200">
-                    <nav className="flex space-x-8">
-                      {[
-                        { id: 'grants', label: 'Grants', icon: FileText },
-                        { id: 'campaigns', label: 'Campaigns', icon: Heart },
-                        { id: 'angels', label: 'Angel Investors', icon: Users },
-                        { id: 'reits', label: 'REITs', icon: TrendingUp },
-                        { id: 'donations', label: 'Direct Donations', icon: DollarSign }
-                      ].map(tab => {
-                        const Icon = tab.icon
-                        return (
-                          <button
-                            key={tab.id}
-                            onClick={() => setActiveFundingTab(tab.id)}
-                            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                              activeFundingTab === tab.id
-                                ? 'border-emerald-500 text-emerald-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="flex items-center">
-                              <Icon className="w-4 h-4 mr-2" />
-                              {tab.label}
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </nav>
-                  </div>
-                </div>
-
-                {/* Funding Source Content */}
-                <div className="bg-white rounded-xl border border-slate-200">
-                  {activeFundingTab === 'grants' && (
-                    <OpportunityList
-                      opportunities={opportunities}
-                      selectedProject={selectedProject}
-                      userProfile={userProfile}
-                    />
-                  )}
-
-                  {activeFundingTab === 'campaigns' && (
-                    <CampaignList
-                      user={user}
-                      userProfile={userProfile}
-                      projects={projects}
-                    />
-                  )}
-
-                  {activeFundingTab === 'angels' && (
-                    <AngelInvestorOpportunities
-                      user={user}
-                      userProfile={userProfile}
-                      selectedProject={selectedProject}
-                    />
-                  )}
-
-                  {activeFundingTab === 'reits' && (
-                    <div className="p-6">
-                      <div className="text-center py-8">
-                        <TrendingUp className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 mb-2">Real Estate Investment Trusts</h3>
-                        <p className="text-slate-600 mb-6">REIT opportunities for sustainable funding</p>
-                        <div className="inline-flex items-center px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
-                          <Clock className="w-4 h-4 mr-2" />
-                          Coming Soon
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeFundingTab === 'donations' && (
-                    <DirectDonationsList
-                      user={user}
-                      userProfile={userProfile}
-                      projects={projects}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
         )}
 
         {activeTab === 'applications' && (
@@ -1012,97 +1033,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             editProject={editingProject}
           />
         )}
-
-        {/* Funding Tab Modals */}
-        {showReitsModal && <ReitsModal onClose={() => setShowReitsModal(false)} />}
       </main>
-    </div>
-  )
-}
-
-// Modal Components for Funding Tab
-function CampaignModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-slate-900">Create Campaign</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
-        </div>
-        <div className="text-center py-8">
-          <Heart className="mx-auto h-16 w-16 text-pink-400 mb-6" />
-          <h4 className="text-lg font-semibold text-slate-900 mb-3">Campaign Creation Coming Soon!</h4>
-          <p className="text-slate-600 mb-2">Set up crowdfunding campaigns on platforms like:</p>
-          <p className="text-sm text-slate-500">GoFundMe • Kickstarter • Indiegogo • And more</p>
-        </div>
-        <div className="flex justify-end">
-          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AngelModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-slate-900">Find Angel Investors</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
-        </div>
-        <div className="text-center py-8">
-          <Users className="mx-auto h-16 w-16 text-emerald-400 mb-6" />
-          <h4 className="text-lg font-semibold text-slate-900 mb-3">Angel Investor Matching Coming Soon!</h4>
-          <p className="text-slate-600 mb-2">Connect with individual investors who are interested in</p>
-          <p className="text-sm text-slate-500">funding projects like yours</p>
-        </div>
-        <div className="flex justify-end">
-          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ReitsModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-slate-900">Explore REITs</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
-        </div>
-        <div className="text-center py-6">
-          <TrendingUp className="mx-auto h-12 w-12 text-green-300 mb-4" />
-          <p className="text-slate-600 mb-4">REIT exploration tools are coming soon!</p>
-          <p className="text-sm text-slate-500">Discover Real Estate Investment Trust opportunities for sustainable funding.</p>
-        </div>
-        <div className="flex justify-end">
-          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function DonationsModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 sm:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-slate-900">Setup Donations</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
-        </div>
-        <div className="text-center py-6">
-          <DollarSign className="mx-auto h-12 w-12 text-emerald-300 mb-4" />
-          <p className="text-slate-600 mb-4">Direct donation setup is coming soon!</p>
-          <p className="text-sm text-slate-500">Set up payment processing to accept direct donations from supporters.</p>
-        </div>
-        <div className="flex justify-end">
-          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
-        </div>
-      </div>
     </div>
   )
 }
