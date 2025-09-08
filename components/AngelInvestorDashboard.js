@@ -142,7 +142,7 @@ const AngelInvestorDashboard = () => {
           <button 
             onClick={loadDashboardData}
             disabled={loading}
-            className="bg-brand-600 text-white px-6 py-3 rounded-xl hover:bg-brand-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-md hover:shadow-lg"
+            className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-md hover:shadow-lg"
           >
             {loading ? 'Loading...' : 'Try Again'}
           </button>
@@ -241,7 +241,7 @@ const AngelInvestorDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button 
             onClick={() => setActiveTab('opportunities')}
-            className="flex items-center justify-between p-6 bg-brand-25 rounded-xl hover:bg-brand-50 transition-all duration-200 border border-transparent hover:border-brand-200 shadow-sm hover:shadow-md"
+            className="flex items-center justify-between p-6 bg-emerald-25 rounded-xl hover:bg-emerald-50 transition-all duration-200 border border-transparent hover:border-emerald-200 shadow-sm hover:shadow-md"
           >
             <div>
               <p className="font-medium text-blue-900">Browse Opportunities</p>
@@ -252,13 +252,13 @@ const AngelInvestorDashboard = () => {
           
           <button 
             onClick={() => setActiveTab('portfolio')}
-            className="flex items-center justify-between p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+            className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
           >
             <div>
-              <p className="font-medium text-green-900">Portfolio Performance</p>
-              <p className="text-sm text-green-600">Track your investments</p>
+              <p className="font-medium text-emerald-900">Portfolio Performance</p>
+              <p className="text-sm text-emerald-600">Track your investments</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-green-600" />
+            <ChevronRight className="w-5 h-5 text-emerald-600" />
           </button>
           
           <button 
@@ -294,7 +294,7 @@ const AngelInvestorDashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="font-medium">${(investment.current_value || investment.currentValue || 0).toLocaleString()}</p>
-                  <p className={`text-sm ${(investment.roi_percentage || investment.roi || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <p className={`text-sm ${(investment.roi_percentage || investment.roi || 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {(investment.roi_percentage || investment.roi || 0) > 0 ? '+' : ''}{(investment.roi_percentage || investment.roi || 0).toFixed(1)}%
                   </p>
                 </div>
@@ -393,7 +393,7 @@ const AngelInvestorDashboard = () => {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-brand-600 h-3 rounded-full transition-all duration-300" 
+                  className="bg-emerald-600 h-3 rounded-full transition-all duration-300" 
                   style={{ width: `${Math.min(((opportunity.amount_raised || opportunity.raised || 0) / (opportunity.funding_goal || opportunity.fundingGoal || 1)) * 100, 100)}%` }}
                 ></div>
               </div>
@@ -426,7 +426,7 @@ const AngelInvestorDashboard = () => {
                 <ul className="text-sm text-gray-600 space-y-1">
                   {opportunity.highlights.map((highlight, index) => (
                     <li key={index} className="flex items-center">
-                      <CheckCircle className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-emerald-500 mr-2 flex-shrink-0" />
                       {highlight}
                     </li>
                   ))}
@@ -439,7 +439,7 @@ const AngelInvestorDashboard = () => {
               <button
                 onClick={() => setSelectedInvestment(opportunity)}
                 disabled={loading}
-                className="flex-1 bg-brand-600 text-white py-3 px-6 rounded-xl hover:bg-brand-700 transition-all duration-200 font-semibold disabled:bg-neutral-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg"
+                className="flex-1 bg-emerald-600 text-white py-3 px-6 rounded-xl hover:bg-emerald-700 transition-all duration-200 font-semibold disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Invest Now
@@ -477,7 +477,7 @@ const AngelInvestorDashboard = () => {
                     <p className="text-sm text-gray-600">{investment.companies?.industry || investment.industry} • {investment.companies?.funding_stage || investment.stage}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    (investment.status || 'active') === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    (investment.status || 'active') === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'
                   }`}>
                     {investment.status || 'active'}
                   </span>
@@ -497,7 +497,7 @@ const AngelInvestorDashboard = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-xs text-gray-500">ROI</p>
-                    <p className={`font-semibold ${(investment.roi_percentage || investment.roi || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <p className={`font-semibold ${(investment.roi_percentage || investment.roi || 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                       {(investment.roi_percentage || investment.roi || 0) > 0 ? '+' : ''}{(investment.roi_percentage || investment.roi || 0).toFixed(1)}%
                     </p>
                   </div>
@@ -514,7 +514,7 @@ const AngelInvestorDashboard = () => {
               <p className="text-gray-600 mb-4">Start building your portfolio by investing in promising companies</p>
               <button 
                 onClick={() => setActiveTab('opportunities')}
-                className="bg-brand-600 text-white px-8 py-3 rounded-xl hover:bg-brand-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+                className="bg-emerald-600 text-white px-8 py-3 rounded-xl hover:bg-emerald-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
               >
                 Browse Opportunities
               </button>

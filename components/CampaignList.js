@@ -54,7 +54,7 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
   )
 
   const getCampaignStatus = (campaign) => {
-    if (!campaign.end_date) return { status: 'ongoing', text: 'Ongoing', color: 'text-blue-600 bg-blue-50' }
+    if (!campaign.end_date) return { status: 'ongoing', text: 'Ongoing', color: 'text-slate-600 bg-slate-50' }
     
     const endDate = new Date(campaign.end_date)
     const now = new Date()
@@ -66,7 +66,7 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
       return { 
         status: 'active', 
         text: `${daysLeft} days left`, 
-        color: 'text-green-600 bg-green-50' 
+        color: 'text-emerald-600 bg-emerald-50' 
       }
     }
   }
@@ -80,63 +80,65 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 bg-neutral-50 rounded-2xl">
-      <div className="mb-8 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-pink-50 rounded-lg">
-                <Heart className="w-5 h-5 text-pink-600" />
-              </div>
-              <h2 className="text-2xl font-bold tracking-tight text-neutral-900">Campaigns</h2>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-pink-100 rounded-lg">
+              <Heart className="w-5 h-5 text-pink-600" />
             </div>
-            <p className="text-sm text-neutral-600 ml-0 md:ml-11">Crowdfunding campaigns to raise funds from the community</p>
+            <h1 className="text-2xl font-bold text-slate-900">Campaigns</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-              <input
-                type="text"
-                className="pl-10 pr-3 py-2.5 rounded-md bg-white border border-neutral-200 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 placeholder-neutral-400"
-                placeholder="Search campaigns..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Campaign
-            </button>
+          <p className="text-slate-600">Crowdfunding campaigns to raise funds from the community</p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              className="pl-10 pr-3 py-2.5 rounded-lg bg-white border border-slate-200 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 shadow-sm"
+              placeholder="Search campaigns..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-sm transition-all duration-200 hover:shadow-md"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Campaign
+          </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard icon={Heart} iconColor="text-pink-600" iconBg="bg-pink-50" label="Total Campaigns" value={stats.totalCampaigns} />
-          <StatCard icon={DollarSign} iconColor="text-emerald-600" iconBg="bg-emerald-50" label="Total Raised" value={`$${(stats.totalRaised||0).toLocaleString()}`}/>
-          <StatCard icon={Target} iconColor="text-blue-600" iconBg="bg-blue-50" label="Total Goal" value={`$${(stats.totalGoal||0).toLocaleString()}`}/>
-          <StatCard icon={TrendingUp} iconColor="text-amber-600" iconBg="bg-amber-50" label="Active" value={stats.activeCampaigns} />
-        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard icon={Heart} iconColor="text-pink-600" iconBg="bg-pink-50" label="Total Campaigns" value={stats.totalCampaigns} />
+        <StatCard icon={DollarSign} iconColor="text-emerald-600" iconBg="bg-emerald-50" label="Total Raised" value={`$${(stats.totalRaised||0).toLocaleString()}`}/>
+        <StatCard icon={Target} iconColor="text-slate-600" iconBg="bg-slate-50" label="Total Goal" value={`$${(stats.totalGoal||0).toLocaleString()}`}/>
+        <StatCard icon={TrendingUp} iconColor="text-amber-600" iconBg="bg-amber-50" label="Active" value={stats.activeCampaigns} />
       </div>
 
       {/* Campaign List */}
       {filteredCampaigns.length === 0 ? (
-        <div className="bg-white border border-neutral-200 rounded-xl p-12 text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-            <Heart className="w-6 h-6 text-neutral-400" />
+        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+            <Heart className="w-6 h-6 text-slate-400" />
           </div>
-          <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">
             {campaigns.length === 0 ? 'No campaigns yet' : 'No campaigns found'}
           </h3>
-          <p className="text-neutral-500 mb-6 text-sm max-w-md mx-auto">
+          <p className="text-slate-600 mb-6 text-sm max-w-md mx-auto">
             {campaigns.length === 0
               ? 'Create crowdfunding campaigns to raise funds from multiple supporters.'
               : 'Try adjusting your search terms or clearing the filter.'}
@@ -144,7 +146,7 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
           {campaigns.length === 0 && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors"
+              className="inline-flex items-center px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-sm transition-all duration-200"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Your First Campaign
@@ -159,7 +161,7 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="bg-white border border-neutral-200 rounded-xl hover:shadow-lg transition-shadow overflow-hidden"
+              className="bg-white border border-slate-200 rounded-xl hover:shadow-xl transition-all duration-300 overflow-hidden group"
             >
               {/* Campaign Image */}
               {campaign.image_url && (
@@ -176,16 +178,16 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors">
                       {campaign.title}
                     </h3>
                     {campaign.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2">
+                      <p className="text-sm text-slate-600 line-clamp-2">
                         {campaign.description}
                       </p>
                     )}
                   </div>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCampaignStatus(campaign).color}`}>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getCampaignStatus(campaign).color}`}>
                     {getCampaignStatus(campaign).text}
                   </span>
                 </div>
@@ -193,25 +195,25 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-neutral-700">
+                    <span className="text-sm font-medium text-slate-700">
                       ${(campaign.raised_amount || campaign.raised || 0).toLocaleString()} raised
                     </span>
-                    <span className="text-sm text-neutral-500">
+                    <span className="text-sm text-slate-500">
                       of ${(campaign.goal_amount || campaign.goal || 0).toLocaleString()} goal
                     </span>
                   </div>
-                  <div className="w-full bg-neutral-100 rounded-full h-2">
+                  <div className="w-full bg-slate-100 rounded-full h-2.5">
                     <div
-                      className="bg-gradient-to-r from-pink-500 to-pink-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2.5 rounded-full transition-all duration-300"
                       style={{ width: `${getProgressPercentage(campaign)}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-neutral-500 flex items-center">
+                    <span className="text-xs text-slate-500 flex items-center">
                       <Users className="w-3 h-3 mr-1" />
                       {campaign.backers || 0} backers
                     </span>
-                    <span className="text-xs font-medium text-pink-600">
+                    <span className="text-xs font-semibold text-emerald-600">
                       {getProgressPercentage({ ...campaign, raised: campaign.raised_amount || campaign.raised, goal: campaign.goal_amount || campaign.goal }).toFixed(0)}%
                     </span>
                   </div>
@@ -229,7 +231,7 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
           {campaign.campaign_url && (
                     <button
                       onClick={() => window.open(campaign.campaign_url, '_blank')}
-                      className="inline-flex items-center px-3 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors"
+                      className="inline-flex items-center px-3 py-2.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm transition-colors"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Visit
@@ -409,7 +411,7 @@ function CreateCampaignModal({ user, userProfile, projects, onClose, onCampaignC
             </button>
             <button
               type="submit"
-              className="px-4 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors disabled:opacity-50"
+              className="px-4 py-2.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm transition-colors disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Creating...' : 'Create Campaign'}
@@ -455,7 +457,7 @@ function CampaignDetailsModal({ campaign, onClose }) {
           <p className="text-sm text-neutral-600">Raised</p>
                 </div>
                 <div className="text-center">
-          <p className="text-2xl font-bold text-blue-600">${campaign.goal?.toLocaleString() || '0'}</p>
+          <p className="text-2xl font-bold text-slate-600">${campaign.goal?.toLocaleString() || '0'}</p>
           <p className="text-sm text-neutral-600">Goal</p>
                 </div>
                 <div className="text-center">
@@ -479,7 +481,7 @@ function CampaignDetailsModal({ campaign, onClose }) {
               {campaign.campaign_url && (
                 <button
                   onClick={() => window.open(campaign.campaign_url, '_blank')}
-                  className="px-4 py-2.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm transition-colors"
+                  className="px-4 py-2.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm transition-colors"
                 >
                   <ExternalLink className="w-4 h-4 mr-2 inline" />
                   Visit Campaign

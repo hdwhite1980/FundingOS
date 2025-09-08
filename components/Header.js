@@ -24,17 +24,25 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
   }
 
   return (
-    <header className="bg-white/90 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18">
+        <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
-          <div className="flex items-center space-x-4 sm:space-x-8">
-            <Logo variant="dark" size="md" showText={true} />
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-600 rounded-lg">
+                <Logo variant="light" size="sm" showText={false} />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-slate-900">WALI-OS</h1>
+                <p className="text-xs text-slate-500">Powered by AHTS</p>
+              </div>
+            </div>
             
             {userProfile?.organization_name && (
               <div className="hidden md:block">
-                <div className="px-3 sm:px-4 py-2 bg-brand-50 border border-brand-200 rounded-xl">
-                  <span className="text-sm text-brand-800 font-semibold">
+                <div className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-md">
+                  <span className="text-sm text-slate-700 font-medium">
                     {userProfile.organization_name}
                   </span>
                 </div>
@@ -43,13 +51,13 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
           </div>
 
           {/* Search Bar */}
-          <div className="hidden md:flex flex-1 max-w-2xl mx-4 sm:mx-8">
+          <div className="hidden md:flex flex-1 max-w-2xl mx-8">
             <div className="relative w-full">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search opportunities, projects, grants..."
-                className="w-full pl-12 pr-6 py-3 sm:py-3.5 bg-white border border-neutral-200 rounded-2xl placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-300 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
+                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-md text-sm placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-colors"
               />
             </div>
           </div>
@@ -60,7 +68,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 sm:p-3 text-neutral-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200 relative group"
+                className="p-2 sm:p-3 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all duration-200 relative group"
               >
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 sm:top-2 right-1 sm:right-2 w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-sm border-2 border-white"></span>
@@ -68,9 +76,9 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
               
               {showNotifications && (
                 <div className="absolute right-0 mt-4 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-green-200 z-50 animate-scale-in overflow-hidden">
-                  <div className="p-4 sm:p-6 border-b border-neutral-100 bg-gradient-to-r from-green-50 to-emerald-50">
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">Notifications</h3>
-                    <p className="text-sm text-neutral-600">Stay updated with your funding opportunities</p>
+                  <div className="p-4 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-emerald-100">
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">Notifications</h3>
+                    <p className="text-sm text-slate-600">Stay updated with your funding opportunities</p>
                   </div>
                   <div className="p-4 sm:p-6 space-y-4 max-h-80 overflow-y-auto">
                     <div className="flex items-start space-x-4 p-4 rounded-xl hover:bg-green-25 transition-colors cursor-pointer">
@@ -102,7 +110,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
             </div>
 
             {/* Settings */}
-            <button className="p-2 sm:p-3 text-neutral-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200">
+            <button className="p-2 sm:p-3 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all duration-200">
               <Settings className="w-5 h-5" />
             </button>
 

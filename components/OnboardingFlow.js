@@ -106,7 +106,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-slate-50 py-12">
       <div className="max-w-3xl mx-auto px-4">
         {/* Progress Bar */}
         <div className="mb-8">
@@ -121,15 +121,15 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors
                     ${isCompleted 
-                      ? 'bg-accent-600 border-accent-600 text-white' 
+                      ? 'bg-emerald-600 border-emerald-600 text-white' 
                       : isActive 
-                        ? 'bg-blue-600 border-blue-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-400'
+                        ? 'bg-emerald-600 border-emerald-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-400'
                     }
                   `}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  <span className={`text-xs mt-2 font-medium ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <span className={`text-xs mt-2 font-medium ${isActive ? 'text-emerald-600' : 'text-slate-500'}`}>
                     {step.title}
                   </span>
                 </div>
@@ -137,9 +137,9 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
             })}
           </div>
           <div className="relative mt-4">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gray-200 rounded-full"></div>
+            <div className="absolute top-0 left-0 w-full h-2 bg-slate-200 rounded-full"></div>
             <div 
-              className="absolute top-0 left-0 h-2 bg-blue-600 rounded-full transition-all duration-300"
+              className="absolute top-0 left-0 h-2 bg-emerald-600 rounded-full transition-all duration-300"
               style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
             ></div>
           </div>
@@ -517,7 +517,7 @@ function Certifications({ formData, onChange }) {
         </div>
       </div>
       
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
         <div className="flex">
           <div className="flex-shrink-0">
             <FileText className="h-5 w-5 text-blue-400" />
@@ -543,7 +543,7 @@ function CompleteSetup({ formData }) {
         <p className="text-gray-600">Your profile is complete. Let's find you some funding opportunities.</p>
       </div>
       
-      <div className="bg-gray-50 rounded-lg p-6">
+      <div className="bg-slate-50 rounded-lg p-6">
         <h4 className="font-semibold text-gray-900 mb-4">Profile Summary</h4>
         <div className="space-y-2 text-sm text-gray-600">
           <div className="flex justify-between">
@@ -567,7 +567,7 @@ function CompleteSetup({ formData }) {
         </div>
       </div>
       
-      <div className="bg-accent-50 border border-accent-200 rounded-lg p-4">
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
         <h4 className="font-medium text-accent-800 mb-2">What happens next?</h4>
         <ul className="text-sm text-accent-700 space-y-1 text-left">
           <li>• AI will analyze your profile for funding opportunities</li>

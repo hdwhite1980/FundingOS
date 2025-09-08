@@ -499,32 +499,27 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Modern Navigation Tabs */}
+        {/* Modern Navigation Tabs - iOS Segmented Control Style */}
         <div className="mb-8">
-          <div className="border-b border-neutral-200">
-            <nav className="flex space-x-2 sm:space-x-8 overflow-x-auto">
-              {tabs.map(tab => {
-                const Icon = tab.icon
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`group py-4 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm flex flex-col items-center transition-all duration-200 whitespace-nowrap ${
-                      activeTab === tab.id
-                        ? 'border-brand-600 text-brand-700 bg-brand-50'
-                        : 'border-transparent text-neutral-600 hover:text-brand-700 hover:border-brand-300 hover:bg-brand-25'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 mb-1" />
-                    <span>{tab.label}</span>
-                    <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity mt-1 hidden sm:block">
-                      {tab.description}
-                    </span>
-                  </button>
-                )
-              })}
-            </nav>
-          </div>
+          <nav className="flex space-x-1 bg-slate-100 rounded-lg p-1 max-w-fit">
+            {tabs.map(tab => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-md font-medium text-sm transition-all duration-200 whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
+          </nav>
         </div>
 
         {/* Tab Content */}

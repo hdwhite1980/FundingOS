@@ -13,9 +13,9 @@ export default function OpportunityCard({
 }) {
   const getFitScoreColor = (score) => {
     if (score >= 80) return 'text-emerald-700 bg-emerald-50 border-emerald-200'
-    if (score >= 60) return 'text-green-700 bg-green-50 border-green-200'
-    if (score >= 40) return 'text-amber-700 bg-amber-50 border-amber-200'
-    return 'text-neutral-700 bg-neutral-50 border-neutral-200'
+    if (score >= 60) return 'text-amber-700 bg-amber-50 border-amber-200'  
+    if (score >= 40) return 'text-orange-700 bg-orange-50 border-orange-200'
+    return 'text-slate-700 bg-slate-50 border-slate-200'
   }
 
   const formatAmount = (min, max) => {
@@ -42,7 +42,7 @@ export default function OpportunityCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="bg-white rounded-xl border border-green-100 hover:shadow-xl hover:border-green-200 transition-all duration-300 group"
+      className="bg-white rounded-xl border border-slate-200 hover:shadow-xl hover:border-emerald-200 transition-all duration-300 group"
     >
       <div className="p-6">
         {/* Header */}
@@ -50,10 +50,10 @@ export default function OpportunityCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-4 mb-3">
               <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold text-neutral-900 line-clamp-2 mb-2 leading-tight">
+                <h3 className="text-xl font-bold text-slate-900 line-clamp-2 mb-2 leading-tight group-hover:text-emerald-700 transition-colors">
                   {opportunity.title}
                 </h3>
-                <div className="flex items-center text-neutral-600 mb-3">
+                <div className="flex items-center text-slate-600 mb-3">
                   <Building className="w-4 h-4 mr-2 flex-shrink-0" />
                   <span className="text-sm font-medium truncate">{opportunity.sponsor}</span>
                 </div>
@@ -106,7 +106,7 @@ export default function OpportunityCard({
         <div className="flex items-center gap-3 pt-4 border-t border-neutral-100">
           <button
             onClick={onAnalyze}
-            className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-all duration-200 shadow-sm hover:shadow-md group-hover:shadow-lg"
+            className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 transition-all duration-200 shadow-sm hover:shadow-md group-hover:shadow-lg"
           >
             <Zap className="w-4 h-4 mr-2" />
             AI Analysis

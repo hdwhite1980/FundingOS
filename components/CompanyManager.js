@@ -233,7 +233,7 @@ export default function CompanyManager({ onSelectCompany }) {
         <label className='flex items-center gap-2 text-xs text-gray-600'>
           <input type='checkbox' checked={form.seeking_investment} onChange={e=>setForm({...form,seeking_investment:e.target.checked})}/> Seeking
         </label>
-        <button disabled={creating} className='bg-green-600 text-white rounded px-4 py-2 flex items-center justify-center gap-1 text-sm hover:bg-green-700 transition-colors disabled:opacity-50'>
+        <button disabled={creating} className='bg-emerald-600 text-white rounded px-4 py-2 flex items-center justify-center gap-1 text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50'>
           {creating ? <Loader2 className='w-4 h-4 animate-spin'/> : <Plus className='w-4 h-4'/>} Create
         </button>
       </form>
@@ -242,7 +242,7 @@ export default function CompanyManager({ onSelectCompany }) {
         <>
         <div className='grid md:grid-cols-3 gap-4'>
           {displayCompanies.map(c => (
-            <div key={c.id} className={`border rounded-lg p-4 bg-white hover:shadow-md transition-shadow cursor-pointer ${activeCompany?.id===c.id?'ring-2 ring-green-500 border-green-200':''}`} onClick={()=>openCompany(c)}>
+            <div key={c.id} className={`border rounded-lg p-4 bg-white hover:shadow-md transition-shadow cursor-pointer ${activeCompany?.id===c.id?'ring-2 ring-emerald-500 border-emerald-200':''}`} onClick={()=>openCompany(c)}>
               <div className='flex justify-between items-start'>
                 {editingId===c.id ? (
                   <input className='border rounded px-2 py-1 text-xs w-40' value={editForm.name} onClick={e=>e.stopPropagation()} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
@@ -252,7 +252,7 @@ export default function CompanyManager({ onSelectCompany }) {
                 <div className='flex gap-1'>
                   {editingId===c.id ? (
                     <>
-                      <button disabled={pending[c.id]==='saving'} onClick={e=>saveEdit(e,c)} className='text-[10px] px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:opacity-50'>{pending[c.id]==='saving'?'Saving...':'Save'}</button>
+                      <button disabled={pending[c.id]==='saving'} onClick={e=>saveEdit(e,c)} className='text-[10px] px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors disabled:opacity-50'>{pending[c.id]==='saving'?'Saving...':'Save'}</button>
                       <button disabled={pending[c.id]==='saving'} onClick={e=>{e.stopPropagation();cancelEdit();}} className='text-[10px] px-2 py-1 border rounded'>Cancel</button>
                     </>
                   ) : (
@@ -261,7 +261,7 @@ export default function CompanyManager({ onSelectCompany }) {
                       <button disabled={pending[c.id]} onClick={e=>removeCompany(e,c)} className='text-[10px] px-2 py-1 border rounded text-red-600'>{pending[c.id]==='deleting'?'...':'Del'}</button>
                     </>
                   )}
-                  {c.seeking_investment && <span className='text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded h-fit'>Seeking</span>}
+                  {c.seeking_investment && <span className='text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded h-fit'>Seeking</span>}
                 </div>
               </div>
               <div className='mt-2 flex flex-wrap gap-2 text-xs text-gray-500'>
@@ -314,7 +314,7 @@ export default function CompanyManager({ onSelectCompany }) {
                 <div className='mt-2'>
                   {(() => { const pct=Math.min(100, Math.round((Number(c.amount_raised||0)/Number(c.funding_goal))*100)); return (
                     <div className='w-full bg-gray-100 h-2 rounded'>
-                      <div style={{width:`${pct}%`}} className={`h-2 rounded transition-all ${pct>79?'bg-green-500':pct>49?'bg-green-500':'bg-yellow-400'}`}></div>
+                      <div style={{width:`${pct}%`}} className={`h-2 rounded transition-all ${pct>79?'bg-emerald-500':pct>49?'bg-emerald-500':'bg-amber-400'}`}></div>
                     </div>
                   ); })()}
                 </div>
