@@ -1,4 +1,4 @@
-// Dashboard.js - Modern Overview Page with Real API Integration
+// Dashboard.js - Modern Overview Page with Real API Integration + Mobile Responsive
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -356,7 +356,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     return time.toLocaleDateString()
   }
 
-  // Enhanced component for funding progress visualization
+  // Enhanced component for funding progress visualization - MOBILE RESPONSIVE
   const FundingProgressCard = () => {
     const totalGoal = stats.totalFunding
     const totalSecured = stats.totalAwarded
@@ -365,27 +365,28 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     const pendingPercent = totalGoal > 0 ? (totalPending / totalGoal) * 100 : 0
 
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
-        <div className="flex items-start justify-between mb-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300">
+        <div className="flex items-start justify-between mb-3 sm:mb-4">
           <div className="flex-1">
             <div className="flex items-center mb-3">
-              <div className="p-2.5 bg-slate-50 rounded-lg">
-                <DollarSign className="h-5 w-5 text-slate-700" />
+              <div className="p-2 sm:p-2.5 bg-slate-50 rounded-lg">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-slate-700" />
               </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-slate-600">Funding Progress</p>
+              <div className="ml-2 sm:ml-3 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-slate-600">Funding Progress</p>
                 <div className="flex items-center mt-1 text-xs font-medium text-emerald-600">
                   <ArrowUp className="w-3 h-3 mr-1" />
-                  {stats.applicationSuccessRate}% success rate
+                  <span className="hidden sm:inline">{stats.applicationSuccessRate}% success rate</span>
+                  <span className="sm:hidden">{stats.applicationSuccessRate}%</span>
                 </div>
               </div>
             </div>
-            <div className="mb-4">
-              <div className="flex items-baseline space-x-2">
-                <p className="text-2xl font-bold text-slate-900">
+            <div className="mb-3 sm:mb-4">
+              <div className="flex items-baseline space-x-1 sm:space-x-2">
+                <p className="text-lg sm:text-2xl font-bold text-slate-900">
                   ${totalSecured > 1000000 ? (totalSecured / 1000000).toFixed(1) + 'M' : (totalSecured / 1000).toFixed(0) + 'K'}
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="text-xs sm:text-sm text-slate-500">
                   of ${totalGoal > 1000000 ? (totalGoal / 1000000).toFixed(1) + 'M' : (totalGoal / 1000).toFixed(0) + 'K'} goal
                 </p>
               </div>
@@ -394,40 +395,37 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         </div>
 
         {/* Progress Visualization */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="relative">
-            <div className="w-full bg-slate-100 rounded-lg h-6 overflow-hidden">
+            <div className="w-full bg-slate-100 rounded-lg h-3 sm:h-6 overflow-hidden">
               <div className="relative h-full flex">
-                {/* Secured funding */}
                 <div
                   className="bg-emerald-500 h-full transition-all duration-700 ease-out"
                   style={{ width: `${Math.min(securedPercent, 100)}%` }}
-                  title={`Secured: $${totalSecured.toLocaleString()}`}
                 />
-                {/* Pending funding */}
                 <div
                   className="bg-amber-300 h-full opacity-60 transition-all duration-700 ease-out"
                   style={{ width: `${Math.min(pendingPercent, 100 - securedPercent)}%` }}
-                  title={`Pending: $${totalPending.toLocaleString()}`}
                 />
               </div>
             </div>
             
             <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
               <span>$0</span>
-              <span>{securedPercent.toFixed(0)}% secured</span>
-              <span>${(totalGoal / 1000000).toFixed(1)}M goal</span>
+              <span className="hidden sm:inline">{securedPercent.toFixed(0)}% secured</span>
+              <span className="sm:hidden">{securedPercent.toFixed(0)}%</span>
+              <span>Goal</span>
             </div>
           </div>
 
-          {/* Breakdown */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <div>
               <p className="text-xs font-medium text-slate-600 mb-2">Secured</p>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
-                  <span className="text-slate-700">Grants Awarded</span>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 mr-1 sm:mr-2" />
+                  <span className="text-slate-700 hidden sm:inline">Grants Awarded</span>
+                  <span className="text-slate-700 sm:hidden">Grants</span>
                 </div>
                 <span className="font-medium text-slate-900">${(totalSecured / 1000).toFixed(0)}K</span>
               </div>
@@ -437,22 +435,12 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               <p className="text-xs font-medium text-slate-600 mb-2">Pending</p>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center">
-                  <div className="w-2 h-2 rounded-full bg-amber-300 mr-2" />
-                  <span className="text-slate-700">Applications</span>
+                  <div className="w-2 h-2 rounded-full bg-amber-300 mr-1 sm:mr-2" />
+                  <span className="text-slate-700 hidden sm:inline">Applications</span>
+                  <span className="text-slate-700 sm:hidden">Apps</span>
                 </div>
                 <span className="font-medium text-slate-500">${(totalPending / 1000).toFixed(0)}K</span>
               </div>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-xs">
-            <div>
-              <span className="text-slate-500">Applications: </span>
-              <span className="font-medium text-slate-700">{stats.totalSubmissions}</span>
-            </div>
-            <div>
-              <span className="text-slate-500">Success Rate: </span>
-              <span className="font-medium text-emerald-600">{stats.applicationSuccessRate}%</span>
             </div>
           </div>
         </div>
@@ -460,16 +448,17 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     )
   }
 
+  // MOBILE RESPONSIVE METRIC CARD
   const MetricCard = ({ icon: Icon, title, value, subtitle, change, trend = "neutral" }) => (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+    <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center mb-3">
-            <div className="p-2.5 bg-slate-50 rounded-lg">
-              <Icon className="h-5 w-5 text-slate-700" />
+            <div className="p-2 sm:p-2.5 bg-slate-50 rounded-lg">
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-slate-700" />
             </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm font-medium text-slate-600">{title}</p>
+            <div className="ml-2 sm:ml-3 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-slate-600">{title}</p>
               {change && (
                 <div className={`flex items-center mt-1 text-xs font-medium ${
                   trend === 'up' ? 'text-emerald-600' : 
@@ -477,123 +466,22 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 }`}>
                   {trend === 'up' && <ArrowUp className="w-3 h-3 mr-1" />}
                   {trend === 'down' && <ArrowDown className="w-3 h-3 mr-1" />}
-                  {change}
+                  <span className="hidden sm:inline">{change}</span>
+                  <span className="sm:hidden">{change.split(' ')[0]}</span>
                 </div>
               )}
             </div>
           </div>
           <div className="mb-2">
-            <p className="text-2xl font-bold text-slate-900">{value}</p>
+            <p className="text-lg sm:text-2xl font-bold text-slate-900">{value}</p>
           </div>
           {subtitle && (
-            <p className="text-sm text-slate-500">{subtitle}</p>
+            <p className="text-xs sm:text-sm text-slate-500 line-clamp-2">{subtitle}</p>
           )}
         </div>
       </div>
     </div>
   )
-
-  const ProjectCard = ({ project, isSelected, onClick, onEdit, onDelete }) => {
-    const [showActions, setShowActions] = useState(false)
-    
-    const getStatusConfig = (status) => {
-      switch (status) {
-        case 'active': 
-          return { 
-            color: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
-            dot: 'bg-emerald-500',
-            progress: 'bg-emerald-500'
-          }
-        case 'planning': 
-          return { 
-            color: 'bg-amber-100 text-amber-700 border-amber-200', 
-            dot: 'bg-amber-500',
-            progress: 'bg-amber-500'
-          }
-        case 'funded': 
-          return { 
-            color: 'bg-blue-100 text-blue-700 border-blue-200', 
-            dot: 'bg-blue-500',
-            progress: 'bg-blue-500'
-          }
-        default: 
-          return { 
-            color: 'bg-slate-100 text-slate-700 border-slate-200', 
-            dot: 'bg-slate-500',
-            progress: 'bg-slate-500'
-          }
-      }
-    }
-
-    const statusConfig = getStatusConfig(project.status || 'active')
-    const progress = 45 // Default progress since it's not in your schema
-
-    return (
-      <div
-        className={`relative bg-white rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md group ${
-          isSelected
-            ? 'border-emerald-300 ring-2 ring-emerald-100 shadow-sm'
-            : 'border-slate-200 hover:border-emerald-200'
-        }`}
-        onClick={onClick}
-      >
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center mb-2">
-                <div className={`w-2 h-2 rounded-full ${statusConfig.dot} mr-3`} />
-                <h3 className="text-lg font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                  {project.name}
-                </h3>
-              </div>
-              <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">{project.description}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">
-                ${project.funding_needed ? (project.funding_needed / 1000).toFixed(0) : 0}K
-              </p>
-              <p className="text-xs text-slate-500">Funding Goal</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">{opportunities.filter(opp => opp.eligible_for_project).length}</p>
-              <p className="text-xs text-slate-500">Matched Grants</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">{stats.totalSubmissions}</p>
-              <p className="text-xs text-slate-500">Applications</p>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-medium text-slate-600">Project Progress</span>
-              <span className="text-xs font-semibold text-slate-900">{progress}%</span>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-2">
-              <div 
-                className={`h-full ${statusConfig.progress} rounded-full transition-all duration-700 ease-out`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center text-slate-500 text-xs">
-              <Calendar className="w-3 h-3 mr-1" />
-              Created: {new Date(project.created_at).toLocaleDateString()}
-            </div>
-            
-            <div className={`px-2.5 py-1 rounded-md text-xs font-medium border ${statusConfig.color}`}>
-              Active
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Handle project operations
   const handleProjectCreated = async (newProject) => {
@@ -650,9 +538,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Show error if no user provided
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Please log in</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4">Please log in</h2>
           <p className="text-slate-600">You need to be authenticated to access the dashboard.</p>
         </div>
       </div>
@@ -662,9 +550,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Show profile loading state
   if (!userProfile) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
           <p className="text-slate-600">Loading your profile...</p>
         </div>
       </div>
@@ -676,46 +564,49 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     return (
       <div className="min-h-screen bg-slate-50">
         <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        <div className="flex items-center justify-center h-64 sm:h-96">
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-emerald-600"></div>
         </div>
       </div>
     )
   }
 
-  // Main dashboard render
+  // Main dashboard render with FULL MOBILE RESPONSIVENESS
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Professional Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-emerald-600 rounded-lg">
-                  <Building className="h-5 w-5 text-white" />
+      {/* MOBILE-OPTIMIZED HEADER */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="p-1.5 sm:p-2 bg-emerald-600 rounded-lg">
+                  <Building className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div>
+                <div className="hidden sm:block">
                   <h1 className="text-lg font-semibold text-slate-900">FundFlow</h1>
                   <p className="text-xs text-slate-500">Grant Management Platform</p>
+                </div>
+                <div className="sm:hidden">
+                  <h1 className="text-base font-semibold text-slate-900">FundFlow</h1>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
-                <Search className="w-5 h-5" />
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <button className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
-              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors relative">
-                <Bell className="w-5 h-5" />
+              <button className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors relative">
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {stats.pendingApplications > 0 && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
                 )}
               </button>
-              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
+              <button className="hidden sm:block p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
                 <Settings className="w-5 h-5" />
               </button>
-              <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-emerald-600 rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm">
                 {userProfile.full_name ? userProfile.full_name.charAt(0).toUpperCase() : 'U'}
               </div>
             </div>
@@ -723,10 +614,34 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Clean Navigation */}
-        <div className="mb-8">
-          <nav className="flex space-x-1 bg-slate-100 rounded-lg p-1">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+        {/* MOBILE-RESPONSIVE NAVIGATION */}
+        <div className="mb-6 sm:mb-8">
+          {/* Mobile Navigation - Horizontal Scroll */}
+          <nav className="md:hidden">
+            <div className="flex space-x-2 overflow-x-auto pb-2" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              {tabs.map(tab => {
+                const Icon = tab.icon
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex flex-col items-center justify-center min-w-[70px] px-2 py-2.5 rounded-lg font-medium text-xs transition-all duration-200 whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 mb-1" />
+                    <span className="leading-tight text-xs">{tab.label.split(' ')[0]}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+
+          {/* Desktop Navigation - Segmented Control */}
+          <nav className="hidden md:flex space-x-1 bg-slate-100 rounded-lg p-1">
             {tabs.map(tab => {
               const Icon = tab.icon
               return (
@@ -747,16 +662,16 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           </nav>
         </div>
 
-        {/* Overview Tab Content */}
+        {/* OVERVIEW TAB - FULLY MOBILE RESPONSIVE */}
         {activeTab === 'overview' && (
-          <div className="space-y-8">
-            {/* Time Filter */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-900">Dashboard Overview</h2>
+          <div className="space-y-6 sm:space-y-8">
+            {/* Mobile-Optimized Time Filter */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Dashboard Overview</h2>
               <select 
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
-                className="bg-white border border-slate-200 rounded-md px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full sm:w-auto bg-white border border-slate-200 rounded-md px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -765,8 +680,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               </select>
             </div>
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Mobile-Responsive Metrics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               <MetricCard
                 icon={Target}
                 title="Active Projects"
@@ -794,51 +709,51 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               />
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Mobile-Responsive Main Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
               {/* Activity Feed */}
               <div className="lg:col-span-2">
-                <div className="bg-white rounded-xl border border-slate-200 p-6">
-                  <div className="flex items-center justify-between mb-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
                     <h3 className="text-lg font-semibold text-slate-900 flex items-center">
                       <Activity className="w-5 h-5 mr-2 text-emerald-600" />
                       Recent Activity
                     </h3>
                     <button 
                       onClick={() => setActiveTab('applications')}
-                      className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                      className="text-sm text-emerald-600 hover:text-emerald-700 font-medium self-start sm:self-auto"
                     >
                       View all
                     </button>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {recentActivity.length > 0 ? (
                       recentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-start space-x-4 p-4 bg-slate-50 rounded-lg">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${
+                        <div key={index} className="flex items-start space-x-3 sm:space-x-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
+                          <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
                             activity.type === 'success' ? 'bg-emerald-500' :
                             activity.type === 'warning' ? 'bg-amber-500' :
                             activity.type === 'info' ? 'bg-blue-500' : 'bg-slate-400'
                           }`} />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <p className="font-medium text-slate-900">{activity.title}</p>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                              <p className="font-medium text-slate-900 text-sm sm:text-base">{activity.title}</p>
                               {activity.amount && (
-                                <span className="font-semibold text-emerald-700">{activity.amount}</span>
+                                <span className="font-semibold text-emerald-700 text-sm">{activity.amount}</span>
                               )}
                             </div>
-                            <p className="text-sm text-slate-600 mt-1">{activity.description}</p>
+                            <p className="text-xs sm:text-sm text-slate-600 mt-1 line-clamp-2">{activity.description}</p>
                             <div className="flex items-center mt-2 text-xs text-slate-500">
-                              <Clock className="w-3 h-3 mr-1" />
+                              <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
                               {formatTimeAgo(activity.time)}
                             </div>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-8">
-                        <Activity className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                      <div className="text-center py-6 sm:py-8">
+                        <Activity className="mx-auto h-6 w-6 sm:h-8 sm:w-8 text-slate-300 mb-2" />
                         <p className="text-sm text-slate-600">No recent activity</p>
                         <p className="text-xs text-slate-500">Start applying for grants or receiving donations to see updates here</p>
                       </div>
@@ -847,15 +762,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 </div>
               </div>
 
-              {/* Quick Actions & Summary */}
-              <div className="space-y-6">
+              {/* Mobile-Responsive Sidebar */}
+              <div className="space-y-4 sm:space-y-6">
                 {/* Quick Actions */}
-                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
                   <div className="space-y-3">
                     <button 
                       onClick={() => setShowCreateModal(true)}
-                      className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center"
+                      className="w-full bg-emerald-600 text-white py-2.5 sm:py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center text-sm sm:text-base"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Create New Project
@@ -863,29 +778,29 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     <button 
                       onClick={handleSyncOpportunities}
                       disabled={syncing}
-                      className="w-full bg-slate-100 text-slate-700 py-3 px-4 rounded-lg font-medium hover:bg-slate-200 transition-colors flex items-center justify-center disabled:opacity-50"
+                      className="w-full bg-slate-100 text-slate-700 py-2.5 sm:py-3 px-4 rounded-lg font-medium hover:bg-slate-200 transition-colors flex items-center justify-center disabled:opacity-50 text-sm sm:text-base"
                     >
                       <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                      {syncing ? 'Syncing Grants...' : 'Sync Grant Database'}
+                      {syncing ? 'Syncing...' : 'Sync Grants'}
                     </button>
                     <button 
                       onClick={() => setActiveTab('ai-agent')}
-                      className="w-full bg-slate-100 text-slate-700 py-3 px-4 rounded-lg font-medium hover:bg-slate-200 transition-colors flex items-center justify-center"
+                      className="w-full bg-slate-100 text-slate-700 py-2.5 sm:py-3 px-4 rounded-lg font-medium hover:bg-slate-200 transition-colors flex items-center justify-center text-sm sm:text-base"
                     >
                       <Brain className="w-4 h-4 mr-2" />
-                      AI Grant Matching
+                      AI Matching
                     </button>
                   </div>
                 </div>
 
                 {/* Project Summary */}
-                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">Project Summary</h3>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {projects.length > 0 ? (
                       projects.slice(0, 3).map((project) => (
                         <div key={project.id} className="flex items-center space-x-3">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-slate-900 truncate">{project.name}</p>
                             <p className="text-xs text-slate-500">
@@ -896,8 +811,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-6">
-                        <Target className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                      <div className="text-center py-4 sm:py-6">
+                        <Target className="mx-auto h-6 w-6 sm:h-8 sm:w-8 text-slate-300 mb-2" />
                         <p className="text-sm text-slate-600">No projects yet</p>
                         <button
                           onClick={() => setShowCreateModal(true)}
@@ -923,18 +838,18 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           </div>
         )}
 
-        {/* Projects & Funding Tab */}
+        {/* PROJECTS & FUNDING TAB - MOBILE RESPONSIVE */}
         {activeTab === 'opportunities' && (
           <>
-            {/* Funding Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Funding Stats - Mobile Responsive */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
               <MetricCard
                 icon={DollarSign}
                 title="Funding Secured"
                 value={stats.totalAwarded}
                 subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
                 trend="up"
-                change={stats.totalAwarded > 0 ? "+$125K this month" : "Apply for grants to see progress"}
+                change={stats.totalAwarded > 0 ? "+$125K this month" : "Apply for grants"}
               />
               <MetricCard
                 icon={Target}
@@ -942,15 +857,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 value={stats.totalRequested}
                 subtitle={stats.totalSubmissions > 0 ? `${stats.totalSubmissions} applications` : "No applications yet"}
                 trend="up"
-                change={stats.totalRequested > 0 ? `${(stats.totalRequested / 1000).toFixed(0)}K total` : "Submit applications to track"}
+                change={stats.totalRequested > 0 ? `$${(stats.totalRequested / 1000).toFixed(0)}K total` : "Submit applications"}
               />
               <MetricCard
                 icon={Zap}
                 title="Active Opportunities"
                 value={stats.activeOpportunities}
-                subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
+                subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover"}
                 trend={stats.activeOpportunities > 0 ? "up" : "neutral"}
-                change={stats.activeOpportunities > 0 ? "+12 new this week" : "Sync database for opportunities"}
+                change={stats.activeOpportunities > 0 ? "+12 new" : "Sync database"}
               />
               <MetricCard
                 icon={FileText}
@@ -962,69 +877,75 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
               />
             </div>
 
-            {/* Enhanced Sync Control Panel */}
+            {/* Enhanced Sync Control Panel - Mobile Optimized */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl border border-slate-200 p-6 mb-8 hover:shadow-md transition-all duration-200"
+              className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8 hover:shadow-md transition-all duration-200"
             >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center mb-4 lg:mb-0">
-                  <div className="p-3 bg-emerald-100 rounded-lg mr-4">
-                    <Database className="h-6 w-6 text-emerald-600" />
+              <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+                <div className="flex items-start sm:items-center">
+                  <div className="p-2 sm:p-3 bg-emerald-100 rounded-lg mr-3 sm:mr-4 flex-shrink-0">
+                    <Database className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                    <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1">
                       Federal Grant Database
                     </h3>
-                    <p className="text-sm text-slate-600 flex items-center">
-                      <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
-                      Live connection to federal funding opportunities
+                    <div className="flex flex-col sm:flex-row sm:items-center text-xs sm:text-sm text-slate-600">
+                      <div className="flex items-center">
+                        <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                        <span className="hidden sm:inline">Live connection to federal funding opportunities</span>
+                        <span className="sm:hidden">Live federal connection</span>
+                      </div>
                       {lastSyncTime && (
-                        <span className="ml-2 text-slate-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
+                        <span className="sm:ml-2 text-slate-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
                       )}
-                    </p>
+                    </div>
                   </div>
                 </div>
                 
                 <button
                   onClick={handleSyncOpportunities}
                   disabled={syncing}
-                  className={`bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-6 py-3 flex items-center ${syncing ? 'opacity-75' : ''}`}
+                  className={`w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-center text-sm sm:text-base ${syncing ? 'opacity-75' : ''}`}
                 >
                   {syncing ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
+                      <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2 sm:mr-3" />
                       Syncing...
                     </>
                   ) : (
                     <>
-                      <RefreshCw className="w-5 h-5 mr-3" />
-                      Refresh Opportunities
+                      <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                      <span className="hidden sm:inline">Refresh Opportunities</span>
+                      <span className="sm:hidden">Refresh</span>
                     </>
                   )}
                 </button>
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-              <div className="xl:col-span-4">
-                <div className="space-y-6">
-                  {/* Filter by Project */}
+            {/* Mobile-First Layout */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
+              {/* Mobile: Projects section comes first */}
+              <div className="xl:col-span-4 order-1 xl:order-1">
+                <div className="space-y-4 sm:space-y-6">
+                  {/* Filter by Project - Mobile Optimized */}
                   <div className="bg-white rounded-xl border border-slate-200">
-                    <div className="p-6 border-b border-slate-200">
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-slate-900">Filter by Project</h2>
+                    <div className="p-4 sm:p-6 border-b border-slate-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 mb-2 sm:mb-4">
+                        <h2 className="text-base sm:text-lg font-semibold text-slate-900">Filter by Project</h2>
                         <button
                           onClick={() => setShowCreateModal(true)}
-                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2"
+                          className="w-full sm:w-auto bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center justify-center sm:justify-start space-x-2"
                         >
                           <Plus className="w-4 h-4" />
                           <span>Add Project</span>
                         </button>
                       </div>
                     </div>
-                    <div className="p-4 max-h-96 overflow-y-auto">
+                    <div className="p-3 sm:p-4 max-h-80 sm:max-h-96 overflow-y-auto">
                       <ProjectList
                         projects={projects}
                         selectedProject={selectedProject}
@@ -1035,18 +956,18 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     </div>
                   </div>
 
-                  {/* Active Campaigns */}
+                  {/* Active Campaigns - Mobile Hidden Initially */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white rounded-xl border border-slate-200"
                   >
-                    <div className="p-6 border-b border-slate-200">
-                      <h2 className="text-lg font-semibold text-slate-900">Active Campaigns</h2>
+                    <div className="p-4 sm:p-6 border-b border-slate-200">
+                      <h2 className="text-base sm:text-lg font-semibold text-slate-900">Active Campaigns</h2>
                     </div>
-                    <div className="p-6">
-                      <div className="text-center py-6">
-                        <Heart className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                    <div className="p-4 sm:p-6">
+                      <div className="text-center py-4 sm:py-6">
+                        <Heart className="mx-auto h-6 w-6 sm:h-8 sm:w-8 text-slate-300 mb-2" />
                         <p className="text-sm text-slate-600">No active campaigns</p>
                         <p className="text-xs text-slate-500">Campaigns will appear here when created</p>
                       </div>
@@ -1055,11 +976,42 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 </div>
               </div>
 
-              <div className="xl:col-span-8">
-                {/* Funding Source Tabs */}
-                <div className="mb-6">
-                  <div className="border-b border-slate-200">
-                    <nav className="flex space-x-8">
+              {/* Main Content Area */}
+              <div className="xl:col-span-8 order-2 xl:order-2">
+                {/* Mobile-Responsive Funding Tabs */}
+                <div className="mb-4 sm:mb-6">
+                  {/* Mobile: Horizontal scroll tabs */}
+                  <div className="sm:hidden">
+                    <div className="flex space-x-2 overflow-x-auto pb-2" style={{scrollbarWidth: 'none'}}>
+                      {[
+                        { id: 'grants', label: 'Grants', icon: FileText },
+                        { id: 'campaigns', label: 'Campaigns', icon: Heart },
+                        { id: 'angels', label: 'Angels', icon: Users },
+                        { id: 'reits', label: 'REITs', icon: TrendingUp },
+                        { id: 'donations', label: 'Donations', icon: DollarSign }
+                      ].map(tab => {
+                        const Icon = tab.icon
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveFundingTab(tab.id)}
+                            className={`flex flex-col items-center justify-center min-w-[60px] px-2 py-2 rounded-lg font-medium text-xs transition-colors whitespace-nowrap ${
+                              activeFundingTab === tab.id
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 mb-1" />
+                            <span className="text-xs">{tab.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Desktop: Traditional tabs */}
+                  <div className="hidden sm:block border-b border-slate-200">
+                    <nav className="flex space-x-6 lg:space-x-8 overflow-x-auto">
                       {[
                         { id: 'grants', label: 'Grants', icon: FileText },
                         { id: 'campaigns', label: 'Campaigns', icon: Heart },
@@ -1072,7 +1024,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                           <button
                             key={tab.id}
                             onClick={() => setActiveFundingTab(tab.id)}
-                            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                               activeFundingTab === tab.id
                                 ? 'border-emerald-500 text-emerald-600'
                                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -1116,12 +1068,12 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   )}
 
                   {activeFundingTab === 'reits' && (
-                    <div className="p-6">
-                      <div className="text-center py-8">
-                        <TrendingUp className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-900 mb-2">Real Estate Investment Trusts</h3>
-                        <p className="text-slate-600 mb-6">REIT opportunities for sustainable funding</p>
-                        <div className="inline-flex items-center px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                    <div className="p-4 sm:p-6">
+                      <div className="text-center py-6 sm:py-8">
+                        <TrendingUp className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-slate-300 mb-4" />
+                        <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">Real Estate Investment Trusts</h3>
+                        <p className="text-sm sm:text-base text-slate-600 mb-4 sm:mb-6">REIT opportunities for sustainable funding</p>
+                        <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
                           <Clock className="w-4 h-4 mr-2" />
                           Coming Soon
                         </div>
