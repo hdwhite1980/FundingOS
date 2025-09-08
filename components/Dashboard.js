@@ -96,7 +96,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     { id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Financial summary & insights' },
     { id: 'opportunities', label: 'Projects & Funding', icon: Target, description: 'Grants, campaigns, investors' },
     { id: 'applications', label: 'Applications', icon: FileText, description: 'Active applications' },
-    { id: 'analytics', label: 'Analytics', icon: PieChart, description: 'Performance metrics' },
     { id: 'donations', label: 'Donors & Investors', icon: Heart, description: 'Donor & investor management' },
     { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }
   ]
@@ -924,77 +923,223 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           </div>
         )}
 
-        {/* Other Tab Contents */}
+        {/* Projects & Funding Tab */}
         {activeTab === 'opportunities' && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-900">Projects & Funding</h2>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Filter className="w-4 h-4 text-slate-500" />
-                  <select className="bg-white border border-slate-200 rounded-md px-3 py-2 text-sm">
-                    <option>All Status</option>
-                    <option>Active</option>
-                    <option>Planning</option>
-                    <option>Funded</option>
-                  </select>
-                </div>
-                <button 
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-md font-medium hover:bg-emerald-700 transition-colors flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Project
-                </button>
-              </div>
+          <>
+            {/* Funding Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <MetricCard
+                icon={DollarSign}
+                title="Funding Secured"
+                value={stats.totalAwarded}
+                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
+                trend="up"
+                change={stats.totalAwarded > 0 ? "+$125K this month" : "Apply for grants to see progress"}
+              />
+              <MetricCard
+                icon={Target}
+                title="Funding Requested"
+                value={stats.totalRequested}
+                subtitle={stats.totalSubmissions > 0 ? `${stats.totalSubmissions} applications` : "No applications yet"}
+                trend="up"
+                change={stats.totalRequested > 0 ? `${(stats.totalRequested / 1000).toFixed(0)}K total` : "Submit applications to track"}
+              />
+              <MetricCard
+                icon={Zap}
+                title="Active Opportunities"
+                value={stats.activeOpportunities}
+                subtitle={stats.activeOpportunities > 0 ? "Available for matching" : "Sync to discover opportunities"}
+                trend={stats.activeOpportunities > 0 ? "up" : "neutral"}
+                change={stats.activeOpportunities > 0 ? "+12 new this week" : "Sync database for opportunities"}
+              />
+              <MetricCard
+                icon={FileText}
+                title="Applications"
+                value={stats.totalSubmissions}
+                subtitle={stats.totalSubmissions > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
+                trend={stats.applicationSuccessRate > 50 ? "up" : "neutral"}
+                change={stats.pendingApplications > 0 ? `${stats.pendingApplications} pending` : "Ready to apply"}
+              />
             </div>
 
-            {/* Projects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  isSelected={selectedProject?.id === project.id}
-                  onClick={() => setSelectedProject(project)}
-                  onEdit={handleProjectEdit}
-                  onDelete={() => handleProjectDelete(project.id)}
-                />
-              ))}
-            </div>
-
-            {/* Sync Panel */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="p-3 bg-slate-100 rounded-lg mr-4">
-                    <Database className="h-6 w-6 text-slate-600" />
+            {/* Enhanced Sync Control Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl border border-slate-200 p-6 mb-8 hover:shadow-md transition-all duration-200"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center mb-4 lg:mb-0">
+                  <div className="p-3 bg-emerald-100 rounded-lg mr-4">
+                    <Database className="h-6 w-6 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Federal Grant Database</h3>
-                    <p className="text-sm text-slate-600">Stay updated with the latest funding opportunities</p>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                      Federal Grant Database
+                    </h3>
+                    <p className="text-sm text-slate-600 flex items-center">
+                      <span className={`w-2 h-2 rounded-full mr-2 ${syncing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                      Live connection to federal funding opportunities
+                      {lastSyncTime && (
+                        <span className="ml-2 text-slate-500">• Last sync: {formatLastSync(lastSyncTime)}</span>
+                      )}
+                    </p>
                   </div>
                 </div>
-                <button 
+                
+                <button
                   onClick={handleSyncOpportunities}
                   disabled={syncing}
-                  className="bg-emerald-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center disabled:opacity-50"
+                  className={`bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-6 py-3 flex items-center ${syncing ? 'opacity-75' : ''}`}
                 >
-                  <RefreshCw className={`w-5 h-5 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                  {syncing ? 'Syncing...' : 'Sync Now'}
+                  {syncing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-5 h-5 mr-3" />
+                      Refresh Opportunities
+                    </>
+                  )}
                 </button>
               </div>
-              
-              {syncing && (
-                <div className="mt-4 bg-slate-50 rounded-lg p-4">
-                  <div className="flex items-center text-sm text-slate-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-3"></div>
-                    Connecting to federal databases and analyzing opportunities...
+            </motion.div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+              <div className="xl:col-span-4">
+                <div className="space-y-6">
+                  {/* Filter by Project */}
+                  <div className="bg-white rounded-xl border border-slate-200">
+                    <div className="p-6 border-b border-slate-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Filter by Project</h2>
+                        <button
+                          onClick={() => setShowCreateModal(true)}
+                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm flex items-center space-x-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Add Project</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-4 max-h-96 overflow-y-auto">
+                      <ProjectList
+                        projects={projects}
+                        selectedProject={selectedProject}
+                        onProjectSelect={setSelectedProject}
+                        onProjectEdit={handleProjectEdit}
+                        onProjectDelete={handleProjectDelete}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active Campaigns */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-xl border border-slate-200"
+                  >
+                    <div className="p-6 border-b border-slate-200">
+                      <h2 className="text-lg font-semibold text-slate-900">Active Campaigns</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="text-center py-6">
+                        <Heart className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-600">No active campaigns</p>
+                        <p className="text-xs text-slate-500">Campaigns will appear here when created</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+
+              <div className="xl:col-span-8">
+                {/* Funding Source Tabs */}
+                <div className="mb-6">
+                  <div className="border-b border-slate-200">
+                    <nav className="flex space-x-8">
+                      {[
+                        { id: 'grants', label: 'Grants', icon: FileText },
+                        { id: 'campaigns', label: 'Campaigns', icon: Heart },
+                        { id: 'angels', label: 'Angel Investors', icon: Users },
+                        { id: 'reits', label: 'REITs', icon: TrendingUp },
+                        { id: 'donations', label: 'Direct Donations', icon: DollarSign }
+                      ].map(tab => {
+                        const Icon = tab.icon
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveFundingTab(tab.id)}
+                            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                              activeFundingTab === tab.id
+                                ? 'border-emerald-500 text-emerald-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center">
+                              <Icon className="w-4 h-4 mr-2" />
+                              {tab.label}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </nav>
                   </div>
                 </div>
-              )}
+
+                {/* Funding Source Content */}
+                <div className="bg-white rounded-xl border border-slate-200">
+                  {activeFundingTab === 'grants' && (
+                    <OpportunityList
+                      opportunities={opportunities}
+                      selectedProject={selectedProject}
+                      userProfile={userProfile}
+                    />
+                  )}
+
+                  {activeFundingTab === 'campaigns' && (
+                    <CampaignList
+                      user={user}
+                      userProfile={userProfile}
+                      projects={projects}
+                    />
+                  )}
+
+                  {activeFundingTab === 'angels' && (
+                    <AngelInvestorOpportunities
+                      user={user}
+                      userProfile={userProfile}
+                      selectedProject={selectedProject}
+                    />
+                  )}
+
+                  {activeFundingTab === 'reits' && (
+                    <div className="p-6">
+                      <div className="text-center py-8">
+                        <TrendingUp className="mx-auto h-12 w-12 text-slate-300 mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 mb-2">Real Estate Investment Trusts</h3>
+                        <p className="text-slate-600 mb-6">REIT opportunities for sustainable funding</p>
+                        <div className="inline-flex items-center px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                          <Clock className="w-4 h-4 mr-2" />
+                          Coming Soon
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeFundingTab === 'donations' && (
+                    <DirectDonationsList
+                      user={user}
+                      userProfile={userProfile}
+                      projects={projects}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {activeTab === 'ai-agent' && (
