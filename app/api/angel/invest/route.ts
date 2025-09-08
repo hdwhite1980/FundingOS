@@ -147,7 +147,7 @@ async function sendInvestmentConfirmationEmail(investorEmail, projectName, amoun
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2563eb;">Investment Confirmed</h2>
         <p>Your investment of <strong>$${amount.toLocaleString()}</strong> in <strong>${projectName}</strong> has been successfully processed.</p>
-        <p>You can track your investment performance in your FundingOS angel investor dashboard.</p>
+        <p>You can track your investment performance in your WALI-OS angel investor dashboard.</p>
         <div style="margin-top: 30px; padding: 20px; background-color: #f3f4f6; border-radius: 8px;">
           <h3 style="margin: 0 0 10px 0; color: #374151;">Next Steps:</h3>
           <ul style="margin: 0; color: #6b7280;">
@@ -157,7 +157,7 @@ async function sendInvestmentConfirmationEmail(investorEmail, projectName, amoun
           </ul>
         </div>
         <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
-          Thank you for investing with FundingOS!
+          Thank you for investing with WALI-OS!
         </p>
       </div>
     `

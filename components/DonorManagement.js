@@ -26,14 +26,14 @@ import {
 import { directUserServices } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
-export default function DonorManagement({ user, userProfile, projects }) {
+export default function DonorManagement({ user, userProfile, projects, initialTab = 'donors' }) {
   const [donors, setDonors] = useState([])
   const [investors, setInvestors] = useState([])
   const [campaigns, setCampaigns] = useState([])
   const [donations, setDonations] = useState([])
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('donors')
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState({})
   const [showCreateModal, setShowCreateModal] = useState(false)

@@ -18,45 +18,43 @@ const Logo = ({
 
   const { width, height, textSize } = sizeConfig[size];
 
-  // Logo text styling based on variant
+  // Logo styling based on variant - white logo on dark backgrounds, dark logo on light backgrounds
+  const logoIconStyle = variant === 'light' 
+    ? 'bg-white/20 backdrop-blur-sm border border-white/30 text-white' 
+    : 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg text-white';
+    
   const textColor = variant === 'light' 
     ? 'text-white' 
     : 'text-neutral-900';
+    
+  const subtextColor = variant === 'light' 
+    ? 'text-white/80' 
+    : 'text-neutral-500';
 
   return (
     <div className={`flex items-center space-x-3 ${className}`}>
-      {/* Logo Icon - Replace with your actual logo files when provided */}
+      {/* Logo Icon */}
       <div 
         className={`
-          w-${width/4} h-${width/4} rounded-xl flex items-center justify-center
-          ${variant === 'light' 
-            ? 'bg-white/20 backdrop-blur-sm border border-white/30' 
-            : 'bg-gradient-to-br from-brand-500 to-brand-600 shadow-financial'
-          }
+          rounded-xl flex items-center justify-center font-bold text-center leading-none
+          ${logoIconStyle}
+          ${size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : 'text-base'}
         `}
         style={{ width: `${width}px`, height: `${height}px` }}
       >
-        {/* Temporary logo - replace with actual logo */}
-        <div className={`
-          font-bold text-center leading-none
-          ${variant === 'light' ? 'text-white' : 'text-white'}
-          ${size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : 'text-base'}
-        `}>
-          W
-        </div>
+        W
       </div>
 
       {/* Logo Text */}
       {showText && (
         <div className="flex flex-col">
           <span className={`font-bold tracking-tight ${textSize} ${textColor} leading-none`}>
-            WALI OS
+            WALI-OS
           </span>
           <span className={`
-            text-xs font-medium tracking-wide
-            ${variant === 'light' ? 'text-white/80' : 'text-neutral-500'}
+            text-xs font-medium tracking-wide ${subtextColor}
           `}>
-            FundingOS
+            powered by AHTS
           </span>
         </div>
       )}

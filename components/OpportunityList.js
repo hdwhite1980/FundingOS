@@ -599,28 +599,17 @@ export default function OpportunityList({
             <div>
               <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                 {enableEligibilityCheck ? (
-                  <Shield className="w-5 h-5 mr-2 text-blue-600" />
+                  <Shield className="w-5 h-5 mr-2 text-green-600" />
                 ) : (
-                  <Target className="w-5 h-5 mr-2 text-blue-600" />
+                  <Target className="w-5 h-5 mr-2 text-green-600" />
                 )}
                 {enableEligibilityCheck ? 'Eligible ' : ''}Opportunities for {selectedProject.name}
-                {aiTargetedCount > 0 && (
-                  <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    {aiTargetedCount} AI-Targeted
-                  </span>
-                )}
               </h2>
               <p className="text-sm text-gray-600">
-                {filteredOpportunities.length} {enableEligibilityCheck ? 'eligible ' : 'matching '}opportunities found
+                {filteredOpportunities.length} opportunities found
                 {selectedProject.project_type && (
                   <span className="ml-2 text-xs text-gray-500">
                     • {selectedProject.project_type.replace('_', ' ')} project
-                  </span>
-                )}
-                {userProfile.organization_type && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    • {userProfile.organization_type.replace('_', ' ')} organization
                   </span>
                 )}
               </p>
@@ -638,7 +627,10 @@ export default function OpportunityList({
                   {showEligibilitySettings && <EligibilitySettings />}
                 </div>
               )}
-              <button className="btn-outline text-sm flex items-center">
+              <button 
+                onClick={() => setShowAIModal(true)}
+                className="btn-outline text-sm flex items-center hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+              >
                 <Zap className="w-4 h-4 mr-2" />
                 AI Analysis
               </button>
@@ -692,41 +684,14 @@ export default function OpportunityList({
             </select>
           </div>
 
-          {/* Status Summary */}
-          {filteredOpportunities.length > 0 && (
-            <div className="mt-4 flex items-center space-x-4 text-sm">
-              {enableEligibilityCheck ? (
-                <>
-                  <div className="flex items-center text-green-600">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    {filteredOpportunities.filter(opp => opp.eligibility?.eligible).length} Eligible
-                  </div>
-                  <div className="flex items-center text-yellow-600">
-                    <AlertTriangle className="w-4 h-4 mr-1" />
-                    {filteredOpportunities.filter(opp => 
-                      opp.eligibility?.eligible && opp.eligibility?.warnings?.length > 0
-                    ).length} With Warnings
-                  </div>
-                  {filters.showIneligible && (
-                    <div className="flex items-center text-red-600">
-                      <XCircle className="w-4 h-4 mr-1" />
-                      {filteredOpportunities.filter(opp => !opp.eligibility?.eligible).length} Ineligible
-                    </div>
-                  )}
-                </>
-              ) : (
-                aiTargetedCount > 0 && (
-                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                    <div className="flex items-center text-sm text-purple-800">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      <span className="font-medium">AI found {aiTargetedCount} opportunities specifically for this project</span>
-                      <span className="ml-2 text-purple-600">
-                        based on project type, funding needs, and organization profile
-                      </span>
-                    </div>
-                  </div>
-                )
-              )}
+          {/* Simplified Status Display */}
+          {filteredOpportunities.length > 0 && enableEligibilityCheck && (
+            <div className="mt-4 inline-flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+              <Shield className="w-4 h-4 mr-2 text-green-600" />
+              <span className="font-medium text-green-700">
+                {filteredOpportunities.filter(opp => opp.eligibility?.eligible).length}
+              </span>
+              <span className="ml-1">eligible opportunities</span>
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ import Header from './Header'
 import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
 import DonorManagement from './DonorManagement'
+import AngelInvestorDashboard from './AngelInvestorDashboard'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
 import AIAgentInterface from './AIAgentInterface'
@@ -48,10 +49,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [activeFundingTab, setActiveFundingTab] = useState('grants')
   
   // Modal states for funding tab
-  const [showCampaignModal, setShowCampaignModal] = useState(false)
-  const [showAngelModal, setShowAngelModal] = useState(false)
   const [showReitsModal, setShowReitsModal] = useState(false)
-  const [showDonationsModal, setShowDonationsModal] = useState(false)
   
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
@@ -938,37 +936,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   )}
 
                   {activeFundingTab === 'campaigns' && (
-                    <div className="p-6">
-                      <div className="text-center py-8">
-                        <Heart className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Crowdfunding Campaigns</h3>
-                        <p className="text-gray-600 mb-6">Launch campaigns to raise funds from your community</p>
-                        <button 
-                          onClick={() => setShowCampaignModal(true)}
-                          className="btn-primary"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create Campaign
-                        </button>
-                      </div>
-                    </div>
+                    <DonorManagement 
+                      user={user} 
+                      userProfile={userProfile}
+                      initialTab="campaigns"
+                    />
                   )}
 
                   {activeFundingTab === 'angels' && (
-                    <div className="p-6">
-                      <div className="text-center py-8">
-                        <Users className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Angel Investors</h3>
-                        <p className="text-gray-600 mb-6">Connect with individual investors interested in your projects</p>
-                        <button 
-                          onClick={() => setShowAngelModal(true)}
-                          className="btn-primary"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Find Angels
-                        </button>
-                      </div>
-                    </div>
+                    <AngelInvestorDashboard />
                   )}
 
                   {activeFundingTab === 'reits' && (
@@ -976,33 +952,21 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                       <div className="text-center py-8">
                         <TrendingUp className="mx-auto h-12 w-12 text-gray-300 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Real Estate Investment Trusts</h3>
-                        <p className="text-gray-600 mb-6">Explore REIT opportunities for sustainable funding</p>
-                        <button 
-                          onClick={() => setShowReitsModal(true)}
-                          className="btn-primary"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Explore REITs
-                        </button>
+                        <p className="text-gray-600 mb-6">REIT opportunities for sustainable funding</p>
+                        <div className="inline-flex items-center px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                          <Clock className="w-4 h-4 mr-2" />
+                          Coming Soon
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {activeFundingTab === 'donations' && (
-                    <div className="p-6">
-                      <div className="text-center py-8">
-                        <DollarSign className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Direct Donations</h3>
-                        <p className="text-gray-600 mb-6">Accept direct donations from supporters</p>
-                        <button 
-                          onClick={() => setShowDonationsModal(true)}
-                          className="btn-primary"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Setup Donations
-                        </button>
-                      </div>
-                    </div>
+                    <DonorManagement 
+                      user={user} 
+                      userProfile={userProfile}
+                      initialTab="donors"
+                    />
                   )}
                 </div>
               </div>
@@ -1039,10 +1003,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         )}
 
         {/* Funding Tab Modals */}
-        {showCampaignModal && <CampaignModal onClose={() => setShowCampaignModal(false)} />}
-        {showAngelModal && <AngelModal onClose={() => setShowAngelModal(false)} />}
         {showReitsModal && <ReitsModal onClose={() => setShowReitsModal(false)} />}
-        {showDonationsModal && <DonationsModal onClose={() => setShowDonationsModal(false)} />}
       </main>
     </div>
   )
