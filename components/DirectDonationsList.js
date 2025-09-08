@@ -17,6 +17,7 @@ import toast from 'react-hot-toast'
 
 export default function DirectDonationsList({ user, userProfile, projects = [] }) {
   const [donations, setDonations] = useState([])
+  const [donors, setDonors] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showAddDonation, setShowAddDonation] = useState(false)
@@ -36,24 +37,53 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
   const loadDonations = async () => {
     try {
       setLoading(true)
-      const [donationData, donationStats] = await Promise.all([
+      const [donationData, donorStats, donorList] = await Promise.all([
         directUserServices.donors?.getDonations(user.id) || Promise.resolve([]),
-        directUserServices.donors?.getDonationStats(user.id) || Promise.resolve({
-          totalDonations: 0,
-          totalAmount: 0,
-          avgDonation: 0,
-          donors: 0
-        })
+        directUserServices.donors?.getDonorStats ? directUserServices.donors.getDonorStats(user.id) : Promise.resolve(null),
+        directUserServices.donors?.getDonors ? directUserServices.donors.getDonors(user.id) : Promise.resolve([])
       ])
 
       setDonations(donationData)
-      setStats(donationStats)
+      setDonors(donorList || [])
+
+      if (donorStats) {
+        setStats({
+          totalDonations: donorStats.totalDonations || donationData.length,
+          totalAmount: donorStats.totalRaised || donationData.reduce((s, d) => s + (d.amount || 0), 0),
+            avgDonation: donorStats.avgDonationAmount || (donationData.length > 0 ? Math.round(donationData.reduce((s, d) => s + (d.amount || 0), 0) / donationData.length) : 0),
+          donors: donorStats.totalDonors || 0
+        })
+      } else {
+        // Local fallback
+        const totalDonations = donationData.length
+        const totalAmount = donationData.reduce((sum, d) => sum + (d.amount || 0), 0)
+        const avgDonation = totalDonations > 0 ? Math.round(totalAmount / totalDonations) : 0
+        const donorsCount = [...new Set(donationData.map(d => d.donor_id).filter(Boolean))].length
+        setStats({ totalDonations, totalAmount, avgDonation, donors: donorsCount })
+      }
     } catch (error) {
       console.error('Error loading donations:', error)
       toast.error('Failed to load donations')
     } finally {
       setLoading(false)
     }
+  }
+
+  const ensureDonor = async (name) => {
+    if (!name) return null
+    const existing = donors.find(d => d.name?.toLowerCase() === name.toLowerCase())
+    if (existing) return existing.id
+    try {
+      if (!directUserServices.donors?.createDonor) return null
+      const newDonor = await directUserServices.donors.createDonor(user.id, { name })
+      if (newDonor) {
+        setDonors([newDonor, ...donors])
+        return newDonor.id
+      }
+    } catch (e) {
+      console.error('ensureDonor error:', e)
+    }
+    return null
   }
 
   const filteredDonations = donations.filter(donation =>
@@ -238,6 +268,7 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
       {showAddDonation && (
         <AddDonationModal
           user={user}
+          donors={donors}
           onClose={() => setShowAddDonation(false)}
           onDonationRecorded={(newDonation) => {
             setDonations([newDonation, ...donations])
@@ -246,36 +277,52 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
             toast.success('Donation recorded!')
           }}
           projects={projects}
+          ensureDonor={ensureDonor}
         />
       )}
     </div>
   )
 }
 
-function AddDonationModal({ user, onClose, onDonationRecorded, projects }) {
+function AddDonationModal({ user, donors = [], ensureDonor, onClose, onDonationRecorded, projects }) {
   const [formData, setFormData] = useState({
     donor_name: '',
+    donor_id: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
     note: '',
     project_id: ''
   })
   const [loading, setLoading] = useState(false)
+  const [creatingNewDonor, setCreatingNewDonor] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-
     try {
-      const newDonation = {
-        id: Date.now(),
-        ...formData,
-        amount: parseFloat(formData.amount) || 0,
-        created_at: new Date().toISOString(),
-        user_id: user.id
+      let donorId = formData.donor_id
+      if (!donorId && formData.donor_name) {
+        donorId = await ensureDonor?.(formData.donor_name)
       }
 
-      onDonationRecorded(newDonation)
+      const payload = {
+        amount: parseFloat(formData.amount) || 0,
+        donation_date: formData.date,
+        note: formData.note || null,
+        project_id: formData.project_id || null,
+        donor_id: donorId || null
+      }
+
+      let created = null
+      if (directUserServices.donors?.createDonation) {
+        created = await directUserServices.donors.createDonation(user.id, payload)
+      }
+
+      if (!created) {
+        toast.error('Failed to record donation')
+      } else {
+        onDonationRecorded(created)
+      }
     } catch (error) {
       console.error('Error recording donation:', error)
       toast.error('Failed to record donation')
@@ -295,17 +342,48 @@ function AddDonationModal({ user, onClose, onDonationRecorded, projects }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Donor Name
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Donor
             </label>
-            <input
-              type="text"
-              className="form-input"
-              value={formData.donor_name}
-              onChange={(e) => setFormData({...formData, donor_name: e.target.value})}
-              placeholder="Anonymous"
-            />
+            {!creatingNewDonor && (
+              <div className="flex space-x-2">
+                <select
+                  className="form-input flex-1"
+                  value={formData.donor_id}
+                  onChange={(e) => setFormData({...formData, donor_id: e.target.value})}
+                >
+                  <option value="">Select existing donor</option>
+                  {donors.map(d => (
+                    <option key={d.id} value={d.id}>{d.name || 'Unnamed Donor'}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setCreatingNewDonor(true)}
+                  className="btn-secondary text-xs px-3"
+                >New</button>
+              </div>
+            )}
+            {creatingNewDonor && (
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  className="form-input flex-1"
+                  value={formData.donor_name}
+                  onChange={(e) => setFormData({...formData, donor_name: e.target.value})}
+                  placeholder="Enter donor name"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatingNewDonor(false)
+                    setFormData(f => ({ ...f, donor_name: '', donor_id: '' }))
+                  }}
+                  className="btn-secondary text-xs px-3"
+                >Cancel</button>
+              </div>
+            )}
           </div>
 
           <div>

@@ -42,18 +42,17 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
   const loadCampaigns = async () => {
     try {
       setLoading(true)
-      const [campaignData, campaignStats] = await Promise.all([
-        directUserServices.campaigns?.getCampaigns(user.id) || Promise.resolve([]),
-        directUserServices.campaigns?.getCampaignStats(user.id) || Promise.resolve({
-          totalCampaigns: 0,
-          totalRaised: 0,
-          totalGoal: 0,
-          activeCampaigns: 0
-        })
-      ])
-      
+      const campaignData = await (directUserServices.campaigns?.getCampaigns(user.id) || Promise.resolve([]))
+
+      // Derive stats locally (no getCampaignStats helper implemented)
+      const totalCampaigns = campaignData.length
+      const totalRaised = campaignData.reduce((sum, c) => sum + (c.raised || 0), 0)
+      const totalGoal = campaignData.reduce((sum, c) => sum + (parseFloat(c.goal) || 0), 0)
+      const now = new Date()
+      const activeCampaigns = campaignData.filter(c => !c.end_date || new Date(c.end_date) >= now).length
+
       setCampaigns(campaignData)
-      setStats(campaignStats)
+      setStats({ totalCampaigns, totalRaised, totalGoal, activeCampaigns })
     } catch (error) {
       console.error('Error loading campaigns:', error)
       toast.error('Failed to load campaigns')
@@ -353,18 +352,26 @@ function CreateCampaignModal({ user, userProfile, projects, onClose, onCampaignC
     setLoading(true)
 
     try {
-      // For now, create a placeholder campaign
-      const newCampaign = {
-        id: Date.now(),
-        ...formData,
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description?.trim() || '',
         goal: parseFloat(formData.goal) || 0,
-        raised: 0,
-        backers: 0,
-        created_at: new Date().toISOString(),
-        user_id: user.id
+        project_id: formData.project_id || null,
+        platform: formData.platform,
+        external_url: formData.external_url || null,
+        end_date: formData.end_date || null
       }
 
-      onCampaignCreated(newCampaign)
+      let created = null
+      if (directUserServices.campaigns?.createCampaign) {
+        created = await directUserServices.campaigns.createCampaign(user.id, payload)
+      }
+
+      if (!created) {
+        toast.error('Campaign creation failed')
+      } else {
+        onCampaignCreated(created)
+      }
     } catch (error) {
       console.error('Error creating campaign:', error)
       toast.error('Failed to create campaign')

@@ -23,7 +23,8 @@ export async function sendInvestmentConfirmationEmail(investorEmail, companyName
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #2563eb; margin: 0;">FundingOS</h1>
+          <h1 style="color: #16a34a; margin: 0;">WALI-OS</h1>
+          <p style="color: #6b7280; font-size: 12px; margin: 5px 0 0 0;">powered by AHTS</p>
           <p style="color: #6b7280; margin: 5px 0;">Angel Investment Platform</p>
         </div>
         
@@ -76,7 +77,7 @@ export async function sendInvestmentConfirmationEmail(investorEmail, companyName
         </div>
 
         <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center; color: #6b7280; font-size: 14px;">
-          <p style="margin: 0 0 10px 0;">Thank you for investing with FundingOS!</p>
+          <p style="margin: 0 0 10px 0;">Thank you for investing with WALI-OS!</p>
           <p style="margin: 0;">If you have any questions, contact our support team.</p>
         </div>
       </div>
@@ -106,7 +107,8 @@ export async function sendNewOpportunityAlert(investorEmail, opportunity) {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #2563eb; margin: 0;">FundingOS</h1>
+          <h1 style="color: #16a34a; margin: 0;">WALI-OS</h1>
+          <p style="color: #6b7280; font-size: 12px; margin: 5px 0 0 0;">powered by AHTS</p>
           <p style="color: #6b7280; margin: 5px 0;">New Investment Opportunity</p>
         </div>
         
