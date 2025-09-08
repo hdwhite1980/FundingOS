@@ -139,7 +139,7 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      'submitted': 'bg-blue-100 text-blue-800',
+      'submitted': 'bg-green-100 text-green-800',
       'under_review': 'bg-yellow-100 text-yellow-800',
       'approved': 'bg-green-100 text-green-800',
       'denied': 'bg-red-100 text-red-800',
@@ -253,7 +253,7 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
               <div className={`p-3 rounded-lg ${
                 daysUntilDeadline < 7 ? 'bg-red-50 border border-red-200' :
                 daysUntilDeadline < 30 ? 'bg-yellow-50 border border-yellow-200' :
-                'bg-blue-50 border border-blue-200'
+                'bg-green-50 border border-green-200'
               }`}>
                 <p className="text-xs font-medium">Next Report Due</p>
                 <p className="text-sm">{format(new Date(submission.next_report_due), 'MMM d, yyyy')}</p>
@@ -744,7 +744,7 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      'submitted': 'bg-blue-100 text-blue-800',
+      'submitted': 'bg-green-100 text-green-800',
       'under_review': 'bg-yellow-100 text-yellow-800',
       'approved': 'bg-green-100 text-green-800',
       'denied': 'bg-red-100 text-red-800',

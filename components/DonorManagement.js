@@ -488,7 +488,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
             <div className="flex items-center space-x-2">
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                 campaign.status === 'active' ? 'bg-green-100 text-green-800' :
-                campaign.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                campaign.status === 'completed' ? 'bg-green-100 text-green-800' :
                 'bg-gray-100 text-gray-800'
               }`}>
                 {campaign.status}
@@ -623,7 +623,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-700'
+                    ? 'bg-green-100 text-green-700'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
@@ -861,7 +861,7 @@ export default function DonorManagement({ user, userProfile, projects }) {
                       <tr key={donation.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                               <span className="text-white text-xs font-semibold">
                                 {donation.donor?.name?.charAt(0)?.toUpperCase()}
                               </span>
@@ -1411,7 +1411,7 @@ function DonationDetailModal({ donation, onClose }) {
           <div className="space-y-4">
             {/* Donor Info */}
             <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                 <span className="text-white font-semibold text-sm">
                   {donation.donor?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </span>

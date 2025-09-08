@@ -448,7 +448,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                     >
                       <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
                         message.type === 'user'
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-green-600 text-white'
                           : 'bg-white border shadow-sm'
                       }`}>
                         {/* Enhanced message content rendering with proper formatting */}
@@ -458,7 +458,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                           {message.content}
                         </div>
                         <p className={`text-xs mt-2 ${
-                          message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                          message.type === 'user' ? 'text-green-100' : 'text-gray-500'
                         }`}>
                           {message.timestamp.toLocaleTimeString()}
                         </p>
@@ -521,19 +521,19 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button 
                     onClick={() => setNewMessage('Analyze my opportunities')}
-                    className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                    className="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
                   >
                     Analyze opportunities
                   </button>
                   <button 
                     onClick={() => setNewMessage('What deadlines are coming up?')}
-                    className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                    className="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
                   >
                     Check deadlines
                   </button>
                   <button 
                     onClick={() => setNewMessage('Show me my best matches')}
-                    className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                    className="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
                   >
                     Best matches
                   </button>
@@ -586,14 +586,14 @@ function AgentGoalCard({ goal }) {
             <div 
               className={`h-2 rounded-full transition-all duration-300 ${
                 goal.progress >= 80 ? 'bg-green-600' : 
-                goal.progress >= 50 ? 'bg-blue-600' : 'bg-yellow-600'
+                goal.progress >= 50 ? 'bg-green-600' : 'bg-yellow-600'
               }`}
               style={{ width: `${goal.progress}%` }}
             ></div>
           </div>
           <div className="text-xs text-gray-500">
             {goal.progress}% complete 
-            <span className="text-blue-500 ml-1">• Live tracking</span>
+            <span className="text-green-500 ml-1">• Live tracking</span>
           </div>
         </>
       )}

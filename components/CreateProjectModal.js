@@ -355,11 +355,11 @@ export default function CreateProjectModal({
         />
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="font-medium text-blue-800 mb-2">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <h4 className="font-medium text-green-800 mb-2">
           {isEditMode ? 'Update complete!' : 'Ready to find opportunities!'}
         </h4>
-        <p className="text-sm text-blue-700">
+        <p className="text-sm text-green-700">
           {isEditMode 
             ? 'Your project updates will help our AI find even better funding opportunities that match your specific needs.'
             : 'Once created, our AI will analyze your project and match it with the most relevant funding opportunities. You\'ll get personalized recommendations with fit scores and application assistance.'
@@ -374,40 +374,40 @@ export default function CreateProjectModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-soft-lg max-w-2xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-green-200"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 sm:p-8 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-2xl font-bold text-neutral-900">
               {isEditMode ? 'Edit Project' : 'Create New Project'}
             </h2>
-            <p className="text-sm text-gray-600">Step {currentStep} of 3</p>
+            <p className="text-neutral-600 mt-1">Step {currentStep} of 3</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-white/50 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Progress Bar */}
-        <div className="px-6 py-3 bg-gray-50">
-          <div className="flex items-center justify-between text-sm">
-            <span className={currentStep >= 1 ? 'text-blue-600 font-medium' : 'text-gray-500'}>
+        <div className="px-6 sm:px-8 py-4 bg-white">
+          <div className="flex items-center justify-between text-sm mb-3">
+            <span className={`font-semibold ${currentStep >= 1 ? 'text-green-700' : 'text-neutral-500'}`}>
               Basics
             </span>
-            <span className={currentStep >= 2 ? 'text-blue-600 font-medium' : 'text-gray-500'}>
+            <span className={`font-semibold ${currentStep >= 2 ? 'text-green-700' : 'text-neutral-500'}`}>
               Impact
             </span>
-            <span className={currentStep >= 3 ? 'text-blue-600 font-medium' : 'text-gray-500'}>
+            <span className={`font-semibold ${currentStep >= 3 ? 'text-green-700' : 'text-neutral-500'}`}>
               Funding
             </span>
           </div>
-          <div className="mt-2 bg-gray-200 rounded-full h-2">
+          <div className="bg-neutral-200 rounded-full h-3">
             <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500 shadow-sm"
               style={{ width: `${(currentStep / 3) * 100}%` }}
             ></div>
           </div>
@@ -415,19 +415,19 @@ export default function CreateProjectModal({
 
         {/* Content */}
         <form onSubmit={handleSubmit}>
-          <div className="p-6 max-h-[60vh] overflow-y-auto">
+          <div className="p-6 sm:p-8 max-h-[60vh] overflow-y-auto">
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between p-6 sm:p-8 border-t border-neutral-100 bg-neutral-25">
             <button
               type="button"
               onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
               disabled={currentStep === 1}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-white text-neutral-700 font-medium rounded-lg border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
@@ -438,7 +438,7 @@ export default function CreateProjectModal({
                   type="button"
                   onClick={() => setCurrentStep(currentStep + 1)}
                   disabled={!canProceed()}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Next
                 </button>
@@ -446,7 +446,7 @@ export default function CreateProjectModal({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="btn-primary flex items-center"
+                  className="px-6 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center transition-colors"
                 >
                   {loading ? (
                     <>

@@ -276,7 +276,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
 
   const getScoreColor = (score) => {
     if (score >= 80) return 'text-accent-700 bg-accent-100'
-    if (score >= 60) return 'text-blue-700 bg-blue-100'
+    if (score >= 60) return 'text-green-700 bg-green-100'
     if (score >= 40) return 'text-amber-700 bg-amber-100'
     return 'text-red-700 bg-red-100'
   }
@@ -291,39 +291,39 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-lg shadow-soft-lg max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-green-200"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 sm:p-8 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-              <Zap className="w-5 h-5 mr-2 text-blue-600" />
+            <h2 className="text-2xl font-bold text-neutral-900 flex items-center">
+              <Zap className="w-6 h-6 mr-3 text-green-600" />
               AI Analysis
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-neutral-600 mt-2">
               {opportunity.title} • {project.name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-white/50 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-green-200 bg-white">
           {tabs.map(tab => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center transition-colors ${
+                className={`flex-1 px-6 py-4 text-sm font-semibold flex items-center justify-center transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-green-700 border-b-2 border-green-600 bg-green-50'
+                    : 'text-neutral-600 hover:text-green-700 hover:bg-green-25'
                 }`}
               >
                 <Icon className="w-4 h-4 mr-2" />
@@ -334,51 +334,51 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
+        <div className="p-6 sm:p-8 max-h-[60vh] overflow-y-auto">
           {(loading || authLoading || initializing) ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">
+            <div className="text-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-6"></div>
+              <p className="text-neutral-700 text-lg font-medium">
                 {authLoading || initializing ? 'Loading user session...' : 'AI is analyzing the opportunity fit...'}
               </p>
               {authLoading || initializing ? (
-                <p className="text-sm text-gray-500 mt-2">Please wait while we verify your authentication</p>
+                <p className="text-neutral-500 mt-3">Please wait while we verify your authentication</p>
               ) : null}
             </div>
           ) : !user ? (
-            <div className="text-center py-12">
-              <div className="text-red-500 mb-4">
+            <div className="text-center py-16">
+              <div className="text-red-500 mb-6">
                 <X className="w-12 h-12 mx-auto" />
               </div>
-              <p className="text-gray-600 mb-4">Authentication required</p>
-              <p className="text-sm text-gray-500">Please log in to use AI analysis features</p>
-              <button onClick={onClose} className="btn-primary mt-4">
+              <p className="text-neutral-700 mb-4 text-lg font-medium">Authentication required</p>
+              <p className="text-neutral-500 mb-6">Please log in to use AI analysis features</p>
+              <button onClick={onClose} className="px-6 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
                 Close
               </button>
             </div>
           ) : (
             <>
               {activeTab === 'analysis' && analysis && (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {/* Fit Score */}
                   <div className="text-center">
-                    <div className={`inline-flex items-center px-4 py-2 rounded-full text-2xl font-bold ${getScoreColor(analysis.fitScore)}`}>
+                    <div className={`inline-flex items-center px-6 py-3 rounded-full text-3xl font-bold border-2 ${getScoreColor(analysis.fitScore)}`}>
                       {analysis.fitScore}% Match
                     </div>
-                    <p className="text-gray-600 mt-2">Overall fit score for this opportunity</p>
+                    <p className="text-neutral-600 mt-3 text-lg">Overall fit score for this opportunity</p>
                   </div>
 
                   {/* Strengths */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
-                      <Target className="w-5 h-5 mr-2 text-accent-600" />
+                    <h3 className="text-xl font-bold text-neutral-900 flex items-center mb-6">
+                      <Target className="w-6 h-6 mr-3 text-green-600" />
                       Key Strengths
                     </h3>
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       {analysis.strengths.map((strength, index) => (
-                        <div key={index} className="flex items-start">
-                          <CheckCircle className="w-5 h-5 text-accent-600 mr-3 mt-0.5 flex-shrink-0" />
-                          <p className="text-gray-700">{strength}</p>
+                        <div key={index} className="flex items-start p-4 bg-green-50 rounded-lg border border-green-100">
+                          <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
+                          <p className="text-neutral-700 leading-relaxed">{strength}</p>
                         </div>
                       ))}
                     </div>
@@ -474,7 +474,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
                         </div>
                       </div>
                       
-                      <div className="text-xs text-gray-500 p-3 bg-blue-50 rounded-lg">
+                      <div className="text-xs text-gray-500 p-3 bg-green-50 rounded-lg">
                         <strong>Note:</strong> This is an AI-generated draft. Please review and customize it according to the specific requirements of the funding opportunity. Always verify all information and add your organization's specific details.
                       </div>
                     </div>

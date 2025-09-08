@@ -144,7 +144,7 @@ export default function AngelInvestorOnboarding({ user, investor, onComplete }) 
       <div className="flex justify-between pt-6 mt-4 border-t">
         <button disabled={step===1||saving} onClick={()=>setStep(s=>s-1)} className="px-4 py-2 text-sm rounded border disabled:opacity-40">Back</button>
         {step < 4 ? (
-          <button disabled={saving} onClick={async ()=>{ const seg = step===1? 'core': step===2?'preferences':'enhancement'; const ok = await saveSegment(seg); if (ok) setStep(s=>s+1); }} className="px-5 py-2 bg-blue-600 text-white rounded text-sm flex items-center disabled:opacity-60">
+          <button disabled={saving} onClick={async ()=>{ const seg = step===1? 'core': step===2?'preferences':'enhancement'; const ok = await saveSegment(seg); if (ok) setStep(s=>s+1); }} className="px-5 py-2 bg-green-600 text-white rounded text-sm flex items-center disabled:opacity-60 hover:bg-green-700 transition-colors">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Continue <ArrowRight className="w-4 h-4 ml-1" />
           </button>
@@ -188,7 +188,7 @@ function ProgressBar({ step }) {
         const complete = i+1 < step;
         return (
           <div key={l} className="flex-1 flex items-center">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border transition-colors ${complete? 'bg-green-600 text-white border-green-600': current? 'bg-blue-600 text-white border-blue-600':'bg-white text-gray-500 border-gray-300'}`}>{i+1}</div>
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border transition-colors ${complete? 'bg-green-600 text-white border-green-600': current? 'bg-green-600 text-white border-green-600':'bg-white text-gray-500 border-gray-300'}`}>{i+1}</div>
             {i < labels.length-1 && <div className={`h-1 flex-1 mx-2 rounded ${complete? 'bg-green-500':'bg-gray-200'}`}></div>}
           </div>
         );
@@ -258,7 +258,7 @@ function RadioGroup({ label, value, onChange, options, displayMap }) {
       <p className="text-sm font-medium mb-2">{label}</p>
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
         {options.map(opt => (
-          <button key={opt} type="button" onClick={()=>onChange(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-blue-50 transition ${value===opt? 'border-blue-600 bg-blue-50 font-medium text-blue-700':'border-gray-300 text-gray-600'}`}>{displayMap?.[opt] || opt}</button>
+          <button key={opt} type="button" onClick={()=>onChange(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-green-50 transition-colors ${value===opt? 'border-green-600 bg-green-50 font-medium text-green-700':'border-gray-300 text-gray-600'}`}>{displayMap?.[opt] || opt}</button>
         ))}
       </div>
     </div>
@@ -279,7 +279,7 @@ function CheckboxGroup({ label, values, setValues, options, limit, displayMap })
       <p className="text-sm font-medium mb-2">{label}{limit? ` (max ${limit})`:''}</p>
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
         {options.map(opt => (
-          <button key={opt} type="button" onClick={()=>toggle(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-blue-50 transition ${(values.includes(opt))? 'border-blue-600 bg-blue-50 font-medium text-blue-700':'border-gray-300 text-gray-600'}`}>{displayMap?.[opt] || opt}</button>
+          <button key={opt} type="button" onClick={()=>toggle(opt)} className={`text-sm border rounded-md px-3 py-2 text-left hover:bg-green-50 transition-colors ${(values.includes(opt))? 'border-green-600 bg-green-50 font-medium text-green-700':'border-gray-300 text-gray-600'}`}>{displayMap?.[opt] || opt}</button>
         ))}
       </div>
     </div>
@@ -305,7 +305,7 @@ function EvaluationRanking({ current, onRank }) {
             <span className="w-40 text-sm capitalize">{item.replace('_',' ')}</span>
             <div className="flex gap-1">
               {[1,2,3,4,5].map(n=> (
-                <button key={n} type="button" onClick={()=>onRank(item,n)} className={`w-8 h-8 text-xs rounded-md border flex items-center justify-center ${current?.[item]===n? 'bg-blue-600 text-white border-blue-600':'border-gray-300 text-gray-600 hover:bg-blue-50'}`}>{n}</button>
+                <button key={n} type="button" onClick={()=>onRank(item,n)} className={`w-8 h-8 text-xs rounded-md border flex items-center justify-center transition-colors ${current?.[item]===n? 'bg-green-600 text-white border-green-600':'border-gray-300 text-gray-600 hover:bg-green-50'}`}>{n}</button>
               ))}
             </div>
           </div>
