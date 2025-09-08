@@ -2,7 +2,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, FileText, Clock, Copy, RotateCcw, Sparkles, TrendingUp } from 'lucide-react'
+import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import toast from 'react-hot-toast'
 
 export default function AIAnalysisModal({ opportunity, project, userProfile, onClose }) {
   const { user, loading: authLoading, initializing } = useAuth()
@@ -28,7 +30,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
     } else if (!authLoading && !initializing && !user) {
       console.log('AIAnalysisModal: Auth loaded but no user found')
       setLoading(false)
-      alert('Please log in to use AI analysis')
+      toast.error('Please log in to use AI analysis')
     } else {
       console.log('AIAnalysisModal: Waiting for auth to complete', {
         authLoading,
@@ -75,49 +77,39 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
         retryCount
       })
       
-      // Simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const mockAnalysis = {
-        fitScore: 87,
-        strengths: [
-          'Strong alignment with your AI/ML technology focus and proven track record in enterprise automation',
-          'Your team\'s background in workflow optimization directly matches the funding priorities',
-          'Existing prototype demonstrates technical feasibility and market readiness',
-          'Clear path to commercialization with identified target customers'
-        ],
-        challenges: [
-          'Highly competitive application process with limited funding available',
-          'Requires demonstration of significant market traction within 6 months',
-          'Technical milestones may be aggressive given current development timeline',
-          'Need to establish partnerships with academic institutions for compliance'
-        ],
-        recommendations: [
-          'Strengthen your application by highlighting specific enterprise customer commitments',
-          'Develop a more detailed go-to-market strategy with concrete revenue projections',
-          'Consider partnering with a university research lab to enhance credibility',
-          'Prepare detailed technical documentation and IP protection strategy'
-        ],
-        nextSteps: [
-          'Review all application requirements and gather supporting documentation',
-          'Schedule meetings with potential academic partners before deadline',
-          'Prepare financial projections and budget breakdown for requested funding amount',
-          'Draft initial application and have it reviewed by industry experts',
-          'Submit application at least 48 hours before the deadline'
-        ]
+      // Call AI analysis API
+      const response = await fetch('/api/ai/analyze-opportunity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userProfile,
+          project,
+          opportunity
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Analysis failed')
       }
       
-      setAnalysis(mockAnalysis)
+      const analysisResult = await response.json()
+      setAnalysis(analysisResult)
 
-      // Mock existing opportunity check
-      const mockExisting = Math.random() > 0.7 // 30% chance of existing
-      if (mockExisting) {
-        setProjectOpportunity({ id: 'mock-po-1', status: 'analyzing' })
+      // Check if this opportunity is already tracked for the project
+      const existingOpportunities = await directUserServices.projectOpportunities.getProjectOpportunities(project.id, user.id)
+      const existing = existingOpportunities.find(po => po.opportunity_id === opportunity.id)
+      
+      if (existing) {
+        setProjectOpportunity(existing)
+        if (existing.application_draft) {
+          setApplicationDraft(existing.application_draft)
+        }
       }
 
     } catch (error) {
       console.error('AI Analysis error:', error)
-      alert('Failed to analyze opportunity: ' + error.message)
+      toast.error('Failed to analyze opportunity: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -148,27 +140,35 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
         opportunityId: opportunity.id
       })
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // First, check if this combination already exists
+      const existingOpportunities = await directUserServices.projectOpportunities.getProjectOpportunities(project.id, user.id)
+      const existing = existingOpportunities.find(po => po.opportunity_id === opportunity.id)
       
-      const newProjectOpportunity = {
-        id: 'mock-po-' + Date.now(),
+      if (existing) {
+        setProjectOpportunity(existing)
+        toast.success('Opportunity is already in your project!')
+        return existing
+      }
+
+      // If not existing, create new one
+      const newProjectOpportunity = await directUserServices.projectOpportunities.createProjectOpportunity(user.id, {
         project_id: project.id,
         opportunity_id: opportunity.id,
         status: 'ai_analyzing',
-        fit_score: analysis?.fitScore || 0
-      }
+        fit_score: analysis?.fitScore || 0,
+        ai_analysis: analysis ? JSON.stringify(analysis) : null
+      })
       
       setProjectOpportunity(newProjectOpportunity)
-      alert('Opportunity added to your project!')
+      toast.success('Opportunity added to your project!')
       return newProjectOpportunity
     } catch (error) {
       console.error('Add to project error:', error)
       
       if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
-        alert('This opportunity is already in your project!')
+        toast.error('This opportunity is already in your project!')
       } else {
-        alert('Failed to add opportunity: ' + error.message)
+        toast.error('Failed to add opportunity: ' + error.message)
       }
       return null
     }
@@ -202,6 +202,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
         opportunityId: opportunity.id
       })
       
+      // Ensure we have a project opportunity first
       let currentProjectOpportunity = projectOpportunity
       
       if (!currentProjectOpportunity) {
@@ -213,42 +214,43 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
         }
       }
 
-      // Simulate application generation
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      console.log('Generating application for project opportunity:', currentProjectOpportunity.id)
+
+      const response = await fetch('/api/ai/generate-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userProfile,
+          project,
+          opportunity,
+          analysis
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Application generation failed')
+      }
       
-      const mockApplication = `Project Title: ${project.name}
-Organization: ${userProfile?.organization || 'Your Organization'}
-Principal Investigator: ${userProfile?.full_name || 'Your Name'}
+      const applicationDraftResponse = await response.json()
+      
+      // Store the content locally for display
+      setApplicationDraft(applicationDraftResponse.content)
+      
+      // Update project opportunity with draft
+      await directUserServices.projectOpportunities.updateProjectOpportunity(
+        user.id,
+        currentProjectOpportunity.id,
+        {
+          status: 'draft_generated',
+          application_draft: applicationDraftResponse.content
+        }
+      )
 
-EXECUTIVE SUMMARY
-This proposal outlines our innovative approach to ${project.description || 'advancing technology solutions'} through ${opportunity.title}. Our project addresses critical market needs while leveraging cutting-edge technology to deliver measurable impact.
-
-PROJECT DESCRIPTION
-Our solution builds upon proven methodologies and incorporates advanced AI/ML capabilities to solve real-world challenges. The proposed work will advance the state-of-the-art while providing practical benefits to end users.
-
-TECHNICAL APPROACH
-We propose a comprehensive three-phase approach:
-1. Research and Development Phase (Months 1-6)
-2. Prototype Development and Testing (Months 7-12)
-3. Market Validation and Deployment (Months 13-18)
-
-TEAM QUALIFICATIONS
-Our team brings together expertise in technology development, market analysis, and project management. We have a proven track record of successful project delivery and innovation.
-
-BUDGET JUSTIFICATION
-The requested funding will support personnel, equipment, and operational expenses necessary to achieve project objectives. We have carefully planned our budget to maximize efficiency and impact.
-
-EXPECTED OUTCOMES
-This project will deliver significant advances in ${project.industry || 'technology'} with measurable benefits including improved efficiency, cost reduction, and enhanced user experience.
-
-CONCLUSION
-We are confident that this project aligns perfectly with the funding opportunity's objectives and will deliver exceptional value to stakeholders and the broader community.`
-
-      setApplicationDraft(mockApplication)
-      alert('Application draft generated!')
+      toast.success('Application draft generated!')
     } catch (error) {
       console.error('Application generation error:', error)
-      alert('Failed to generate application: ' + error.message)
+      toast.error('Failed to generate application: ' + error.message)
     } finally {
       setGenerating(false)
     }
@@ -257,9 +259,9 @@ We are confident that this project aligns perfectly with the funding opportunity
   const handleCopyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(applicationDraft)
-      alert('Application draft copied to clipboard!')
+      toast.success('Application draft copied to clipboard!')
     } catch (error) {
-      alert('Failed to copy to clipboard')
+      toast.error('Failed to copy to clipboard')
     }
   }
 
@@ -384,7 +386,7 @@ We are confident that this project aligns perfectly with the funding opportunity
                       Key Strengths
                     </h3>
                     <div className="space-y-4">
-                      {analysis.strengths.map((strength, index) => (
+                      {analysis.strengths?.map((strength, index) => (
                         <div key={index} className="flex items-start p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                           <CheckCircle className="w-5 h-5 text-emerald-600 mr-3 mt-0.5 flex-shrink-0" />
                           <p className="text-slate-700 leading-relaxed">{strength}</p>
@@ -402,7 +404,7 @@ We are confident that this project aligns perfectly with the funding opportunity
                       Potential Challenges
                     </h3>
                     <div className="space-y-4">
-                      {analysis.challenges.map((challenge, index) => (
+                      {analysis.challenges?.map((challenge, index) => (
                         <div key={index} className="flex items-start p-4 bg-amber-50 rounded-lg border border-amber-200">
                           <AlertTriangle className="w-5 h-5 text-amber-600 mr-3 mt-0.5 flex-shrink-0" />
                           <p className="text-slate-700 leading-relaxed">{challenge}</p>
@@ -420,7 +422,7 @@ We are confident that this project aligns perfectly with the funding opportunity
                       AI Recommendations
                     </h3>
                     <div className="space-y-4">
-                      {analysis.recommendations.map((recommendation, index) => (
+                      {analysis.recommendations?.map((recommendation, index) => (
                         <div key={index} className="flex items-start p-4 bg-slate-50 rounded-lg border border-slate-200">
                           <Lightbulb className="w-5 h-5 text-slate-600 mr-3 mt-0.5 flex-shrink-0" />
                           <p className="text-slate-700 leading-relaxed">{recommendation}</p>
@@ -438,7 +440,7 @@ We are confident that this project aligns perfectly with the funding opportunity
                       Recommended Next Steps
                     </h3>
                     <div className="space-y-4">
-                      {analysis.nextSteps.map((step, index) => (
+                      {analysis.nextSteps?.map((step, index) => (
                         <div key={index} className="flex items-start">
                           <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-0.5 flex-shrink-0">
                             {index + 1}

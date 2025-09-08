@@ -61,26 +61,34 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
       setLoading(true)
       console.log(`🤖 Initializing AI Funding Agent for user ${user.id}`)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const response = await fetch('/api/ai/agent/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: user.id, 
+          userProfile,
+          projects,
+          opportunities 
+        })
+      })
       
-      const agentData = {
-        id: 'agent-' + user.id,
-        status: 'active',
-        initialized: true
+      if (response.ok) {
+        const agentData = await response.json()
+        setAgent(agentData)
+        setAgentStatus('active')
+        
+        // Load real agent state from database
+        await loadAgentState()
+        
+        setChatMessages([{
+          type: 'agent',
+          content: `Hello ${userProfile?.full_name || 'there'}! I'm your AI Funding Agent and I'm now actively working for you. How can I help you optimize your funding strategy?`,
+          timestamp: new Date()
+        }])
+        
+      } else {
+        throw new Error('Failed to initialize agent')
       }
-      
-      setAgent(agentData)
-      setAgentStatus('active')
-      
-      // Load mock agent state
-      await loadAgentState()
-      
-      setChatMessages([{
-        type: 'agent',
-        content: `Hello ${userProfile?.full_name || 'there'}! I'm your AI Funding Agent and I'm now actively working for you. How can I help you optimize your funding strategy?`,
-        timestamp: new Date()
-      }])
       
     } catch (error) {
       console.error('Error initializing agent:', error)
@@ -98,59 +106,32 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
 
   const loadAgentState = async () => {
     try {
-      // Mock data for demonstration
-      const mockGoals = [
-        {
-          id: 1,
-          type: 'opportunity_discovery',
-          description: 'Monitor new grant opportunities in healthcare',
-          progress: 75,
-          priority: 8
-        },
-        {
-          id: 2,
-          type: 'deadline_management',
-          description: 'Track NSF application deadline (Dec 15)',
-          progress: 45,
-          priority: 9
-        },
-        {
-          id: 3,
-          type: 'application_tracking',
-          description: 'Follow up on SBIR Phase II proposal',
-          progress: 90,
-          priority: 6
-        }
-      ]
+      const [goalsRes, decisionsRes, thoughtsRes] = await Promise.allSettled([
+        fetch(`/api/ai/agent/goals?userId=${user.id}`),
+        fetch(`/api/ai/agent/decisions?userId=${user.id}&limit=5`),
+        fetch(`/api/ai/agent/thoughts?userId=${user.id}&latest=true`)
+      ])
 
-      const mockDecisions = [
-        {
-          id: 1,
-          title: 'New NIH Opportunity Match',
-          description: 'Found a 92% match for your biotech research project. Deadline in 3 weeks.',
-          priority: 'high',
-          confidence: 92
-        },
-        {
-          id: 2,
-          title: 'Application Strategy Update',
-          description: 'Recommend updating your project budget based on recent funding trends.',
-          priority: 'medium',
-          confidence: 78
+      if (goalsRes.status === 'fulfilled' && goalsRes.value.ok) {
+        const goals = await goalsRes.value.json()
+        if (goals && Array.isArray(goals)) {
+          setCurrentGoals(goals)
         }
-      ]
-
-      const mockThoughts = {
-        next_focus: 'Analyzing recent funding patterns in your sector to identify emerging opportunities.',
-        insights: [
-          'Your success rate could improve by 23% with earlier application submissions',
-          'Three new programs launched this month match your research profile'
-        ]
       }
-
-      setCurrentGoals(mockGoals)
-      setRecentDecisions(mockDecisions)
-      setAgentThoughts(mockThoughts)
+      
+      if (decisionsRes.status === 'fulfilled' && decisionsRes.value.ok) {
+        const decisions = await decisionsRes.value.json()
+        if (decisions && Array.isArray(decisions)) {
+          setRecentDecisions(decisions)
+        }
+      }
+      
+      if (thoughtsRes.status === 'fulfilled' && thoughtsRes.value.ok) {
+        const thoughts = await thoughtsRes.value.json()
+        if (thoughts && typeof thoughts === 'object') {
+          setAgentThoughts(thoughts)
+        }
+      }
       
     } catch (error) {
       console.error('Error loading agent state:', error)
@@ -159,11 +140,16 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
 
   const updateGoalProgress = async () => {
     try {
-      // Mock progress updates
-      setCurrentGoals(prev => prev.map(goal => ({
-        ...goal,
-        progress: Math.min(100, goal.progress + Math.random() * 5)
-      })))
+      const response = await fetch('/api/ai/agent/update-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+      
+      if (response.ok) {
+        const updatedGoals = await response.json()
+        setCurrentGoals(updatedGoals)
+      }
     } catch (error) {
       console.error('Error updating goal progress:', error)
     }
@@ -179,29 +165,32 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
     setIsTyping(true)
 
     try {
-      // Simulate AI response
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      const responses = [
-        "I'm analyzing your current opportunities and will provide recommendations shortly.",
-        "Based on your profile, I've identified 3 new funding opportunities that match your criteria.",
-        "Your application deadlines are well-managed. The next critical deadline is in 2 weeks.",
-        "I recommend focusing on the NIH R01 program - it has a 94% match with your research."
-      ]
-      
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)]
-      
-      const agentMessage = { 
-        type: 'agent', 
-        content: randomResponse,
-        timestamp: new Date() 
+      const response = await fetch('/api/ai/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: user.id, 
+          message: messageContent,
+          projects,
+          opportunities
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const agentMessage = { 
+          type: 'agent', 
+          content: data.message,
+          timestamp: new Date() 
+        }
+        setChatMessages(prev => [...prev, agentMessage])
+        
+        // Reload agent state in case the conversation created new decisions
+        setTimeout(() => loadAgentState(), 1000)
+        setTimeout(() => updateGoalProgress(), 2000)
+      } else {
+        throw new Error('Failed to get agent response')
       }
-      setChatMessages(prev => [...prev, agentMessage])
-      
-      // Simulate state updates
-      setTimeout(() => loadAgentState(), 1000)
-      setTimeout(() => updateGoalProgress(), 2000)
-      
     } catch (error) {
       console.error('Error sending message:', error)
       const errorMessage = {
@@ -219,16 +208,24 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
     const newStatus = agentStatus === 'active' ? 'paused' : 'active'
     
     try {
-      setAgentStatus(newStatus)
+      const response = await fetch('/api/ai/agent/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, status: newStatus })
+      })
       
-      const statusMessage = {
-        type: 'agent',
-        content: newStatus === 'active' 
-          ? "I'm back online and ready to help with your funding strategy!" 
-          : "I'm now paused. I'll stop monitoring for new opportunities until you reactivate me.",
-        timestamp: new Date()
+      if (response.ok) {
+        setAgentStatus(newStatus)
+        
+        const statusMessage = {
+          type: 'agent',
+          content: newStatus === 'active' 
+            ? "I'm back online and ready to help with your funding strategy!" 
+            : "I'm now paused. I'll stop monitoring for new opportunities until you reactivate me.",
+          timestamp: new Date()
+        }
+        setChatMessages(prev => [...prev, statusMessage])
       }
-      setChatMessages(prev => [...prev, statusMessage])
     } catch (error) {
       console.error('Error toggling agent:', error)
     }
@@ -236,6 +233,16 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
 
   const respondToDecision = async (decisionId, response) => {
     try {
+      await fetch('/api/ai/agent/decision-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          decisionId, 
+          feedback: response,
+          userId: user.id
+        })
+      })
+      
       // Remove the decision from the list after responding
       setRecentDecisions(prev => prev.filter(d => d.id !== decisionId))
       
@@ -314,7 +321,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                 <h2 className="text-2xl font-bold mb-1">AI Agent Status</h2>
                 <p className="text-white/90">
                   {agentStatus === 'active' 
-                    ? `Monitoring ${opportunities?.length || 12} opportunities • ${currentGoals.length} active goals` 
+                    ? `Monitoring ${opportunities?.length || 0} opportunities • ${currentGoals.length} active goals` 
                     : agentStatus === 'error'
                     ? 'Agent encountered an issue and needs attention'
                     : 'Agent paused - click to reactivate monitoring'
@@ -335,7 +342,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                   <div className="text-xs text-white/80">Decisions</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{opportunities?.length || 12}</div>
+                  <div className="text-2xl font-bold">{opportunities?.length || 0}</div>
                   <div className="text-xs text-white/80">Opportunities</div>
                 </div>
               </div>
