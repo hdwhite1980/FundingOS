@@ -23,7 +23,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased bg-neutral-50">
         <SessionContextProvider supabaseClient={supabaseClient}>
           <AuthProvider>
             {children}
@@ -32,20 +32,23 @@ export default function RootLayout({ children }: RootLayoutProps) {
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: '#1e293b',
-                  color: '#f8fafc',
-                  border: '1px solid #334155',
+                  background: '#ffffff',
+                  color: '#111827',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.75rem',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  padding: '16px',
                 },
                 success: {
                   iconTheme: {
-                    primary: '#10b981',
-                    secondary: '#f8fafc',
+                    primary: '#22c55e',
+                    secondary: '#ffffff',
                   },
                 },
                 error: {
                   iconTheme: {
                     primary: '#ef4444',
-                    secondary: '#f8fafc',
+                    secondary: '#ffffff',
                   },
                 },
               }}

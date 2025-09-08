@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Mail, Lock, User, Building2, ArrowRight, CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
+import Logo from './Logo'
 
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -260,7 +261,7 @@ export default function AuthPage() {
                         type='button'
                         key={r.value}
                         onClick={()=>setFormData(f=>({...f,userRole:r.value}))}
-                        className={`border rounded p-2 flex items-center justify-center hover:bg-blue-50 transition ${formData.userRole===r.value? 'border-blue-600 bg-blue-50 text-blue-700 font-medium':'border-gray-300 text-gray-600'}`}
+                        className={`border-2 rounded-xl p-4 flex items-center justify-center hover:bg-brand-25 transition-all duration-200 font-semibold ${formData.userRole===r.value? 'border-brand-500 bg-brand-50 text-brand-700 shadow-sm':'border-neutral-300 text-neutral-600 hover:border-brand-300'}`}
                       >{r.label}</button>
                     ))}
                   </div>

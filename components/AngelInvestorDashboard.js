@@ -33,6 +33,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { angelInvestorServices } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import CompanyManager from './CompanyManager';
+import Logo from './Logo';
 
 const AngelInvestorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -139,7 +140,7 @@ const AngelInvestorDashboard = () => {
           <button 
             onClick={loadDashboardData}
             disabled={loading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="bg-brand-600 text-white px-6 py-3 rounded-xl hover:bg-brand-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-md hover:shadow-lg"
           >
             {loading ? 'Loading...' : 'Try Again'}
           </button>
@@ -211,7 +212,7 @@ const AngelInvestorDashboard = () => {
                 ${(currentInvestorData.investor?.total_invested || 0).toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
+            <div className="p-4 bg-brand-50 rounded-xl border border-brand-100">
               <DollarSign className="w-6 h-6 text-blue-600" />
             </div>
           </div>
@@ -284,7 +285,7 @@ const AngelInvestorDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button 
             onClick={() => setActiveTab('opportunities')}
-            className="flex items-center justify-between p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            className="flex items-center justify-between p-6 bg-brand-25 rounded-xl hover:bg-brand-50 transition-all duration-200 border border-transparent hover:border-brand-200 shadow-sm hover:shadow-md"
           >
             <div>
               <p className="font-medium text-blue-900">Browse Opportunities</p>
@@ -436,7 +437,7 @@ const AngelInvestorDashboard = () => {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-blue-600 h-2 rounded-full" 
+                  className="bg-brand-600 h-3 rounded-full transition-all duration-300" 
                   style={{ width: `${Math.min(((opportunity.amount_raised || opportunity.raised || 0) / (opportunity.funding_goal || opportunity.fundingGoal || 1)) * 100, 100)}%` }}
                 ></div>
               </div>
@@ -482,7 +483,7 @@ const AngelInvestorDashboard = () => {
               <button
                 onClick={() => setSelectedInvestment(opportunity)}
                 disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                className="flex-1 bg-brand-600 text-white py-3 px-6 rounded-xl hover:bg-brand-700 transition-all duration-200 font-semibold disabled:bg-neutral-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Invest Now
@@ -557,7 +558,7 @@ const AngelInvestorDashboard = () => {
               <p className="text-gray-600 mb-4">Start building your portfolio by investing in promising companies</p>
               <button 
                 onClick={() => setActiveTab('opportunities')}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="bg-brand-600 text-white px-8 py-3 rounded-xl hover:bg-brand-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
               >
                 Browse Opportunities
               </button>
@@ -626,7 +627,7 @@ const AngelInvestorDashboard = () => {
 
           <div className="flex justify-end space-x-3 mt-6">
             <button onClick={onClose} className="px-4 py-2 rounded-lg border hover:bg-gray-50">Cancel</button>
-            <button onClick={submitInvestment} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Confirm Investment</button>
+            <button onClick={submitInvestment} className="px-6 py-3 rounded-xl bg-brand-600 text-white hover:bg-brand-700 font-semibold shadow-md hover:shadow-lg transition-all duration-200">Confirm Investment</button>
           </div>
         </div>
       </div>
@@ -634,35 +635,38 @@ const AngelInvestorDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Angel Investor Dashboard</h1>
-              <p className="text-gray-600">Welcome back, {currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'Angel Investor'}</p>
+      <div className="bg-white border-b border-neutral-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-8 gap-6">
+            <div className="flex items-center space-x-6">
+              <Logo variant="dark" size="lg" showText={false} />
+              <div>
+                <h1 className="text-4xl font-bold text-neutral-900 mb-2">Angel Investor Dashboard</h1>
+                <p className="text-neutral-600 text-lg">Welcome back, {currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'Angel Investor'}</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-8">
               <div className="text-right">
-                <p className="text-sm text-gray-600">Portfolio Value</p>
-                <p className="text-lg font-semibold text-green-600">
+                <p className="text-sm text-neutral-500 font-semibold mb-2">Portfolio Value</p>
+                <p className="text-3xl font-bold text-brand-600">
                   ${(currentInvestorData.investor?.portfolio_value || 0).toLocaleString()}
                 </p>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shadow-sm">
+                  <span className="text-green-700 font-semibold text-lg">
                     {(currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'AI').split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors duration-200"
+                  className="flex items-center space-x-2 px-4 py-2.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 border border-gray-200 hover:border-red-200"
                   title="Logout"
                 >
-                  <LogOut size={16} />
-                  <span className="hidden sm:inline">Logout</span>
+                  <LogOut size={18} />
+                  <span className="hidden sm:inline font-medium">Logout</span>
                 </button>
               </div>
             </div>
@@ -671,9 +675,9 @@ const AngelInvestorDashboard = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
+      <div className="bg-white border-b border-neutral-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+          <nav className="flex space-x-2 overflow-x-auto py-2">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'opportunities', label: 'Investment Opportunities', icon: Target },
@@ -685,13 +689,13 @@ const AngelInvestorDashboard = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center px-3 py-4 border-b-2 font-medium text-sm transition-colors ${
+                  className={`flex items-center px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'bg-brand-50 border-2 border-brand-200 text-brand-700 shadow-sm'
+                      : 'text-neutral-600 hover:text-brand-600 hover:bg-brand-25 border-2 border-transparent'
                   }`}
                 >
-                  <Icon className="w-4 h-4 mr-2" />
+                  <Icon className="w-5 h-5 mr-3" />
                   {tab.label}
                 </button>
               );
@@ -701,7 +705,7 @@ const AngelInvestorDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-8">
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'opportunities' && <OpportunitiesTab />}
         {activeTab === 'portfolio' && <PortfolioTab />}
