@@ -1,13 +1,22 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+async function getSupabaseClient() {
+  const { createClient } = await import('@supabase/supabase-js')
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error('Supabase environment variables are not set')
+  }
+
+  return createClient(supabaseUrl, supabaseServiceRoleKey)
+}
 
 export async function GET(request) {
   try {
+    const supabase = await getSupabaseClient()
+    
     const { searchParams } = new URL(request.url)
     const industry = searchParams.get('industry')
     const stage = searchParams.get('stage')
@@ -79,6 +88,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const supabase = await getSupabaseClient()
     const opportunityData = await request.json()
 
     // Validate required fields

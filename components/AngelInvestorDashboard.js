@@ -26,7 +26,8 @@ import {
   Clock,
   CheckCircle,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { angelInvestorServices } from '../lib/supabase';
@@ -46,7 +47,18 @@ const AngelInvestorDashboard = () => {
   const [stats, setStats] = useState({});
   const [error, setError] = useState(null);
   
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
+  };
 
   // Load initial data - wrapped in useCallback to prevent infinite loops
   const loadDashboardData = useCallback(async () => {
@@ -638,10 +650,20 @@ const AngelInvestorDashboard = () => {
                   ${(currentInvestorData.investor?.portfolio_value || 0).toLocaleString()}
                 </p>
               </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 font-semibold">
-                  {(currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'AI').split(' ').map(n => n[0]).join('')}
-                </span>
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold">
+                    {(currentInvestorData.investor?.name || user?.user_metadata?.full_name || 'AI').split(' ').map(n => n[0]).join('')}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors duration-200"
+                  title="Logout"
+                >
+                  <LogOut size={16} />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
               </div>
             </div>
           </div>
