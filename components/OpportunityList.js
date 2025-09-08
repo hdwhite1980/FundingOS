@@ -329,7 +329,7 @@ export default function OpportunityList({
     } else if (daysUntil <= 30) {
       return { status: 'soon', text: `${daysUntil} days left`, color: 'text-amber-600 bg-amber-50' }
     } else {
-      return { status: 'ok', text: format(new Date(deadlineDate), 'MMM d, yyyy'), color: 'text-green-600 bg-green-50' }
+      return { status: 'ok', text: format(new Date(deadlineDate), 'MMM d, yyyy'), color: 'text-emerald-600 bg-emerald-50' }
     }
   }
 
@@ -351,7 +351,7 @@ export default function OpportunityList({
       if (eligibility.warnings?.length > 0) {
         return <AlertTriangle className="w-4 h-4 text-yellow-600" />
       }
-      return <CheckCircle className="w-4 h-4 text-green-600" />
+      return <CheckCircle className="w-4 h-4 text-emerald-600" />
     }
     
     return <XCircle className="w-4 h-4 text-red-600" />
@@ -364,7 +364,7 @@ export default function OpportunityList({
       if (eligibility.warnings?.length > 0) {
         return { text: 'Eligible (Warnings)', color: 'text-yellow-800 bg-yellow-100' }
       }
-      return { text: 'Eligible', color: 'text-green-800 bg-green-100' }
+      return { text: 'Eligible', color: 'text-emerald-800 bg-emerald-100' }
     }
     
     return { text: 'Not Eligible', color: 'text-red-800 bg-red-100' }
@@ -377,7 +377,7 @@ export default function OpportunityList({
     const badgeConfig = {
       'ai-primary': { text: 'AI Primary', color: 'bg-purple-100 text-purple-800' },
       'ai-agency': { text: 'AI Agency', color: 'bg-blue-100 text-blue-800' },
-      'ai-keyword': { text: 'AI Keyword', color: 'bg-green-100 text-green-800' },
+            'ai-keyword': { text: 'AI Keyword', color: 'bg-emerald-100 text-emerald-800' },
       'fallback-category': { text: 'Category Match', color: 'bg-gray-100 text-gray-800' },
       'fallback-agency': { text: 'Agency Match', color: 'bg-gray-100 text-gray-800' },
       'fallback-keyword': { text: 'Keyword Match', color: 'bg-gray-100 text-gray-800' }
@@ -472,7 +472,7 @@ export default function OpportunityList({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4"
+        className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50 p-4"
       >
         <h3 className="font-semibold text-gray-900 mb-3">Eligibility Filters</h3>
         

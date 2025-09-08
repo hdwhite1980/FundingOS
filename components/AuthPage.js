@@ -124,10 +124,10 @@ export default function AuthPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Left Side - Features */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-800 via-emerald-800 to-green-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-900/95 via-emerald-800/90 to-green-800/95"></div>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-800 via-brand-800 to-brand-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-900/95 via-brand-800/90 to-brand-800/95"></div>
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvv width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
@@ -186,10 +186,10 @@ export default function AuthPage() {
             transition={{ duration: 0.6 }}
             className="text-center mb-8"
           >
-            <h2 className="text-3xl font-bold text-neutral-900 mb-3">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">
               {isSignUp ? 'Start Your Funding Journey' : 'Welcome Back'}
             </h2>
-            <p className="text-neutral-600 leading-relaxed">
+            <p className="text-slate-600 leading-relaxed">
               {isSignUp 
                 ? 'Join thousands of organizations securing funding with AI-powered insights'
                 : 'Sign in to access your funding opportunities and continue growing'
@@ -207,14 +207,14 @@ export default function AuthPage() {
             {isSignUp && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
-                    <User className="inline w-4 h-4 mr-2 text-green-600" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                    <User className="inline w-4 h-4 mr-2 text-emerald-600" />
                     Full Name
                   </label>
                   <input
                     type="text"
                     name="fullName"
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                     value={formData.fullName}
                     onChange={handleInputChange}
                     placeholder="Enter your full name"
@@ -223,14 +223,14 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center">
-                    <Building2 className="inline w-4 h-4 mr-2 text-green-600" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                    <Building2 className="inline w-4 h-4 mr-2 text-emerald-600" />
                     Organization Name
                   </label>
                   <input
                     type="text"
                     name="organizationName"
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                     value={formData.organizationName}
                     onChange={handleInputChange}
                     placeholder="Enter your organization name"
@@ -238,7 +238,7 @@ export default function AuthPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-3">Select Role</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Select Role</label>
                   <div className='grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm'>
                     {[
                       { value: 'angel_investor', label: 'Angel Investor' },
@@ -249,7 +249,7 @@ export default function AuthPage() {
                         type='button'
                         key={r.value}
                         onClick={()=>setFormData(f=>({...f,userRole:r.value}))}
-                        className={`border-2 rounded-xl p-3 sm:p-4 flex items-center justify-center hover:bg-green-25 transition-all duration-200 font-semibold text-xs sm:text-sm ${formData.userRole===r.value? 'border-green-500 bg-green-50 text-green-700 shadow-sm':'border-neutral-300 text-neutral-600 hover:border-green-300'}`}
+                        className={`border-2 rounded-xl p-3 sm:p-4 flex items-center justify-center hover:bg-emerald-25 transition-all duration-200 font-semibold text-xs sm:text-sm ${formData.userRole===r.value? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm':'border-slate-300 text-slate-600 hover:border-emerald-300'}`}
                       >{r.label}</button>
                     ))}
                   </div>
@@ -265,7 +265,7 @@ export default function AuthPage() {
               <input
                 type="email"
                 name="email"
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="Enter your email"
@@ -281,7 +281,7 @@ export default function AuthPage() {
               <input
                 type="password"
                 name="password"
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="Enter your password"
@@ -299,7 +299,7 @@ export default function AuthPage() {
                 <input
                   type="password"
                   name="confirmPassword"
-                  className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   placeholder="Confirm your password"
@@ -311,7 +311,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-emerald-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="flex items-center justify-center">

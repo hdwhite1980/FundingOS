@@ -355,11 +355,11 @@ export default function CreateProjectModal({
         />
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <h4 className="font-medium text-green-800 mb-2">
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+        <h4 className="font-medium text-emerald-800 mb-2">
           {isEditMode ? 'Update complete!' : 'Ready to find opportunities!'}
         </h4>
-        <p className="text-sm text-green-700">
+        <p className="text-sm text-emerald-700">
           {isEditMode 
             ? 'Your project updates will help our AI find even better funding opportunities that match your specific needs.'
             : 'Once created, our AI will analyze your project and match it with the most relevant funding opportunities. You\'ll get personalized recommendations with fit scores and application assistance.'
@@ -374,19 +374,19 @@ export default function CreateProjectModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-green-200"
+        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-slate-200"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 sm:p-8 border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
+        <div className="flex items-center justify-between p-6 sm:p-8 border-b border-slate-200 bg-slate-50">
           <div>
-            <h2 className="text-2xl font-bold text-neutral-900">
+            <h2 className="text-2xl font-bold text-slate-900">
               {isEditMode ? 'Edit Project' : 'Create New Project'}
             </h2>
-            <p className="text-neutral-600 mt-1">Step {currentStep} of 3</p>
+            <p className="text-slate-600 mt-1">Step {currentStep} of 3</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-white/50 transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-white/50 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -395,19 +395,19 @@ export default function CreateProjectModal({
         {/* Progress Bar */}
         <div className="px-6 sm:px-8 py-4 bg-white">
           <div className="flex items-center justify-between text-sm mb-3">
-            <span className={`font-semibold ${currentStep >= 1 ? 'text-green-700' : 'text-neutral-500'}`}>
+            <span className={`font-semibold ${currentStep >= 1 ? 'text-emerald-700' : 'text-slate-500'}`}>
               Basics
             </span>
-            <span className={`font-semibold ${currentStep >= 2 ? 'text-green-700' : 'text-neutral-500'}`}>
+            <span className={`font-semibold ${currentStep >= 2 ? 'text-emerald-700' : 'text-slate-500'}`}>
               Impact
             </span>
-            <span className={`font-semibold ${currentStep >= 3 ? 'text-green-700' : 'text-neutral-500'}`}>
+            <span className={`font-semibold ${currentStep >= 3 ? 'text-emerald-700' : 'text-slate-500'}`}>
               Funding
             </span>
           </div>
-          <div className="bg-neutral-200 rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500 shadow-sm"
+          <div className="bg-slate-200 rounded-full h-3">
+            <div
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-500 shadow-sm"
               style={{ width: `${(currentStep / 3) * 100}%` }}
             ></div>
           </div>

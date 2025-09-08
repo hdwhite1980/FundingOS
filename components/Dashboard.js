@@ -284,7 +284,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         const successMessage = (
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">
-              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+              <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs">✓</span>
               </div>
             </div>
@@ -495,13 +495,13 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
   // Main dashboard render
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+    <div className="min-h-screen bg-neutral-50">
       <Header user={user} userProfile={userProfile} onProfileUpdate={handleProfileUpdate} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Modern Navigation Tabs */}
         <div className="mb-8">
-          <div className="border-b border-green-200">
+          <div className="border-b border-neutral-200">
             <nav className="flex space-x-2 sm:space-x-8 overflow-x-auto">
               {tabs.map(tab => {
                 const Icon = tab.icon
@@ -511,8 +511,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     onClick={() => setActiveTab(tab.id)}
                     className={`group py-4 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm flex flex-col items-center transition-all duration-200 whitespace-nowrap ${
                       activeTab === tab.id
-                        ? 'border-green-600 text-green-700 bg-green-50'
-                        : 'border-transparent text-neutral-600 hover:text-green-700 hover:border-green-300 hover:bg-green-25'
+                        ? 'border-brand-600 text-brand-700 bg-brand-50'
+                        : 'border-transparent text-neutral-600 hover:text-brand-700 hover:border-brand-300 hover:bg-brand-25'
                     }`}
                   >
                     <Icon className="w-4 h-4 sm:w-5 sm:h-5 mb-1" />
@@ -669,9 +669,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                         <p className="text-2xl font-bold text-neutral-700">{stats.totalSubmissions}</p>
                         <p className="text-xs text-neutral-600">Applications</p>
                       </div>
-                      <div className="text-center p-3 bg-green-50 rounded-lg">
-                        <p className="text-2xl font-bold text-green-700">{stats.activeOpportunities}</p>
-                        <p className="text-xs text-green-600">Opportunities</p>
+                      <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                        <p className="text-2xl font-bold text-emerald-700">{stats.activeOpportunities}</p>
+                        <p className="text-xs text-emerald-600">Opportunities</p>
                       </div>
                     </div>
                   </div>
@@ -1005,12 +1005,12 @@ function CampaignModal({ onClose }) {
         </div>
         <div className="text-center py-8">
           <Heart className="mx-auto h-16 w-16 text-pink-400 mb-6" />
-          <h4 className="text-lg font-semibold text-neutral-900 mb-3">Campaign Creation Coming Soon!</h4>
-          <p className="text-neutral-600 mb-2">Set up crowdfunding campaigns on platforms like:</p>
-          <p className="text-sm text-neutral-500">GoFundMe • Kickstarter • Indiegogo • And more</p>
+          <h4 className="text-lg font-semibold text-slate-900 mb-3">Campaign Creation Coming Soon!</h4>
+          <p className="text-slate-600 mb-2">Set up crowdfunding campaigns on platforms like:</p>
+          <p className="text-sm text-slate-500">GoFundMe • Kickstarter • Indiegogo • And more</p>
         </div>
         <div className="flex justify-end">
-          <button onClick={onClose} className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-medium transition-colors">Got it</button>
+          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
         </div>
       </div>
     </div>
@@ -1026,13 +1026,13 @@ function AngelModal({ onClose }) {
           <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 p-1">✕</button>
         </div>
         <div className="text-center py-8">
-          <Users className="mx-auto h-16 w-16 text-green-400 mb-6" />
-          <h4 className="text-lg font-semibold text-neutral-900 mb-3">Angel Investor Matching Coming Soon!</h4>
-          <p className="text-neutral-600 mb-2">Connect with individual investors who are interested in</p>
-          <p className="text-sm text-neutral-500">funding projects like yours</p>
+          <Users className="mx-auto h-16 w-16 text-emerald-400 mb-6" />
+          <h4 className="text-lg font-semibold text-slate-900 mb-3">Angel Investor Matching Coming Soon!</h4>
+          <p className="text-slate-600 mb-2">Connect with individual investors who are interested in</p>
+          <p className="text-sm text-slate-500">funding projects like yours</p>
         </div>
         <div className="flex justify-end">
-          <button onClick={onClose} className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-medium transition-colors">Got it</button>
+          <button onClick={onClose} className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-medium transition-colors">Got it</button>
         </div>
       </div>
     </div>

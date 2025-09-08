@@ -24,7 +24,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
   }
 
   return (
-    <header className="bg-white/90 backdrop-blur-lg border-b border-green-200/60 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white/90 backdrop-blur-lg border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-18">
           {/* Logo & Brand */}
@@ -33,8 +33,8 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
             
             {userProfile?.organization_name && (
               <div className="hidden md:block">
-                <div className="px-3 sm:px-4 py-2 bg-green-50 border border-green-200 rounded-xl">
-                  <span className="text-sm text-green-800 font-semibold">
+                <div className="px-3 sm:px-4 py-2 bg-brand-50 border border-brand-200 rounded-xl">
+                  <span className="text-sm text-brand-800 font-semibold">
                     {userProfile.organization_name}
                   </span>
                 </div>
@@ -49,7 +49,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
               <input
                 type="text"
                 placeholder="Search opportunities, projects, grants..."
-                className="w-full pl-12 pr-6 py-3 sm:py-3.5 bg-white border border-neutral-200 rounded-2xl placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-300 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
+                className="w-full pl-12 pr-6 py-3 sm:py-3.5 bg-white border border-neutral-200 rounded-2xl placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-300 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
               />
             </div>
           </div>
