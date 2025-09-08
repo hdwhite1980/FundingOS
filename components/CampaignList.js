@@ -256,10 +256,10 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">
-                      ${campaign.raised?.toLocaleString() || '0'} raised
+                      ${(campaign.raised_amount || campaign.raised || 0).toLocaleString()} raised
                     </span>
                     <span className="text-sm text-gray-500">
-                      of ${campaign.goal?.toLocaleString() || '0'} goal
+                      of ${(campaign.goal_amount || campaign.goal || 0).toLocaleString()} goal
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -274,7 +274,7 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
                       {campaign.backers || 0} backers
                     </span>
                     <span className="text-xs font-medium text-pink-600">
-                      {getProgressPercentage(campaign).toFixed(0)}%
+                      {getProgressPercentage({ ...campaign, raised: campaign.raised_amount || campaign.raised, goal: campaign.goal_amount || campaign.goal }).toFixed(0)}%
                     </span>
                   </div>
                 </div>
@@ -288,9 +288,9 @@ export default function CampaignList({ user, userProfile, projects = [] }) {
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </button>
-                  {campaign.external_url && (
+          {campaign.campaign_url && (
                     <button
-                      onClick={() => window.open(campaign.external_url, '_blank')}
+            onClick={() => window.open(campaign.campaign_url, '_blank')}
                       className="btn-primary text-sm"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
@@ -339,10 +339,10 @@ function CreateCampaignModal({ user, userProfile, projects, onClose, onCampaignC
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    goal: '',
+  goal_amount: '',
     project_id: '',
     platform: 'gofundme',
-    external_url: '',
+  campaign_url: '',
     end_date: ''
   })
   const [loading, setLoading] = useState(false)
@@ -355,10 +355,10 @@ function CreateCampaignModal({ user, userProfile, projects, onClose, onCampaignC
       const payload = {
         title: formData.title.trim(),
         description: formData.description?.trim() || '',
-        goal: parseFloat(formData.goal) || 0,
+        goal_amount: parseFloat(formData.goal_amount) || 0,
         project_id: formData.project_id || null,
         platform: formData.platform,
-        external_url: formData.external_url || null,
+        campaign_url: formData.campaign_url || null,
         end_date: formData.end_date || null
       }
 
@@ -427,10 +427,24 @@ function CreateCampaignModal({ user, userProfile, projects, onClose, onCampaignC
               required
               min="1"
               className="form-input"
-              value={formData.goal}
-              onChange={(e) => setFormData({...formData, goal: e.target.value})}
+              value={formData.goal_amount}
+              onChange={(e) => setFormData({...formData, goal_amount: e.target.value})}
               placeholder="0"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Campaign URL (External)
+            </label>
+            <input
+              type="url"
+              className="form-input"
+              value={formData.campaign_url}
+              onChange={(e) => setFormData({...formData, campaign_url: e.target.value})}
+              placeholder="https://..."
+            />
+            <p className="text-xs text-gray-500 mt-1">Optional link to the live campaign page.</p>
           </div>
 
           <div>
@@ -561,9 +575,9 @@ function CampaignDetailsModal({ campaign, onClose }) {
 
             {/* Actions */}
             <div className="flex justify-end space-x-3">
-              {campaign.external_url && (
+        {campaign.campaign_url && (
                 <button
-                  onClick={() => window.open(campaign.external_url, '_blank')}
+          onClick={() => window.open(campaign.campaign_url, '_blank')}
                   className="btn-primary"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />

@@ -43,7 +43,13 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
         directUserServices.donors?.getDonors ? directUserServices.donors.getDonors(user.id) : Promise.resolve([])
       ])
 
-      setDonations(donationData)
+      // Normalize donation records to ensure donor_name and date fields exist for UI filtering
+      const normalized = (donationData || []).map(d => ({
+        ...d,
+        donor_name: d.donor_name || d.donor?.name || d.donor?.email || 'Anonymous',
+        date: d.donation_date || d.created_at || d.date,
+      }))
+      setDonations(normalized)
       setDonors(donorList || [])
 
       if (donorStats) {
@@ -86,10 +92,15 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
     return null
   }
 
-  const filteredDonations = donations.filter(donation =>
-    donation.donor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    donation.note?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredDonations = donations.filter(donation => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      donation.donor_name?.toLowerCase().includes(q) ||
+      donation.note?.toLowerCase().includes(q) ||
+      donation.project?.name?.toLowerCase().includes(q)
+    )
+  })
 
   if (loading) {
     return (
@@ -237,7 +248,7 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {donation.donor_name || 'Anonymous'}
+                        {donation.donor_name || donation.donor?.name || 'Anonymous'}
                       </p>
                       {donation.note && (
                         <p className="text-xs text-gray-500 line-clamp-1">{donation.note}</p>
@@ -250,7 +261,7 @@ export default function DirectDonationsList({ user, userProfile, projects = [] }
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {donation.date ? new Date(donation.date).toLocaleDateString() : '-'}
+                    {donation.date ? new Date(donation.date).toLocaleDateString() : (donation.created_at ? new Date(donation.created_at).toLocaleDateString() : '-')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button className="text-green-600 hover:text-green-900 text-xs">
