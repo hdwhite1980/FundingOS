@@ -359,14 +359,16 @@ export async function GET(request: Request) {
     })
 
     // Create search configurations with proper API parameters
-    const searchConfigurations: SearchConfiguration[] = []
+    let searchConfigurations: SearchConfiguration[] = []
     
     // Recent opportunities (last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const fromDate = thirtyDaysAgo.toISOString().split('T')[0].split('-').reverse().join('/')
+    // Format as MM/dd/yyyy for SAM.gov API
+    const fromDate = `${(thirtyDaysAgo.getMonth() + 1).toString().padStart(2, '0')}/${thirtyDaysAgo.getDate().toString().padStart(2, '0')}/${thirtyDaysAgo.getFullYear()}`
     
-    const today = new Date().toISOString().split('T')[0].split('-').reverse().join('/')
+    const today = new Date()
+    const toDate = `${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getDate().toString().padStart(2, '0')}/${today.getFullYear()}`
 
     // AI-driven searches
     aiContractStrategies.forEach(({ project, userProfile, aiCategories }) => {
@@ -379,7 +381,7 @@ export async function GET(request: Request) {
             limit: 50,
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
-            postedTo: today,
+            postedTo: toDate,
             organizationName: fullDeptName,
             ptype: 'o', // solicitations only
             offset: 0
@@ -402,7 +404,7 @@ export async function GET(request: Request) {
             limit: 30,
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
-            postedTo: today,
+            postedTo: toDate,
             typeOfSetAside: validSetAside,
             ptype: 'o',
             offset: 0
@@ -424,7 +426,7 @@ export async function GET(request: Request) {
             limit: 25,
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
-            postedTo: today,
+            postedTo: toDate,
             ncode: naics, // Using ncode parameter
             ptype: 'o',
             offset: 0
@@ -446,7 +448,7 @@ export async function GET(request: Request) {
             limit: 20,
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
-            postedTo: today,
+            postedTo: toDate,
             title: keyword, // Using title parameter for keyword search
             ptype: 'o',
             offset: 0
@@ -474,7 +476,7 @@ export async function GET(request: Request) {
             limit: 100,
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
-            postedTo: today,
+            postedTo: toDate,
             organizationName: fullDeptName,
             ptype: 'o',
             offset: 0
@@ -496,7 +498,7 @@ export async function GET(request: Request) {
             limit: 60,
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
-            postedTo: today,
+            postedTo: toDate,
             typeOfSetAside: validSetAside,
             ptype: 'o',
             offset: 0
@@ -517,7 +519,7 @@ export async function GET(request: Request) {
             limit: 40,
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
-            postedTo: today,
+            postedTo: toDate,
             title: keyword,
             ptype: 'o',
             offset: 0
@@ -539,7 +541,7 @@ export async function GET(request: Request) {
           limit: 200,
           api_key: SAM_GOV_API_KEY,
           postedFrom: fromDate,
-          postedTo: today,
+          postedTo: toDate,
           ptype: 'o',
           offset: 0
         },
@@ -550,7 +552,13 @@ export async function GET(request: Request) {
       })
     }
 
-    console.log(`Executing ${searchConfigurations.length} SAM.gov search configurations...`)
+    // Limit total searches to avoid rate limits (max 10 searches per run)
+    if (searchConfigurations.length > 10) {
+      console.log(`Limiting searches from ${searchConfigurations.length} to 10 to avoid rate limits`)
+      searchConfigurations = searchConfigurations.slice(0, 10)
+    }
+
+    console.log(`Executing ${searchConfigurations.length} SAM.gov search configurations with rate limiting...`)
 
     let allOpportunities: (SAMOpportunity & { _aiMetadata?: any })[] = []
     let searchResults: Array<{
@@ -562,10 +570,28 @@ export async function GET(request: Request) {
       url?: string
     }> = []
 
-    // Execute searches with proper URL construction
-    for (const config of searchConfigurations) {
+    // Rate limiting function
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+    
+    // Track rate limit status
+    let rateLimitHit = false
+    let baseDelay = 1000 // Start with 1 second delay
+
+    // Execute searches with proper URL construction and rate limiting
+    for (let i = 0; i < searchConfigurations.length; i++) {
+      const config = searchConfigurations[i]
       try {
-        console.log(`Executing: ${config.name}`)
+        console.log(`Executing ${i + 1}/${searchConfigurations.length}: ${config.name}`)
+        
+        // Implement exponential backoff if we've hit rate limits
+        if (rateLimitHit) {
+          console.log(`Rate limit detected, waiting ${baseDelay}ms...`)
+          await delay(baseDelay)
+          baseDelay = Math.min(baseDelay * 1.5, 10000) // Cap at 10 seconds
+        } else {
+          // Standard delay to be respectful
+          await delay(500)
+        }
         
         // Build query parameters properly
         const queryParams = new URLSearchParams()
@@ -615,6 +641,30 @@ export async function GET(request: Request) {
             allOpportunities.push(...newOpportunities)
             console.log(`Added ${newOpportunities.length} new unique opportunities`)
           }
+          
+          // Reset rate limit tracking on success
+          rateLimitHit = false
+          baseDelay = 1000
+          
+        } else if (response.status === 429) {
+          // Rate limit hit
+          console.warn(`Rate limit hit for ${config.name}, implementing backoff`)
+          rateLimitHit = true
+          baseDelay = Math.min(baseDelay * 2, 30000) // Cap at 30 seconds
+          
+          searchResults.push({
+            name: config.name,
+            error: `Rate limit exceeded - will retry with backoff`,
+            strategy: config.metadata?.strategy,
+            url: apiUrl.replace(SAM_GOV_API_KEY, '[REDACTED]')
+          })
+          
+          // Skip remaining requests if we're consistently hitting rate limits
+          if (baseDelay >= 30000) {
+            console.warn(`Severe rate limiting detected, stopping additional requests`)
+            break
+          }
+          
         } else {
           const errorText = await response.text()
           console.error(`SAM.gov API error for ${config.name}:`, {
@@ -639,9 +689,6 @@ export async function GET(request: Request) {
           strategy: config.metadata?.strategy
         })
       }
-
-      // Add delay between requests to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 250))
     }
 
     console.log(`Total unique SAM.gov opportunities found: ${allOpportunities.length}`)
