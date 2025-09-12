@@ -12,7 +12,7 @@ const openai = new OpenAI({
 })
 
 const MAX_TOKENS = 4000
-const MODEL = 'gpt-4-turbo-preview'
+const MODEL = 'gpt-4-turbo' // Good balance for form completion tasks
 
 function safeParseResponse(content: string | null): any {
   if (!content) throw new Error('No content received from OpenAI')

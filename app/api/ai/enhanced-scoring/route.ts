@@ -277,7 +277,7 @@ Format your response as JSON with these exact keys: score, strengths, weaknesses
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o', // Advanced model for complex scoring analysis
       messages: [
         {
           role: 'system',

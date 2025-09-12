@@ -468,7 +468,7 @@ Respond with specific, personalized advice based on their actual data.`
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o', // Best model for conversational AI and strategic advice
         messages: [
           {
             role: 'system',
@@ -582,7 +582,7 @@ Respond conversationally with specific, data-driven insights. Use their actual n
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o', // Best model for strategic funding advice
         messages: [
           {
             role: 'system',

@@ -12,7 +12,7 @@ const openai = new OpenAI({
 })
 
 const MAX_TOKENS = 3000
-const MODEL = 'gpt-4-turbo-preview'
+const MODEL = 'gpt-4o-mini' // Changed from gpt-4-turbo-preview for compatibility
 
 function safeParseResponse(content: string | null): any {
   if (!content) throw new Error('No content received from OpenAI')
