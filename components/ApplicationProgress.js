@@ -24,6 +24,7 @@ import {
 import { directUserServices } from '../lib/supabase'
 import { format, differenceInDays } from 'date-fns'
 import toast from 'react-hot-toast'
+import EnhancedApplicationTracker from './EnhancedApplicationTracker'
 
 export default function ApplicationProgress({ user, userProfile, projects }) {
   const [submissions, setSubmissions] = useState([])
@@ -31,6 +32,7 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
   const [stats, setStats] = useState({})
   const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEnhancedTracker, setShowEnhancedTracker] = useState(false)
   const [showDocumentModal, setShowDocumentModal] = useState(false)
   const [filters, setFilters] = useState({})
 
@@ -372,13 +374,23 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
           </select>
         </div>
         
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Track Application</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowEnhancedTracker(true)}
+            className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>AI-Enhanced Tracker</span>
+          </button>
+          
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-slate-600 text-white hover:bg-slate-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Manual Entry</span>
+          </button>
+        </div>
       </div>
 
       {/* Applications Grid */}
@@ -394,17 +406,36 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
             <FileText className="w-6 h-6 text-slate-400" />
           </div>
           <h3 className="text-lg font-semibold text-slate-900 mb-2">No applications tracked</h3>
-          <p className="text-slate-600 mb-6">Start tracking your grant applications to monitor progress.</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
-          >
-            Track First Application
-          </button>
+          <p className="text-slate-600 mb-6">Start tracking your grant applications to monitor progress and get AI assistance.</p>
+          <div className="flex space-x-3 justify-center">
+            <button
+              onClick={() => setShowEnhancedTracker(true)}
+              className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>AI-Enhanced Tracker</span>
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-slate-600 text-white hover:bg-slate-700 rounded-lg font-medium transition-colors px-4 py-2.5 flex items-center space-x-2"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Manual Entry</span>
+            </button>
+          </div>
         </div>
       )}
 
       {/* Modals */}
+      {showEnhancedTracker && (
+        <EnhancedApplicationTracker
+          projects={projects}
+          userProfile={userProfile}
+          onClose={() => setShowEnhancedTracker(false)}
+          onSubmit={handleCreateSubmission}
+        />
+      )}
+
       {showCreateModal && (
         <CreateSubmissionModal
           projects={projects}
