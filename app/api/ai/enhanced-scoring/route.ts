@@ -8,7 +8,23 @@ export async function POST(request: Request) {
   try {
     const { opportunity, project, userProfile, action } = await request.json()
 
+    // Enhanced error logging
+    console.log('Enhanced Scoring API Request:', {
+      hasOpportunity: !!opportunity,
+      hasProject: !!project, 
+      hasUserProfile: !!userProfile,
+      action: action,
+      opportunityKeys: opportunity ? Object.keys(opportunity) : 'null',
+      projectKeys: project ? Object.keys(project) : 'null',
+      userProfileKeys: userProfile ? Object.keys(userProfile) : 'null'
+    })
+
     if (!opportunity || !project || !userProfile) {
+      console.error('Missing required parameters:', {
+        opportunity: !!opportunity,
+        project: !!project,
+        userProfile: !!userProfile
+      })
       return NextResponse.json(
         { error: 'Missing required parameters: opportunity, project, userProfile' },
         { status: 400 }
