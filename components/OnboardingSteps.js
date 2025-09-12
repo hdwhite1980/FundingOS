@@ -661,6 +661,58 @@ function CompleteSetup({ formData }) {
   )
 }
 
+// Constants used by the onboarding steps
+const ORGANIZATION_TYPES = [
+  { value: 'nonprofit_501c3', label: '501(c)(3) Nonprofit' },
+  { value: 'nonprofit_501c4', label: '501(c)(4) Social Welfare Organization' },
+  { value: 'government_federal', label: 'Government Entity (Federal)' },
+  { value: 'government_state', label: 'Government Entity (State)' },
+  { value: 'government_local', label: 'Government Entity (Local)' },
+  { value: 'educational_public', label: 'Educational Institution (Public)' },
+  { value: 'educational_private', label: 'Educational Institution (Private)' },
+  { value: 'faith_based', label: 'Faith-Based Organization' },
+  { value: 'small_business', label: 'Small Business' },
+  { value: 'minority_owned', label: 'Minority-Owned Business' },
+  { value: 'women_owned', label: 'Women-Owned Business' },
+  { value: 'veteran_owned', label: 'Veteran-Owned Business' },
+  { value: 'b_corporation', label: 'B-Corporation' },
+  { value: 'cooperative', label: 'Cooperative' },
+  { value: 'tribal_organization', label: 'Tribal Organization' },
+  { value: 'other', label: 'Other' }
+]
+
+const SERVICE_AREAS = [
+  'Education & Workforce Development',
+  'Healthcare & Public Health',
+  'Housing & Community Development',
+  'Arts & Culture',
+  'Environment & Conservation',
+  'Social Services & Human Services',
+  'Economic Development',
+  'Technology & Innovation',
+  'Research & Development',
+  'Agriculture & Food Security',
+  'Criminal Justice & Public Safety',
+  'Disaster Relief & Emergency Services',
+  'International Development'
+]
+
+const TARGET_DEMOGRAPHICS = [
+  'Children & Youth (0-17)',
+  'Young Adults (18-24)',
+  'Adults (25-64)',
+  'Seniors (65+)',
+  'Low-income individuals/families',
+  'Minority populations',
+  'Individuals with disabilities',
+  'Veterans',
+  'Homeless populations',
+  'Rural communities',
+  'Urban communities',
+  'Tribal populations',
+  'LGBTQ+ individuals'
+]
+
 // Export all components
 export {
   OrganizationalCapacity,
