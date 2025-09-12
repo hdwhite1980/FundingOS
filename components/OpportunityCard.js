@@ -85,9 +85,9 @@ export default function OpportunityCard({
       'ai-primary': { text: 'AI Primary', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
       'ai-agency': { text: 'AI Agency', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
       'ai-keyword': { text: 'AI Keyword', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-      'fallback-category': { text: 'Category Match', color: 'bg-slate-100 text-slate-800 border-slate-200' },
-      'fallback-agency': { text: 'Agency Match', color: 'bg-slate-100 text-slate-800 border-slate-200' },
-      'fallback-keyword': { text: 'Keyword Match', color: 'bg-slate-100 text-slate-800 border-slate-200' }
+      'fallback-category': { text: 'Category-Based', color: 'bg-slate-100 text-slate-800 border-slate-200' },
+      'fallback-agency': { text: 'Agency-Based', color: 'bg-slate-100 text-slate-800 border-slate-200' },
+      'fallback-keyword': { text: 'Keyword-Based', color: 'bg-slate-100 text-slate-800 border-slate-200' }
     }
     
     const config = badgeConfig[strategy] || { text: 'Matched', color: 'bg-slate-100 text-slate-800 border-slate-200' }

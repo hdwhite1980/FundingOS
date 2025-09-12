@@ -2,22 +2,13 @@
  * Smart Form Completion API Route
  * 
  * Server-side API endpoint for AI-powered form completion assistance
+ * Uses hybrid AI provider system (OpenAI + Anthropic)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { OpenAI } from 'openai'
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import aiProviderService from '../../../../lib/aiProviderService'
 
 const MAX_TOKENS = 4000
-const MODEL = 'gpt-4-turbo' // Good balance for form completion tasks
-
-function safeParseResponse(content: string | null): any {
-  if (!content) throw new Error('No content received from OpenAI')
-  return JSON.parse(content)
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,9 +78,9 @@ For each form field, provide:
 Respond with JSON containing completedFields, suggestions, and missingInfo arrays.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'smart-form-completion',
+    [
       {
         role: 'system',
         content: 'You are an expert grant application consultant. Complete form fields accurately and provide helpful suggestions. Always respond with valid JSON.'
@@ -99,12 +90,18 @@ Respond with JSON containing completedFields, suggestions, and missingInfo array
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.1,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.1,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 async function createCompletionPlan(formRequirements: any, context: any) {
@@ -128,9 +125,9 @@ Create a comprehensive completion plan with:
 Format as JSON with detailed phases array and overall strategy.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'smart-form-completion',
+    [
       {
         role: 'system',
         content: 'You are a strategic grant application consultant. Create actionable completion plans that maximize success probability. Always respond with valid JSON.'
@@ -140,12 +137,18 @@ Format as JSON with detailed phases array and overall strategy.
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.2,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.2,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 async function generateNarrativeContent(formFields: any, userProfile: any, projectData: any) {
@@ -171,9 +174,9 @@ For each narrative section, provide:
 Focus on demonstrating impact, feasibility, and alignment with funder priorities.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'smart-form-completion',
+    [
       {
         role: 'system',
         content: 'You are an expert grant writer. Create compelling, professional narratives that clearly communicate value and impact. Always respond with valid JSON.'
@@ -183,12 +186,18 @@ Focus on demonstrating impact, feasibility, and alignment with funder priorities
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.3,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.3,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 async function detectMissingInformation(formFields: any, userProfile: any, projectData: any) {
@@ -214,9 +223,9 @@ Identify:
 Organize by urgency and provide specific guidance on gathering each type of information.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'smart-form-completion',
+    [
       {
         role: 'system',
         content: 'You are a thorough grant application analyst. Identify exactly what information is needed for a complete, competitive application. Always respond with valid JSON.'
@@ -226,10 +235,16 @@ Organize by urgency and provide specific guidance on gathering each type of info
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.1,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.1,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }

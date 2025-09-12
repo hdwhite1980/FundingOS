@@ -94,7 +94,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Tab configuration
   const tabs = [
     { id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Financial summary & insights' },
-    { id: 'opportunities', label: 'Projects & Funding', icon: Target, description: 'Grants, campaigns, investors' },
+    { id: 'opportunities', label: 'Projects & Funding', icon: Target, description: 'Funding opportunities, applications & project matching' },
     { id: 'applications', label: 'Applications', icon: FileText, description: 'Active applications' },
     { id: 'donations', label: 'Donors & Investors', icon: Heart, description: 'Donor & investor management' },
     { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }

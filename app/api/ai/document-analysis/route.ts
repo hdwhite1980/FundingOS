@@ -2,25 +2,13 @@
  * Document Analysis API Route
  * 
  * Server-side API endpoint for AI-powered document analysis
- * Handles OpenAI integration with proper environment variable access
+ * Uses hybrid AI provider system (OpenAI + Anthropic)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { OpenAI } from 'openai'
-
-// Initialize OpenAI client on server side where env vars are available
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import aiProviderService from '../../../../lib/aiProviderService'
 
 const MAX_TOKENS = 4000
-const MODEL = 'gpt-4o' // Most advanced for complex document analysis
-
-// Helper function to safely parse OpenAI response
-function safeParseResponse(content: string | null): any {
-  if (!content) throw new Error('No content received from OpenAI')
-  return JSON.parse(content)
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,9 +68,9 @@ export async function POST(request: NextRequest) {
 async function analyzeDocument(documentText: string, documentType: string, context: any) {
   const analysisPrompt = buildAnalysisPrompt(documentText, documentType, context)
   
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'document-analysis',
+    [
       {
         role: 'system',
         content: getSystemPrompt(documentType)
@@ -92,21 +80,29 @@ async function analyzeDocument(documentText: string, documentType: string, conte
         content: analysisPrompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.1,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.1,
+      responseFormat: 'json_object'
+    }
+  )
 
-  const analysis = safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  const analysis = aiProviderService.safeParseJSON(response.content)
   
   return {
     ...analysis,
     metadata: {
       documentType,
       analyzedAt: new Date().toISOString(),
-      tokensUsed: response.usage?.total_tokens,
+      tokensUsed: response.usage?.total_tokens || 0,
       confidence: calculateConfidence(analysis),
-      processingTime: Date.now()
+      processingTime: Date.now(),
+      provider: response.provider,
+      model: response.model
     }
   }
 }
@@ -114,9 +110,9 @@ async function analyzeDocument(documentText: string, documentType: string, conte
 async function analyzeApplicationForm(formContent: string, userProfile: any, projectData: any) {
   const prompt = buildFormAnalysisPrompt(formContent, userProfile, projectData)
   
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'smart-form-completion',
+    [
       {
         role: 'system',
         content: `You are an expert grant application assistant. Analyze application forms and provide intelligent completion suggestions based on the user's profile and project data. Always respond with valid JSON.`
@@ -126,12 +122,18 @@ async function analyzeApplicationForm(formContent: string, userProfile: any, pro
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.2,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.2,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 async function generateRequirementsChecklist(analysis: any, userProfile: any) {
@@ -154,9 +156,9 @@ Create a detailed checklist with:
 Format as JSON with requirements categorized by type and priority.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'document-analysis',
+    [
       {
         role: 'system',
         content: 'You are a grant compliance expert. Create comprehensive, actionable requirement checklists. Always respond with valid JSON.'
@@ -166,12 +168,18 @@ Format as JSON with requirements categorized by type and priority.
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.1,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.1,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 async function generateClarifyingQuestions(formAnalysis: any, context: any) {
@@ -194,9 +202,9 @@ Generate questions that are:
 Format as JSON array with question objects containing: question, priority, category, helpText, and expectedAnswer type.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'smart-form-completion',
+    [
       {
         role: 'system',
         content: 'You are an expert grant application consultant. Generate helpful, intelligent questions that guide users to provide exactly what\'s needed. Always respond with valid JSON.'
@@ -206,12 +214,18 @@ Format as JSON array with question objects containing: question, priority, categ
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.3,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.3,
+      responseFormat: 'json_object'
+    }
+  )
 
-  const result = safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  const result = aiProviderService.safeParseJSON(response.content)
   return result.questions || result
 }
 
@@ -231,9 +245,9 @@ Create a comprehensive summary that includes:
 Focus on actionable insights and avoid redundancy.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'document-analysis',
+    [
       {
         role: 'system',
         content: 'You are a senior funding strategy consultant. Synthesize multiple document analyses into actionable strategic insights. Always respond with valid JSON.'
@@ -243,12 +257,18 @@ Focus on actionable insights and avoid redundancy.
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.2,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.2,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 function buildAnalysisPrompt(documentText: string, documentType: string, context: any) {

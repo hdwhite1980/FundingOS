@@ -1,6 +1,4 @@
-import ScoringServiceIntegration from '../../../lib/scoringServiceIntegration'
-
-const scoringService = new ScoringServiceIntegration()
+import scoringService from '../../../lib/scoringServiceIntegration'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

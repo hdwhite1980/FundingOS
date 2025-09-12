@@ -2,22 +2,13 @@
  * Scoring API Route
  * 
  * Server-side API endpoint for AI-powered opportunity scoring
+ * Uses hybrid AI provider system (OpenAI + Anthropic)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { OpenAI } from 'openai'
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import aiProviderService from '../../../../lib/aiProviderService'
 
 const MAX_TOKENS = 3000
-const MODEL = 'gpt-4o-mini' // Changed from gpt-4-turbo-preview for compatibility
-
-function safeParseResponse(content: string | null): any {
-  if (!content) throw new Error('No content received from OpenAI')
-  return JSON.parse(content)
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,9 +76,9 @@ Provide a comprehensive scoring analysis with:
 Format response as JSON with detailed explanations for each score.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'opportunity-scoring',
+    [
       {
         role: 'system',
         content: 'You are an expert funding analyst with deep knowledge of grant evaluation criteria. Provide accurate, helpful scoring with clear rationale. Always respond with valid JSON.'
@@ -97,12 +88,18 @@ Format response as JSON with detailed explanations for each score.
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.1,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.1,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 async function enhancedScoreOpportunity(opportunity: any, project: any, userProfile: any) {
@@ -138,9 +135,9 @@ Provide enhanced scoring with:
 Format as comprehensive JSON analysis.
   `
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const response = await aiProviderService.generateCompletion(
+    'enhanced-scoring',
+    [
       {
         role: 'system',
         content: 'You are a senior funding strategy consultant with expertise in comprehensive opportunity analysis. Provide detailed, actionable scoring insights. Always respond with valid JSON.'
@@ -150,12 +147,18 @@ Format as comprehensive JSON analysis.
         content: prompt
       }
     ],
-    max_tokens: MAX_TOKENS,
-    temperature: 0.2,
-    response_format: { type: 'json_object' }
-  })
+    {
+      maxTokens: MAX_TOKENS,
+      temperature: 0.2,
+      responseFormat: 'json_object'
+    }
+  )
 
-  return safeParseResponse(response.choices[0].message.content)
+  if (!response?.content) {
+    throw new Error('No response received from AI provider')
+  }
+
+  return aiProviderService.safeParseJSON(response.content)
 }
 
 async function batchScoreOpportunities(opportunities: any[], project: any, userProfile: any) {

@@ -1,6 +1,7 @@
 // hooks/useAuth.js
 import { useState, useEffect, useContext, createContext } from 'react'
 import { supabase } from '../lib/supabase'
+import sessionManager from '../lib/sessionManager'
 
 const AuthContext = createContext({})
 
@@ -42,10 +43,41 @@ export const AuthProvider = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in:', session?.user?.id)
+          // Track new session and deactivate others
+          if (session?.user?.id && session?.access_token) {
+            try {
+              await sessionManager.trackUserSession(session.user.id, {
+                access_token: session.access_token,
+                ip_address: null, // Would need to get from request
+                user_agent: navigator?.userAgent
+              })
+            } catch (error) {
+              console.error('Error tracking session:', error)
+              // Don't block login for session tracking errors
+            }
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out')
+          // Deactivate session
+          if (user?.id && session?.access_token) {
+            try {
+              const sessionId = sessionManager.extractSessionId(session.access_token)
+              await sessionManager.deactivateSession(user.id, sessionId)
+            } catch (error) {
+              console.error('Error deactivating session:', error)
+            }
+          }
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('Token refreshed')
+          // Update session activity
+          if (session?.user?.id && session?.access_token) {
+            try {
+              const sessionId = sessionManager.extractSessionId(session.access_token)
+              await sessionManager.updateSessionActivity(session.user.id, sessionId)
+            } catch (error) {
+              console.error('Error updating session activity:', error)
+            }
+          }
         }
       }
     )

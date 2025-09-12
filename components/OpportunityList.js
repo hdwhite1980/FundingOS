@@ -474,9 +474,9 @@ export default function OpportunityList({
       'ai-primary': { text: 'AI Primary', color: 'bg-purple-100 text-purple-800' },
       'ai-agency': { text: 'AI Agency', color: 'bg-blue-100 text-blue-800' },
             'ai-keyword': { text: 'AI Keyword', color: 'bg-emerald-100 text-emerald-800' },
-      'fallback-category': { text: 'Category Match', color: 'bg-gray-100 text-gray-800' },
-      'fallback-agency': { text: 'Agency Match', color: 'bg-gray-100 text-gray-800' },
-      'fallback-keyword': { text: 'Keyword Match', color: 'bg-gray-100 text-gray-800' }
+      'fallback-category': { text: 'Category-Based', color: 'bg-gray-100 text-gray-800' },
+      'fallback-agency': { text: 'Agency-Based', color: 'bg-gray-100 text-gray-800' },
+      'fallback-keyword': { text: 'Keyword-Based', color: 'bg-gray-100 text-gray-800' }
     }
     
     const config = badgeConfig[strategy] || { text: 'Matched', color: 'bg-gray-100 text-gray-800' }

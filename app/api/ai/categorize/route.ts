@@ -1,15 +1,11 @@
 // app/api/ai/categorize/route.ts
 
 import { NextResponse } from 'next/server'
-// Import your AI provider (OpenAI, Anthropic, etc.)
-// import OpenAI from 'openai'
+import aiProviderService from '../../../../lib/aiProviderService'
 
 export async function POST(request: Request) {
   try {
     const { type, prompt, project, userProfile, userProfiles, userProjects } = await request.json()
-
-    // Initialize your AI client
-    // const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
     let systemPrompt = ''
     let userPrompt = ''
@@ -46,39 +42,37 @@ export async function POST(request: Request) {
         break
 
       default:
-        // Fall back to your existing determineProjectCategories logic
+        // Fall back to general project categorization
         systemPrompt = `You are an expert grant advisor. Analyze projects and return categorization data as JSON.`
         userPrompt = `Analyze this project: ${project?.name || 'Unknown'} for grant opportunities.`
     }
 
-    // TODO: Configure your AI provider (OpenAI, Anthropic, Claude, etc.)
-    // Example using OpenAI:
-    /*
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Efficient model for categorization tasks
-      messages: [
+    // Use hybrid AI provider for categorization
+    const response = await aiProviderService.generateCompletion(
+      'categorization',
+      [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.1,
-      max_tokens: 1000
-    })
+      {
+        temperature: 0.1,
+        maxTokens: 1000,
+        responseFormat: 'json_object'
+      }
+    )
 
-    const aiResponse = completion.choices[0]?.message?.content
+    if (!response?.content) {
+      // Return null if no response (APIs will fall back to rule-based logic)
+      return NextResponse.json(null)
+    }
     
     // Parse AI response
-    const result = JSON.parse(aiResponse)
-    */
-
-    // Return null if no AI provider is configured
-    // This will cause the APIs to fall back to rule-based logic
-    return NextResponse.json(null)
+    const result = aiProviderService.safeParseJSON(response.content)
+    return NextResponse.json(result)
 
   } catch (error: any) {
     console.error('AI categorization error:', error)
-    return NextResponse.json(
-      { error: 'AI categorization failed', details: error.message },
-      { status: 500 }
-    )
+    // Return null on error so APIs can fall back to rule-based logic
+    return NextResponse.json(null)
   }
 }
