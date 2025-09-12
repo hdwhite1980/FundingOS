@@ -24,6 +24,7 @@ import { format, isAfter, differenceInDays } from 'date-fns'
 import OpportunityCard from './OpportunityCard'
 import AIAnalysisModal from './AIAnalysisModal'
 import { opportunityService } from '../lib/supabase'
+import scoringService from '../lib/scoringServiceIntegration'
 import toast from 'react-hot-toast'
 
 export default function OpportunityList({ 
@@ -189,10 +190,12 @@ export default function OpportunityList({
           opp.ai_metadata?.projectId === selectedProject.id
         )
       } else if (filters.aiRelevance === 'high_score') {
-        filtered = filtered.map(opp => ({
-          ...opp,
-          tempFitScore: calculateEnhancedFitScore(selectedProject, opp, userProfile)
-        })).filter(opp => opp.tempFitScore >= 70)
+        // For high score filtering, we need to calculate scores asynchronously
+        // This will be handled in the useEffect that manages async scoring
+        filtered = filtered.filter(opp => {
+          const cachedScore = opportunityScores[opp.id]
+          return cachedScore !== undefined && cachedScore >= 70
+        })
       }
     }
 
@@ -200,14 +203,15 @@ export default function OpportunityList({
     if (selectedProject) {
       filtered = filtered.map(opp => ({
         ...opp,
-        fitScore: calculateEnhancedFitScore(selectedProject, opp, userProfile)
+        fitScore: opportunityScores[opp.id] || 0
       })).sort((a, b) => b.fitScore - a.fitScore)
     }
 
     setFilteredOpportunities(filtered)
   }
 
-  const calculateEnhancedFitScore = (selectedProject, opportunity, userProfile) => {
+  /* REMOVED OLD SCORING LOGIC - USING NEW SCORING SERVICE
+
     let score = 0
     
     // 🎯 1. PROJECT TYPE MATCHING (0-25 points)
@@ -323,7 +327,8 @@ export default function OpportunityList({
     return Math.min(score, 100) // Cap at 100
   }
 
-  // Helper functions for improved scoring
+  REMOVED OLD SCORING LOGIC - USING NEW SCORING SERVICE */
+
   const extractMeaningfulTerms = (text) => {
     const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']
     return text
@@ -627,11 +632,7 @@ export default function OpportunityList({
     )
   }
 
-  // Count AI-targeted opportunities
-  const aiTargetedCount = opportunities.filter(opp => 
-    selectedProject && opp.ai_metadata?.projectId === selectedProject.id
-  ).length
-
+  // Main component render - checking if project is selected
   if (!selectedProject) {
     return (
       <div className="card">
