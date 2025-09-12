@@ -127,7 +127,7 @@ async function enhancedScoring(opportunity: any, project: any, userProfile: any)
   // Combine fast score and AI scores
   const finalScore = Math.round(
     (fastScore.overallScore * 0.4) + 
-    (aiAnalysis.score * 0.6)
+    (aiAnalysis.fitScore * 0.6)
   )
 
   return {
@@ -139,7 +139,7 @@ async function enhancedScoring(opportunity: any, project: any, userProfile: any)
       eligibility: Math.round(finalScore * 0.25),
       alignment: Math.round(finalScore * 0.25),
       feasibility: Math.round(finalScore * 0.25),
-      aiInsight: aiAnalysis.score
+      aiInsight: aiAnalysis.fitScore
     },
     strengths: [...(fastScore.strengths || []), ...(aiAnalysis.strengths || [])],
     weaknesses: [...(fastScore.weaknesses || []), ...(aiAnalysis.weaknesses || [])],
@@ -818,10 +818,17 @@ Format your response as JSON with these exact keys: score, strengths, weaknesses
     }
 
     return {
-      score: Math.max(0, Math.min(100, analysis.score)),
+      fitScore: Math.max(0, Math.min(100, analysis.score)),
+      overallScore: Math.max(0, Math.min(100, analysis.score)), // For backward compatibility
       strengths: analysis.strengths || [],
-      weaknesses: analysis.weaknesses || [],
+      challenges: analysis.weaknesses || [], // Map weaknesses to challenges for UI
+      weaknesses: analysis.weaknesses || [], // Keep for backward compatibility
       recommendations: analysis.recommendations || [],
+      matchDetails: {
+        confidence: Math.max(0, Math.min(1, analysis.confidence || 0.7)),
+        reasoning: analysis.reasoning || 'AI analysis completed',
+        processingTime: new Date().toISOString()
+      },
       confidence: Math.max(0, Math.min(1, analysis.confidence || 0.7)),
       reasoning: analysis.reasoning || 'AI analysis completed'
     }
@@ -831,10 +838,17 @@ Format your response as JSON with these exact keys: score, strengths, weaknesses
     
     // Fallback to basic analysis
     return {
-      score: 50,
+      fitScore: 50,
+      overallScore: 50, // For backward compatibility
       strengths: ['Basic compatibility confirmed'],
-      weaknesses: ['Detailed AI analysis unavailable'],
+      challenges: ['Detailed AI analysis unavailable'], // Map to challenges for UI
+      weaknesses: ['Detailed AI analysis unavailable'], // Keep for backward compatibility
       recommendations: ['Manual review recommended'],
+      matchDetails: {
+        confidence: 0.4,
+        reasoning: 'AI analysis failed, using fallback scoring',
+        processingTime: new Date().toISOString()
+      },
       confidence: 0.4,
       reasoning: 'AI analysis failed, using fallback scoring'
     }
