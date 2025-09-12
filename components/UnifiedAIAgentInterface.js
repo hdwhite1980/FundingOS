@@ -107,6 +107,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
       await fetch('/api/chat/save-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({
           messageType,
           content,
@@ -121,7 +122,9 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
 
   const loadChatSessionInternal = async (agentData) => {
     try {
-      const response = await fetch('/api/chat/load-session')
+      const response = await fetch('/api/chat/load-session', {
+        credentials: 'include' // Include cookies for authentication
+      })
       if (response.ok) {
         const data = await response.json()
         if (data.messages && data.messages.length > 0) {
@@ -137,14 +140,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
     const welcomeMessages = [{
       type: 'agent',
       content: `Hello ${userProfile?.full_name || 'there'}! I'm your Unified AI Funding Agent. I'm now managing your complete funding ecosystem - from opportunity discovery to application generation to deadline monitoring. How can I help optimize your funding strategy today?`,
-      timestamp: new Date(),
-      capabilities: [
-        'Autonomous opportunity discovery',
-        'Strategic funding planning',
-        'Automated application generation', 
-        'Real-time deadline monitoring',
-        'Performance optimization'
-      ]
+      timestamp: new Date()
     }]
 
     // Add strategy context if available
@@ -162,7 +158,6 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
     // Save welcome messages to session
     for (const message of welcomeMessages) {
       await saveChatMessageInternal('agent', message.content, {
-        capabilities: message.capabilities,
         isStrategyContext: message.isStrategyContext
       })
     }
@@ -535,16 +530,6 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
                         }`}>
                           {message.content}
                         </div>
-                        {message.capabilities && (
-                          <div className="mt-2 text-xs text-emerald-100">
-                            <strong>Capabilities:</strong>
-                            <ul className="list-disc list-inside mt-1">
-                              {message.capabilities.map((cap, i) => (
-                                <li key={i}>{cap}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
                         <p className={`text-xs mt-2 ${
                           message.type === 'user' 
                             ? 'text-emerald-100' 
@@ -629,6 +614,12 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
                     className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
                   >
                     🔍 Search web
+                  </button>
+                  <button 
+                    onClick={() => setNewMessage('Help me analyze a funding document')}
+                    className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
+                  >
+                    📄 Analyze document
                   </button>
                   <button 
                     onClick={() => setNewMessage('What deadlines are coming up?')}

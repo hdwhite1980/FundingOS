@@ -40,6 +40,7 @@ export default function OpportunityList({
   const [showAIModal, setShowAIModal] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showEligibilitySettings, setShowEligibilitySettings] = useState(false)
+  const [opportunityScores, setOpportunityScores] = useState({}) // Added missing state for opportunity scores
   
   // Combined filters
   const [filters, setFilters] = useState({
@@ -73,6 +74,37 @@ export default function OpportunityList({
   useEffect(() => {
     applyFilters()
   }, [opportunities, searchQuery])
+
+  // Calculate opportunity scores when opportunities or selectedProject change
+  useEffect(() => {
+    const calculateScores = async () => {
+      if (selectedProject && opportunities.length > 0) {
+        try {
+          const scores = {}
+          for (const opportunity of opportunities) {
+            try {
+              const score = await scoringService.calculateScore(selectedProject, opportunity)
+              scores[opportunity.id] = score
+            } catch (error) {
+              console.error(`Error calculating score for opportunity ${opportunity.id}:`, error)
+              scores[opportunity.id] = 0 // Default score on error
+            }
+          }
+          setOpportunityScores(scores)
+        } catch (error) {
+          console.error('Error calculating opportunity scores:', error)
+          // Set all scores to 0 on error
+          const defaultScores = {}
+          opportunities.forEach(opp => {
+            defaultScores[opp.id] = 0
+          })
+          setOpportunityScores(defaultScores)
+        }
+      }
+    }
+
+    calculateScores()
+  }, [selectedProject, opportunities])
 
   const loadOpportunities = async () => {
     try {
