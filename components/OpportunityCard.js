@@ -145,8 +145,20 @@ export default function OpportunityCard({
             </div>
           </div>
           {fitScore && (
-            <div className={`ml-4 px-3 py-1.5 rounded-lg text-sm font-bold border ${getFitScoreColor(fitScore)}`}>
-              {fitScore}%
+            <div className={`ml-4 px-3 py-1.5 rounded-lg text-sm font-bold border ${getFitScoreColor(fitScore)} relative group cursor-help`}>
+              <div className="text-xs font-medium opacity-75">Project Match</div>
+              <div className="text-lg">{fitScore}%</div>
+              
+              {/* Tooltip */}
+              <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                <div className="font-medium mb-1">Project Match Score</div>
+                <div className="text-gray-300">
+                  Quick assessment based on project description, funding amount, requirements, and timeline alignment with your specific project needs.
+                </div>
+                <div className="mt-1 text-gray-400 italic">
+                  Hover on "AI Analysis" for detailed strategic assessment.
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -267,10 +279,15 @@ export default function OpportunityCard({
         <div className="flex gap-3">
           <button
             onClick={onAnalyze}
-            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 transition-all duration-200 flex items-center justify-center"
+            className="flex-1 px-4 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 transition-all duration-200 flex items-center justify-center relative group"
           >
             <Zap className="w-4 h-4 mr-2" />
-            AI Analysis
+            AI Strategic Analysis
+            
+            {/* Button tooltip */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+              Deep AI analysis including competition, resource requirements, and strategic fit
+            </div>
           </button>
           
           {opportunity.source_url && (

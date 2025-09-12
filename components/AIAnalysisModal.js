@@ -372,9 +372,14 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
                   <div className="text-center">
                     <div className={`inline-flex items-center px-8 py-4 rounded-xl text-4xl font-bold border-2 ${getScoreColor(analysis.fitScore)}`}>
                       <TrendingUp className="w-8 h-8 mr-3" />
-                      {analysis.fitScore}% Match
+                      {analysis.fitScore}% Strategic Match
                     </div>
-                    <p className="text-slate-600 mt-4 text-lg">Overall compatibility score for this opportunity</p>
+                    <p className="text-slate-600 mt-4 text-lg">
+                      AI strategic assessment including competition analysis, resource requirements, and success probability
+                    </p>
+                    <p className="text-slate-500 mt-2 text-sm">
+                      This differs from the "Project Match" score which focuses on basic categorical alignment
+                    </p>
                   </div>
 
                   {/* Strengths */}
