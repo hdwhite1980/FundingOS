@@ -80,20 +80,9 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
         
         // Load comprehensive agent data
         await refreshAgentData()
-        
-        // Welcome message
-        setChatMessages([{
-          type: 'agent',
-          content: `Hello ${userProfile?.full_name || 'there'}! I'm your Unified AI Funding Agent. I'm now managing your complete funding ecosystem - from opportunity discovery to application generation to deadline monitoring. How can I help optimize your funding strategy today?`,
-          timestamp: new Date(),
-          capabilities: [
-            'Autonomous opportunity discovery',
-            'Strategic funding planning',
-            'Automated application generation', 
-            'Real-time deadline monitoring',
-            'Performance optimization'
-          ]
-        }])
+
+        // Load previous chat session if exists
+        const hadPreviousSession = await loadChatSessionInternal(agentData)
         
       } else {
         throw new Error('Failed to initialize unified agent')
@@ -111,6 +100,74 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
     } finally {
       setLoading(false)
     }
+  }
+
+  const saveChatMessageInternal = async (messageType, content, metadata = {}) => {
+    try {
+      await fetch('/api/chat/save-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageType,
+          content,
+          metadata
+        })
+      })
+    } catch (error) {
+      console.error('Error saving chat message:', error)
+      // Don't block UI for save failures
+    }
+  }
+
+  const loadChatSessionInternal = async (agentData) => {
+    try {
+      const response = await fetch('/api/chat/load-session')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.messages && data.messages.length > 0) {
+          setChatMessages(data.messages)
+          return true // Had previous session
+        }
+      }
+    } catch (error) {
+      console.error('Error loading chat session:', error)
+    }
+    
+    // No previous session, create welcome messages
+    const welcomeMessages = [{
+      type: 'agent',
+      content: `Hello ${userProfile?.full_name || 'there'}! I'm your Unified AI Funding Agent. I'm now managing your complete funding ecosystem - from opportunity discovery to application generation to deadline monitoring. How can I help optimize your funding strategy today?`,
+      timestamp: new Date(),
+      capabilities: [
+        'Autonomous opportunity discovery',
+        'Strategic funding planning',
+        'Automated application generation', 
+        'Real-time deadline monitoring',
+        'Performance optimization'
+      ]
+    }]
+
+    // Add strategy context if available
+    if (agentData.strategy && agentData.strategy !== 'Developing strategy') {
+      welcomeMessages.push({
+        type: 'agent',
+        content: `📋 **Current Strategy Overview:** ${agentData.strategy}`,
+        timestamp: new Date(),
+        isStrategyContext: true
+      })
+    }
+
+    setChatMessages(welcomeMessages)
+    
+    // Save welcome messages to session
+    for (const message of welcomeMessages) {
+      await saveChatMessageInternal('agent', message.content, {
+        capabilities: message.capabilities,
+        isStrategyContext: message.isStrategyContext
+      })
+    }
+    
+    return false // No previous session
   }
 
   const refreshAgentData = async () => {
@@ -153,6 +210,10 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
 
     const userMessage = { type: 'user', content: newMessage, timestamp: new Date() }
     setChatMessages(prev => [...prev, userMessage])
+    
+    // Save user message to session
+    await saveChatMessageInternal('user', userMessage.content)
+    
     const messageContent = newMessage
     setNewMessage('')
     setIsTyping(true)
@@ -183,6 +244,9 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
           timestamp: new Date() 
         }
         setChatMessages(prev => [...prev, agentMessage])
+        
+        // Save agent message to session
+        await saveChatMessageInternal('agent', data.message)
         
         // Handle web search results if returned
         if (data.webSearchResults && data.webSearchPerformed) {

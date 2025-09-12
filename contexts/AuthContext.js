@@ -63,8 +63,19 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      // Use our custom logout endpoint that handles chat session cleanup and email
+      const response = await fetch('/api/chat/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (!response.ok) {
+        // If our endpoint fails, fall back to regular logout
+        console.warn('Custom logout endpoint failed, using fallback')
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+      }
+      
       setUser(null)
       setSession(null)
     } catch (error) {
