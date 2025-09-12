@@ -120,34 +120,35 @@ async function enhancedScoring(opportunity: any, project: any, userProfile: any)
 async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
   const startTime = Date.now()
   
-  // Generate keywords from project information
-  const projectKeywords = extractProjectKeywords(project, userProfile)
-  
-  let score = 0
-  const strengths: string[] = []
-  const weaknesses: string[] = []
-  const matchDetails: any = {}
+  try {
+    // Generate keywords from project information
+    const projectKeywords = extractProjectKeywords(project, userProfile)
+    
+    let score = 0
+    const strengths: string[] = []
+    const weaknesses: string[] = []
+    const matchDetails: any = {}
 
-  // 1. HARD STOPS (return 0 immediately)
-  const hardStops = checkHardStops(opportunity, project, userProfile)
-  if (!hardStops.eligible) {
-    return {
-      overallScore: 0,
-      eligible: false,
-      fastTrack: true,
-      matchDetails: hardStops.reasons,
-      strengths: [],
-      weaknesses: hardStops.reasons,
-      processingTime: Date.now() - startTime
+    // 1. HARD STOPS (return 0 immediately)
+    const hardStops = checkHardStops(opportunity, project, userProfile)
+    if (!hardStops.eligible) {
+      return {
+        overallScore: 0,
+        eligible: false,
+        fastTrack: true,
+        matchDetails: hardStops.reasons,
+        strengths: [],
+        weaknesses: hardStops.reasons,
+        processingTime: Date.now() - startTime
+      }
     }
-  }
 
-  // 2. PROJECT KEYWORD MATCHING (0-40 points)
-  const keywordMatch = calculateKeywordMatch(opportunity, projectKeywords)
-  score += keywordMatch.score
-  matchDetails.keywordMatch = keywordMatch.details
-  strengths.push(...keywordMatch.strengths)
-  if (keywordMatch.weaknesses.length > 0) weaknesses.push(...keywordMatch.weaknesses)
+    // 2. PROJECT KEYWORD MATCHING (0-40 points)
+    const keywordMatch = calculateKeywordMatch(opportunity, projectKeywords)
+    score += keywordMatch.score
+    matchDetails.keywordMatch = keywordMatch.details
+    strengths.push(...keywordMatch.strengths)
+    if (keywordMatch.weaknesses.length > 0) weaknesses.push(...keywordMatch.weaknesses)
 
   // 3. FUNDING AMOUNT ALIGNMENT (0-25 points)
   const fundingMatch = checkFundingAlignment(opportunity, project)
@@ -206,6 +207,17 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
     recommendations: generateQuickRecommendations(score, matchDetails),
     processingTime: Date.now() - startTime,
     keywordsUsed: projectKeywords.primary.concat(projectKeywords.secondary).slice(0, 10)
+  }
+  
+  } catch (error) {
+    console.error('Fast scoring error:', error)
+    return {
+      overallScore: 0,
+      eligible: false,
+      fastTrack: true,
+      error: 'Fast scoring failed',
+      processingTime: Date.now() - startTime
+    }
   }
 }
 

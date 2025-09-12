@@ -104,7 +104,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
 
   const saveChatMessageInternal = async (messageType, content, metadata = {}) => {
     try {
-      await fetch('/api/chat/save-message', {
+      const response = await fetch('/api/chat/save-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // Include cookies for authentication
@@ -114,6 +114,16 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
           metadata
         })
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        // If it's an authentication error, just log it but don't break the chat
+        if (response.status === 401) {
+          console.log('Chat message not saved - user not authenticated:', errorData.message || errorData.error)
+          return // Silently fail for unauthenticated users
+        }
+        console.error('Error saving chat message:', errorData)
+      }
     } catch (error) {
       console.error('Error saving chat message:', error)
       // Don't block UI for save failures
@@ -131,6 +141,9 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
           setChatMessages(data.messages)
           return true // Had previous session
         }
+      } else if (response.status === 401) {
+        // User not authenticated - just continue without loading previous session
+        console.log('No previous session loaded - user not authenticated')
       }
     } catch (error) {
       console.error('Error loading chat session:', error)

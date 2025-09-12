@@ -18,20 +18,24 @@ export async function GET(request) {
     
     if (authError) {
       console.error(`[${requestId}] Supabase auth error:`, authError)
+      // For AuthSessionMissingError, return a more user-friendly response
+      if (authError.__isAuthError && authError.message?.includes('Auth session missing')) {
+        return NextResponse.json({ 
+          error: 'Please log in to load chat history', 
+          code: 'UNAUTHENTICATED',
+          message: 'Authentication required for chat functionality'
+        }, { status: 401 })
+      }
       return NextResponse.json({ error: 'Authentication error', details: authError.message }, { status: 401 })
     }
 
     if (!user) {
       console.log(`[${requestId}] No user found - unauthorized`)
-      const cookieStore = cookies()
-      const authCookies = []
-      cookieStore.forEach((value, key) => {
-        if (key.includes('auth') || key.includes('supabase')) {
-          authCookies.push(`${key}: ${value ? 'present' : 'missing'}`)
-        }
-      })
-      console.log(`[${requestId}] Auth cookies:`, authCookies)
-      return NextResponse.json({ error: 'Unauthorized - no user found' }, { status: 401 })
+      return NextResponse.json({ 
+        error: 'Please log in to load chat history', 
+        code: 'UNAUTHENTICATED',
+        message: 'User session not found - please log in'
+      }, { status: 401 })
     }
 
     console.log(`[${requestId}] User authenticated: ${user.id}`)
