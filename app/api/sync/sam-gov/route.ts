@@ -83,6 +83,52 @@ interface SearchConfiguration {
 
 const SAM_GOV_API_KEY = process.env.SAM_GOV_API_KEY
 
+// Helper function to determine project types from SAM.gov opportunity
+function inferProjectTypes(title: string, description: string, naicsCode?: string): string[] {
+  const content = (title + ' ' + description).toLowerCase()
+  const types = new Set(['contract', 'services']) // Always include these base types
+  
+  // Technology & IT
+  if (content.match(/technology|software|IT|cyber|digital|data|cloud|artificial intelligence|AI|machine learning/)) {
+    types.add('technology')
+    types.add('research')
+  }
+  
+  // Infrastructure & Construction
+  if (content.match(/construction|infrastructure|building|facility|renovation|repair|maintenance|engineering/)) {
+    types.add('infrastructure')
+    types.add('commercial_development')
+  }
+  
+  // Healthcare & Medical
+  if (content.match(/health|medical|hospital|clinical|pharmaceutical|healthcare|patient/)) {
+    types.add('healthcare')
+  }
+  
+  // Research & Development
+  if (content.match(/research|development|R&D|study|analysis|innovation|scientific|testing/)) {
+    types.add('research')
+    types.add('technology')
+  }
+  
+  // Environmental & Sustainability
+  if (content.match(/environment|green|sustainability|renewable|energy|conservation|climate/)) {
+    types.add('environmental')
+  }
+  
+  // Education & Training
+  if (content.match(/education|training|learning|academic|university|school|curriculum/)) {
+    types.add('education')
+  }
+  
+  // Community Development
+  if (content.match(/community|social|development|outreach|public|citizen|municipal/)) {
+    types.add('community_development')
+  }
+  
+  return Array.from(types)
+}
+
 // Helper function to update daily usage tracking
 async function updateDailyUsage(supabase: any, dateStr: string) {
   try {
@@ -800,7 +846,7 @@ export async function GET(request: Request) {
         match_requirement_percentage: 0,
         eligibility_criteria: opp.organizationType || ['for_profit'],
         geography: opp.officeAddress?.state ? [opp.officeAddress.state.toLowerCase()] : ['nationwide'],
-        project_types: ['contract', 'services'],
+        project_types: inferProjectTypes(opp.title || '', opp.description || '', opp.naicsCode),
         organization_types: ['for_profit', 'nonprofit'],
         industry_focus: opp.naicsCode ? [opp.naicsCode] : ['general'],
         minority_business: opp.typeOfSetAside?.includes('8A') || false,
