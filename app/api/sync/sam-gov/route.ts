@@ -61,14 +61,17 @@ interface SearchConfiguration {
     postedFrom: string;
     postedTo: string;
     ptype?: string; // presol, solicitation, award, etc.
-    ntype?: string; // notice type
-    deptname?: string;
+    // Updated parameter names based on API docs
+    organizationName?: string; // replaces deptname
     subtier?: string;
     state?: string;
     city?: string;
-    keyword?: string;
-    naics?: string;
+    title?: string; // replaces keyword
+    naics?: string; // changed from naicsCode
+    ncode?: string; // alternative NAICS parameter
     typeOfSetAside?: string;
+    solnum?: string; // solicitation number search
+    offset?: number;
   };
   metadata?: {
     projectId?: string;
@@ -79,6 +82,37 @@ interface SearchConfiguration {
 }
 
 const SAM_GOV_API_KEY = process.env.SAM_GOV_API_KEY
+
+// Map common department names to their full official names
+const DEPARTMENT_MAPPINGS = {
+  'DOD': 'DEPARTMENT OF DEFENSE',
+  'HHS': 'DEPARTMENT OF HEALTH AND HUMAN SERVICES', 
+  'GSA': 'GENERAL SERVICES ADMINISTRATION',
+  'DHS': 'DEPARTMENT OF HOMELAND SECURITY',
+  'DOE': 'DEPARTMENT OF ENERGY',
+  'DOT': 'DEPARTMENT OF TRANSPORTATION',
+  'VA': 'DEPARTMENT OF VETERANS AFFAIRS',
+  'DOJ': 'DEPARTMENT OF JUSTICE',
+  'USDA': 'DEPARTMENT OF AGRICULTURE',
+  'DOL': 'DEPARTMENT OF LABOR',
+  'ED': 'DEPARTMENT OF EDUCATION',
+  'HUD': 'DEPARTMENT OF HOUSING AND URBAN DEVELOPMENT',
+  'DOI': 'DEPARTMENT OF THE INTERIOR',
+  'STATE': 'DEPARTMENT OF STATE',
+  'TREASURY': 'DEPARTMENT OF THE TREASURY',
+  'DOC': 'DEPARTMENT OF COMMERCE'
+}
+
+// Valid Set-Aside codes based on API documentation
+const VALID_SET_ASIDES = {
+  'SBA': 'SBA', // Total Small Business Set-Aside
+  'WOSB': 'WOSB', // Women-Owned Small Business
+  'VOSB': 'VSA', // Veteran-Owned Small Business Set-Aside (VA specific)
+  'SDVOSB': 'SDVOSBC', // Service-Disabled Veteran-Owned Small Business Set-Aside
+  '8A': '8A', // 8(a) Set-Aside
+  'HubZone': 'HZC', // HUBZone Set-Aside
+  'EDWOSB': 'EDWOSB' // Economically Disadvantaged WOSB
+}
 
 async function getAIContractCategories(project: any, userProfile: any) {
   try {
@@ -158,40 +192,44 @@ function getContractCategories(userProfile: any, userProjects: any[] = []) {
   
   // Industry-specific mappings
   if (userProfile.industry) {
-    const industryMappings = {
-      'technology': {
+    const industryMappings: Record<
+      'technology' | 'healthcare' | 'construction' | 'consulting' | 'education' | 'engineering',
+      { departments: string[]; naics: string[]; keywords: string[] }
+    > = {
+      technology: {
         departments: ['DOD', 'DHS', 'GSA'],
         naics: ['541511', '541512', '541513'], // Computer systems design
         keywords: ['IT services', 'software development', 'cybersecurity']
       },
-      'healthcare': {
+      healthcare: {
         departments: ['HHS', 'VA'],
         naics: ['621111', '621399'], // Healthcare services
         keywords: ['medical services', 'healthcare consulting', 'clinical research']
       },
-      'construction': {
+      construction: {
         departments: ['GSA', 'DOD', 'DOT'],
         naics: ['236220', '237310'], // Construction
         keywords: ['construction', 'renovation', 'infrastructure']
       },
-      'consulting': {
+      consulting: {
         departments: ['DOD', 'DHS', 'DOE'],
         naics: ['541611', '541618'], // Management consulting
         keywords: ['management consulting', 'strategic planning', 'analysis']
       },
-      'education': {
+      education: {
         departments: ['ED', 'DOD'],
         naics: ['611710', '541612'], // Educational support
         keywords: ['training', 'education services', 'curriculum development']
       },
-      'engineering': {
+      engineering: {
         departments: ['DOD', 'DOT', 'DOE'],
         naics: ['541330', '541380'], // Engineering services
         keywords: ['engineering', 'technical services', 'design']
       }
     }
     
-    const mapping = industryMappings[userProfile.industry.toLowerCase()]
+    const industryKey = (userProfile.industry as string).toLowerCase() as keyof typeof industryMappings;
+    const mapping = industryMappings[industryKey];
     if (mapping) {
       mapping.departments.forEach(dept => departments.add(dept))
       mapping.naics.forEach(naics => naicsCodes.add(naics))
@@ -221,7 +259,7 @@ function getContractCategories(userProfile: any, userProjects: any[] = []) {
         }
       }
       
-      const mapping = projectMappings[project.project_type]
+      const mapping = projectMappings[project.project_type as keyof typeof projectMappings]
       if (mapping) {
         mapping.departments?.forEach(dept => departments.add(dept))
         mapping.keywords?.forEach(keyword => keywords.add(keyword))
@@ -278,7 +316,7 @@ export async function GET(request: Request) {
     
     if (userProjects && userProfiles) {
       for (const project of userProjects) {
-        const userProfile = userProfiles.find(p => p.id === project.user_id)
+        const userProfile = userProfiles.find((p: any) => p.id === project.user_id)
         if (userProfile) {
           const aiCategories = await getAIContractCategories(project, userProfile)
           
@@ -303,7 +341,7 @@ export async function GET(request: Request) {
 
     if (userProfiles) {
       for (const profile of userProfiles) {
-        const userProjectsForProfile = userProjects?.filter(p => p.user_id === profile.id) || []
+        const userProjectsForProfile = userProjects?.filter((p: any) => p.user_id === profile.id) || []
         const relevant = getContractCategories(profile, userProjectsForProfile)
         
         relevant.departments.forEach(dept => smartDepartments.add(dept))
@@ -320,20 +358,21 @@ export async function GET(request: Request) {
       keywords: Array.from(smartKeywords).slice(0, 5)
     })
 
-    // Create search configurations
+    // Create search configurations with proper API parameters
     const searchConfigurations: SearchConfiguration[] = []
     
     // Recent opportunities (last 30 days)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const fromDate = thirtyDaysAgo.toISOString().split('T')[0].replace(/-/g, '/')
+    const fromDate = thirtyDaysAgo.toISOString().split('T')[0].split('-').reverse().join('/')
     
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '/')
+    const today = new Date().toISOString().split('T')[0].split('-').reverse().join('/')
 
     // AI-driven searches
     aiContractStrategies.forEach(({ project, userProfile, aiCategories }) => {
-      // Department-specific searches
+      // Department-specific searches using organizationName
       aiCategories.departments?.slice(0, 3).forEach((department: string) => {
+        const fullDeptName = DEPARTMENT_MAPPINGS[department as keyof typeof DEPARTMENT_MAPPINGS] || department
         searchConfigurations.push({
           name: `AI-Department: ${department} for ${project.name}`,
           params: {
@@ -341,8 +380,9 @@ export async function GET(request: Request) {
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
             postedTo: today,
-            deptname: department,
-            ptype: 'o' // solicitations only
+            organizationName: fullDeptName,
+            ptype: 'o', // solicitations only
+            offset: 0
           },
           metadata: {
             projectId: project.id,
@@ -355,6 +395,7 @@ export async function GET(request: Request) {
 
       // Set-aside specific searches
       aiCategories.set_asides?.slice(0, 2).forEach((setAside: string) => {
+        const validSetAside = VALID_SET_ASIDES[setAside as keyof typeof VALID_SET_ASIDES] || setAside
         searchConfigurations.push({
           name: `AI-SetAside: ${setAside} for ${project.name}`,
           params: {
@@ -362,8 +403,9 @@ export async function GET(request: Request) {
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
             postedTo: today,
-            typeOfSetAside: setAside,
-            ptype: 'o'
+            typeOfSetAside: validSetAside,
+            ptype: 'o',
+            offset: 0
           },
           metadata: {
             projectId: project.id,
@@ -383,8 +425,9 @@ export async function GET(request: Request) {
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
             postedTo: today,
-            naics: naics,
-            ptype: 'o'
+            ncode: naics, // Using ncode parameter
+            ptype: 'o',
+            offset: 0
           },
           metadata: {
             projectId: project.id,
@@ -395,7 +438,7 @@ export async function GET(request: Request) {
         })
       })
 
-      // Keyword searches
+      // Keyword searches using title parameter
       aiCategories.contract_keywords?.slice(0, 2).forEach((keyword: string) => {
         searchConfigurations.push({
           name: `AI-Keyword: ${keyword} for ${project.name}`,
@@ -404,8 +447,9 @@ export async function GET(request: Request) {
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
             postedTo: today,
-            keyword: keyword,
-            ptype: 'o'
+            title: keyword, // Using title parameter for keyword search
+            ptype: 'o',
+            offset: 0
           },
           metadata: {
             projectId: project.id,
@@ -423,6 +467,7 @@ export async function GET(request: Request) {
       
       // Department-based searches
       Array.from(smartDepartments).slice(0, 3).forEach(department => {
+        const fullDeptName = DEPARTMENT_MAPPINGS[department as keyof typeof DEPARTMENT_MAPPINGS] || department
         searchConfigurations.push({
           name: `Fallback-Department: ${department}`,
           params: {
@@ -430,8 +475,9 @@ export async function GET(request: Request) {
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
             postedTo: today,
-            deptname: department,
-            ptype: 'o'
+            organizationName: fullDeptName,
+            ptype: 'o',
+            offset: 0
           },
           metadata: {
             strategy: 'fallback-department',
@@ -443,6 +489,7 @@ export async function GET(request: Request) {
 
       // Set-aside searches
       Array.from(smartSetAsides).slice(0, 2).forEach(setAside => {
+        const validSetAside = VALID_SET_ASIDES[setAside as keyof typeof VALID_SET_ASIDES] || setAside
         searchConfigurations.push({
           name: `Fallback-SetAside: ${setAside}`,
           params: {
@@ -450,8 +497,9 @@ export async function GET(request: Request) {
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
             postedTo: today,
-            typeOfSetAside: setAside,
-            ptype: 'o'
+            typeOfSetAside: validSetAside,
+            ptype: 'o',
+            offset: 0
           },
           metadata: {
             strategy: 'fallback-set-aside',
@@ -470,8 +518,9 @@ export async function GET(request: Request) {
             api_key: SAM_GOV_API_KEY,
             postedFrom: fromDate,
             postedTo: today,
-            keyword: keyword,
-            ptype: 'o'
+            title: keyword,
+            ptype: 'o',
+            offset: 0
           },
           metadata: {
             strategy: 'fallback-keyword',
@@ -482,7 +531,7 @@ export async function GET(request: Request) {
       })
     }
 
-    // Emergency fallback
+    // Emergency fallback - broad search
     if (searchConfigurations.length === 0) {
       searchConfigurations.push({
         name: "Emergency Contract Search",
@@ -491,7 +540,8 @@ export async function GET(request: Request) {
           api_key: SAM_GOV_API_KEY,
           postedFrom: fromDate,
           postedTo: today,
-          ptype: 'o'
+          ptype: 'o',
+          offset: 0
         },
         metadata: {
           strategy: 'emergency-fallback',
@@ -509,24 +559,33 @@ export async function GET(request: Request) {
       error?: string
       strategy?: string
       projectId?: string
+      url?: string
     }> = []
 
-    // Execute searches
+    // Execute searches with proper URL construction
     for (const config of searchConfigurations) {
       try {
         console.log(`Executing: ${config.name}`)
         
-        // Build query parameters
+        // Build query parameters properly
         const queryParams = new URLSearchParams()
         Object.entries(config.params).forEach(([key, value]) => {
-          if (value !== undefined && value !== '') {
+          if (value !== undefined && value !== '' && value !== null) {
             queryParams.append(key, value.toString())
           }
         })
         
-        const response = await fetch(
-          `https://api.sam.gov/prod/opportunities/v2/search?${queryParams.toString()}`
-        )
+        // Use the correct v2 endpoint URL
+        const apiUrl = `https://api.sam.gov/prod/opportunities/v2/search?${queryParams.toString()}`
+        console.log(`API URL: ${apiUrl}`)
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'SAM-Opportunity-Sync/1.0'
+          }
+        })
 
         if (response.ok) {
           const data = await response.json()
@@ -538,7 +597,8 @@ export async function GET(request: Request) {
             name: config.name,
             count: opportunities.length,
             strategy: config.metadata?.strategy,
-            projectId: config.metadata?.projectId
+            projectId: config.metadata?.projectId,
+            url: apiUrl.replace(SAM_GOV_API_KEY, '[REDACTED]')
           })
 
           if (opportunities.length > 0) {
@@ -556,11 +616,19 @@ export async function GET(request: Request) {
             console.log(`Added ${newOpportunities.length} new unique opportunities`)
           }
         } else {
-          console.error(`SAM.gov API error for ${config.name}:`, response.status, response.statusText)
+          const errorText = await response.text()
+          console.error(`SAM.gov API error for ${config.name}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText,
+            url: apiUrl.replace(SAM_GOV_API_KEY, '[REDACTED]')
+          })
+          
           searchResults.push({
             name: config.name,
-            error: `API Error: ${response.status}`,
-            strategy: config.metadata?.strategy
+            error: `API Error: ${response.status} - ${errorText.substring(0, 200)}`,
+            strategy: config.metadata?.strategy,
+            url: apiUrl.replace(SAM_GOV_API_KEY, '[REDACTED]')
           })
         }
       } catch (error) {
@@ -571,6 +639,9 @@ export async function GET(request: Request) {
           strategy: config.metadata?.strategy
         })
       }
+
+      // Add delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 250))
     }
 
     console.log(`Total unique SAM.gov opportunities found: ${allOpportunities.length}`)
@@ -610,7 +681,7 @@ export async function GET(request: Request) {
         industry_focus: opp.naicsCode ? [opp.naicsCode] : ['general'],
         minority_business: opp.typeOfSetAside?.includes('8A') || false,
         woman_owned_business: opp.typeOfSetAside?.includes('WOSB') || false,
-        veteran_owned_business: opp.typeOfSetAside?.includes('VOSB') || false,
+        veteran_owned_business: opp.typeOfSetAside?.includes('VSA') || opp.typeOfSetAside?.includes('SDVOSBC') || false,
         small_business_only: opp.typeOfSetAside?.includes('SBA') || false,
         cfda_number: null,
         source_url: `https://sam.gov/opp/${opp.noticeId}/view`,
@@ -673,7 +744,7 @@ export async function GET(request: Request) {
         reasoning: strategy.aiCategories.reasoning
       })),
       search_results: searchResults,
-      sample_contracts: inserted?.slice(0, 5).map(contract => ({
+      sample_contracts: inserted?.slice(0, 5).map((contract: any) => ({
         title: contract.title,
         amount: contract.amount_min,
         sponsor: contract.sponsor
