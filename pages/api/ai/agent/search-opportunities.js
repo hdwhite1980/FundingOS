@@ -26,12 +26,6 @@ const SEARCH_SOURCES = {
     return response.json()
   },
   
-  // DuckDuckGo Instant Answer API (free, but limited)
-  duckduckgo: async (query) => {
-    const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`
-    const response = await fetch(url)
-    return response.json()
-  }
 }
 
 // Common grant and funding websites to search

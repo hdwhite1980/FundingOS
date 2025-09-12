@@ -12,7 +12,7 @@ import { StatCard } from './ui/StatCard'
 import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './CreateProjectModal'
-import AIAgentInterface from './AIAgentInterface'
+import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
 import { directUserServices } from '../lib/supabase'
 import { 
   Plus, 
@@ -289,7 +289,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     const startTime = Date.now()
     
     try {
-      const toastId = toast.loading('Connecting to Grants.gov...', {
+      const toastId = toast.loading('Syncing from multiple funding sources...', {
         style: {
           background: '#1e293b',
           color: '#f8fafc',
@@ -297,15 +297,43 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         },
       })
       
-      const response = await fetch('/api/sync/grants-gov')
-      const result = await response.json()
+      // Sync from all available sources
+      const syncEndpoints = [
+        '/api/sync/grants-gov',
+        '/api/sync/candid',
+        '/api/sync/nsf',
+        '/api/sync/nih',
+        '/api/sync/sam-gov'
+      ]
       
-      if (result.success) {
-        const syncTime = Math.round((Date.now() - startTime) / 1000)
-        setLastSyncTime(new Date())
-        
-        toast.dismiss(toastId)
-        toast.success(`Sync Complete! ${result.imported} new opportunities imported in ${syncTime}s`, {
+      let totalImported = 0
+      let successfulSyncs = 0
+      
+      // Execute all syncs in parallel
+      const syncPromises = syncEndpoints.map(async (endpoint) => {
+        try {
+          const response = await fetch(endpoint)
+          const result = await response.json()
+          if (result.success && result.imported) {
+            totalImported += result.imported
+            successfulSyncs++
+            return { endpoint, imported: result.imported }
+          }
+          return { endpoint, imported: 0 }
+        } catch (error) {
+          console.error(`Sync error for ${endpoint}:`, error)
+          return { endpoint, imported: 0, error: error.message }
+        }
+      })
+      
+      const results = await Promise.allSettled(syncPromises)
+      const syncTime = Math.round((Date.now() - startTime) / 1000)
+      setLastSyncTime(new Date())
+      
+      toast.dismiss(toastId)
+      
+      if (successfulSyncs > 0) {
+        toast.success(`Sync Complete! ${totalImported} new opportunities from ${successfulSyncs} sources in ${syncTime}s`, {
           duration: 6000,
           style: {
             background: '#f0fdf4',
@@ -313,18 +341,17 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             border: '1px solid #bbf7d0',
           },
         })
-        
-        // Reload opportunities data
-        const newOpportunities = await directUserServices.opportunities.getOpportunities({
-          organizationType: userProfile.organization_type
-        })
-        setOpportunities(newOpportunities)
-        await loadEnhancedStats(projects, newOpportunities)
-        
       } else {
-        toast.dismiss(toastId)
-        toast.error('Sync failed: ' + (result.error || 'Unknown error'))
+        toast.error('Sync completed but no new opportunities found')
       }
+      
+      // Reload opportunities data
+      const newOpportunities = await directUserServices.opportunities.getOpportunities({
+        organizationType: userProfile.organization_type
+      })
+      setOpportunities(newOpportunities)
+      await loadEnhancedStats(projects, newOpportunities)
+      
     } catch (error) {
       console.error('Sync error:', error)
       toast.error('Connection failed')
@@ -1058,7 +1085,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         )}
 
         {activeTab === 'ai-agent' && (
-          <AIAgentInterface 
+          <UnifiedAIAgentInterface 
             user={user} 
             userProfile={userProfile}
             projects={projects}

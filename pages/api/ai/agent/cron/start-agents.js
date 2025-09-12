@@ -1,5 +1,5 @@
 // pages/api/admin/start-agents.js
-import { agentManager } from '../../../../../lib/ai-agent/manager'
+import { unifiedAgentManager } from '../../../../../lib/ai-agent/UnifiedManager'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,20 +7,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('🚀 Starting AI Agent Manager...')
+    console.log('🚀 Starting Unified AI Agent Manager...')
     
-    // Start the agent manager
-    await agentManager.startAllAgents()
+    // Start the unified agent manager
+    await unifiedAgentManager.startAllAgents()
     
-    const status = await agentManager.getManagerStatus()
+    const status = await unifiedAgentManager.getSystemStatus()
     
     res.json({ 
       success: true, 
-      message: 'AI Agent Manager started successfully',
+      message: 'Unified AI Agent Manager started successfully',
       status: status
     })
   } catch (error) {
-    console.error('Error starting agent manager:', error)
+    console.error('Error starting unified agent manager:', error)
     res.status(500).json({ 
       success: false,
       error: error.message 

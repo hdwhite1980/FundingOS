@@ -1,4 +1,4 @@
-// components/AIAgentInterface.js
+// components/UnifiedAIAgentInterface.js
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -16,52 +16,52 @@ import {
   RotateCcw,
   Send,
   Lightbulb,
-  AlertTriangle
+  AlertTriangle,
+  Activity,
+  BarChart3,
+  Search,
+  FileText,
+  Users,
+  DollarSign,
+  Calendar
 } from 'lucide-react'
 
-export default function AIAgentInterface({ user, userProfile, projects, opportunities }) {
+export default function UnifiedAIAgentInterface({ user, userProfile, projects, opportunities }) {
   const [agent, setAgent] = useState(null)
   const [agentStatus, setAgentStatus] = useState('initializing')
-  const [currentGoals, setCurrentGoals] = useState([])
+  const [currentStrategy, setCurrentStrategy] = useState(null)
+  const [activeGoals, setActiveGoals] = useState([])
   const [recentDecisions, setRecentDecisions] = useState([])
   const [chatMessages, setChatMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
-  const [agentThoughts, setAgentThoughts] = useState(null)
+  const [performanceMetrics, setPerformanceMetrics] = useState({})
   const [loading, setLoading] = useState(true)
   const [isTyping, setIsTyping] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
-  const [lastSearchResults, setLastSearchResults] = useState(null)
+  const [activeTab, setActiveTab] = useState('overview')
   const chatEndRef = useRef(null)
 
   useEffect(() => {
-    initializeAgent()
+    initializeUnifiedAgent()
     
     // Set up periodic updates
-    const interval = setInterval(() => {
-      loadAgentState()
-    }, 60000) // Every minute
+    const updateInterval = setInterval(() => {
+      refreshAgentData()
+    }, 30000) // Every 30 seconds
 
-    // Set up periodic progress updates
-    const progressInterval = setInterval(() => {
-      updateGoalProgress()
-    }, 5 * 60000) // Every 5 minutes
-
-    return () => {
-      clearInterval(interval)
-      clearInterval(progressInterval)
-    }
+    return () => clearInterval(updateInterval)
   }, [user.id])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
 
-  const initializeAgent = async () => {
+  const initializeUnifiedAgent = async () => {
     try {
       setLoading(true)
-      console.log(`🤖 Initializing AI Funding Agent for user ${user.id}`)
+      console.log(`🤖 Initializing Unified AI Agent for user ${user.id}`)
       
-      const response = await fetch('/api/ai/agent/initialize', {
+      const response = await fetch('/api/ai/unified-agent/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -76,23 +76,31 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
         const agentData = await response.json()
         setAgent(agentData)
         setAgentStatus('active')
+        setCurrentStrategy(agentData.strategy)
         
-        // Load real agent state from database
-        await loadAgentState()
+        // Load comprehensive agent data
+        await refreshAgentData()
         
-        // Only show welcome message after successful initialization
+        // Welcome message
         setChatMessages([{
           type: 'agent',
-          content: `Hello ${userProfile?.full_name || 'there'}! I'm your AI Funding Agent and I'm now actively working for you. How can I help you optimize your funding strategy?`,
-          timestamp: new Date()
+          content: `Hello ${userProfile?.full_name || 'there'}! I'm your Unified AI Funding Agent. I'm now managing your complete funding ecosystem - from opportunity discovery to application generation to deadline monitoring. How can I help optimize your funding strategy today?`,
+          timestamp: new Date(),
+          capabilities: [
+            'Autonomous opportunity discovery',
+            'Strategic funding planning',
+            'Automated application generation', 
+            'Real-time deadline monitoring',
+            'Performance optimization'
+          ]
         }])
         
       } else {
-        throw new Error('Failed to initialize agent')
+        throw new Error('Failed to initialize unified agent')
       }
       
     } catch (error) {
-      console.error('Error initializing agent:', error)
+      console.error('Error initializing unified agent:', error)
       setAgentStatus('error')
       
       setChatMessages([{
@@ -105,59 +113,38 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
     }
   }
 
-  const loadAgentState = async () => {
+  const refreshAgentData = async () => {
     try {
-      const [goalsRes, decisionsRes, thoughtsRes] = await Promise.allSettled([
-        fetch(`/api/ai/agent/goals?userId=${user.id}`),
-        fetch(`/api/ai/agent/decisions?userId=${user.id}&limit=5`),
-        fetch(`/api/ai/agent/thoughts?userId=${user.id}&latest=true`)
+      const [statusRes, goalsRes, decisionsRes, metricsRes] = await Promise.allSettled([
+        fetch(`/api/ai/unified-agent/status?userId=${user.id}`),
+        fetch(`/api/ai/unified-agent/goals?userId=${user.id}`),
+        fetch(`/api/ai/unified-agent/decisions?userId=${user.id}&limit=10`),
+        fetch(`/api/ai/unified-agent/metrics?userId=${user.id}`)
       ])
 
-      // Only update if API calls succeeded and returned real data
+      if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
+        const status = await statusRes.value.json()
+        setAgent(prevAgent => ({ ...prevAgent, ...status }))
+        if (status.strategy) setCurrentStrategy(status.strategy)
+      }
+      
       if (goalsRes.status === 'fulfilled' && goalsRes.value.ok) {
         const goals = await goalsRes.value.json()
-        if (goals && Array.isArray(goals) && goals.length > 0) {
-          setCurrentGoals(goals)
-          
-          // Update goal progress in the background
-          updateGoalProgress()
-        }
+        setActiveGoals(goals)
       }
-      
+
       if (decisionsRes.status === 'fulfilled' && decisionsRes.value.ok) {
         const decisions = await decisionsRes.value.json()
-        if (decisions && Array.isArray(decisions) && decisions.length > 0) {
-          setRecentDecisions(decisions)
-        }
+        setRecentDecisions(decisions)
       }
-      
-      if (thoughtsRes.status === 'fulfilled' && thoughtsRes.value.ok) {
-        const thoughts = await thoughtsRes.value.json()
-        if (thoughts && typeof thoughts === 'object') {
-          setAgentThoughts(thoughts)
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error loading agent state:', error)
-    }
-  }
 
-  const updateGoalProgress = async () => {
-    try {
-      const response = await fetch('/api/ai/agent/update-progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id })
-      })
-      
-      if (response.ok) {
-        const updatedGoals = await response.json()
-        setCurrentGoals(updatedGoals)
-        console.log('Goal progress updated successfully')
+      if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
+        const metrics = await metricsRes.value.json()
+        setPerformanceMetrics(metrics)
       }
+
     } catch (error) {
-      console.error('Error updating goal progress:', error)
+      console.error('Error refreshing agent data:', error)
     }
   }
 
@@ -177,7 +164,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
     }
 
     try {
-      const response = await fetch('/api/ai/agent/chat', {
+      const response = await fetch('/api/ai/unified-agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -198,18 +185,11 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
         setChatMessages(prev => [...prev, agentMessage])
         
         // Handle web search results if returned
-        if (data.webSearchResults && data.searchPerformed) {
-          setLastSearchResults({
-            results: data.webSearchResults,
-            timestamp: new Date(),
-            query: messageContent
-          })
-          
-          // Add a visual indicator for discovered opportunities
+        if (data.webSearchResults && data.webSearchPerformed) {
           setTimeout(() => {
             const searchNotification = {
               type: 'system',
-              content: `🔍 Discovered ${data.webSearchResults.length} new opportunities from web search`,
+              content: `🔍 Discovered ${data.webSearchResults.opportunitiesFound || 0} new opportunities from web search`,
               timestamp: new Date(),
               isSearchResult: true
             }
@@ -217,11 +197,9 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
           }, 1000)
         }
         
-        // Reload agent state in case the conversation created new decisions
-        setTimeout(() => loadAgentState(), 1000)
+        // Reload agent state
+        setTimeout(() => refreshAgentData(), 1000)
         
-        // Update goal progress after agent interaction (might have triggered new activity)
-        setTimeout(() => updateGoalProgress(), 2000)
       } else {
         throw new Error('Failed to get agent response')
       }
@@ -243,7 +221,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
     const newStatus = agentStatus === 'active' ? 'paused' : 'active'
     
     try {
-      const response = await fetch('/api/ai/agent/toggle', {
+      const response = await fetch('/api/ai/unified-agent/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, status: newStatus })
@@ -252,11 +230,10 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
       if (response.ok) {
         setAgentStatus(newStatus)
         
-        // Add status change message to chat
         const statusMessage = {
           type: 'agent',
           content: newStatus === 'active' 
-            ? "I'm back online and ready to help with your funding strategy!" 
+            ? "I'm back online and ready to help with your unified funding strategy!" 
             : "I'm now paused. I'll stop monitoring for new opportunities until you reactivate me.",
           timestamp: new Date()
         }
@@ -269,7 +246,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
 
   const respondToDecision = async (decisionId, response) => {
     try {
-      await fetch('/api/ai/agent/decision-feedback', {
+      await fetch('/api/ai/unified-agent/decision-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -279,10 +256,8 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
         })
       })
       
-      // Remove the decision from the list after responding
       setRecentDecisions(prev => prev.filter(d => d.id !== decisionId))
       
-      // Add confirmation message to chat
       const confirmationMessage = {
         type: 'agent',
         content: response === 'approve' 
@@ -292,8 +267,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
       }
       setChatMessages(prev => [...prev, confirmationMessage])
       
-      // Reload agent state to get updated data
-      loadAgentState()
+      refreshAgentData()
     } catch (error) {
       console.error('Error responding to decision:', error)
     }
@@ -317,7 +291,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing your AI Funding Agent...</p>
+          <p className="text-gray-600">Initializing your Unified AI Funding Agent...</p>
         </div>
       </div>
     )
@@ -331,7 +305,7 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-xl p-6 text-white ${
           agentStatus === 'active' 
-            ? 'bg-gradient-to-r from-green-600 to-blue-600' 
+            ? 'bg-gradient-to-r from-emerald-600 to-blue-600' 
             : agentStatus === 'error'
             ? 'bg-gradient-to-r from-red-600 to-orange-600'
             : 'bg-gradient-to-r from-gray-600 to-gray-700'
@@ -341,10 +315,10 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
           <div className="flex items-center">
             <Brain className="w-8 h-8 mr-3" />
             <div>
-              <h2 className="text-2xl font-bold">AI Funding Agent</h2>
+              <h2 className="text-2xl font-bold">Unified AI Funding Agent</h2>
               <p className="text-blue-100">
                 {agentStatus === 'active' 
-                  ? `Monitoring ${opportunities?.length || 0} opportunities • ${currentGoals.length} active goals` 
+                  ? `Managing ${opportunities?.length || 0} opportunities • ${activeGoals.length} active goals • ${currentStrategy || 'Developing strategy'}` 
                   : agentStatus === 'error'
                   ? 'Agent encountered an issue'
                   : 'Agent paused'
@@ -379,98 +353,85 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Agent Goals and Status */}
+        {/* Agent Goals and Metrics */}
         <div className="space-y-6">
           
           {/* Current Goals */}
-          <div className="card">
-            <div className="card-header">
+          <div className="card bg-white border rounded-lg">
+            <div className="p-4 border-b">
               <h3 className="text-lg font-semibold flex items-center">
                 <Target className="w-5 h-5 mr-2" />
-                Agent Goals
+                Active Goals
               </h3>
             </div>
-            <div className="card-body space-y-3">
-              {currentGoals.length > 0 ? currentGoals.map(goal => (
-                <AgentGoalCard key={goal.id} goal={goal} />
+            <div className="p-4 space-y-3">
+              {activeGoals.length > 0 ? activeGoals.map((goal, index) => (
+                <UnifiedGoalCard key={goal.id || index} goal={goal} />
               )) : (
                 <p className="text-gray-500 text-center py-4">
-                  No active goals set. Agent will establish goals after analyzing your profile.
+                  Agent is analyzing your situation to set strategic goals.
                 </p>
               )}
             </div>
           </div>
 
-          {/* Recent Decisions */}
-          <div className="card">
-            <div className="card-header">
+          {/* Performance Metrics */}
+          <div className="card bg-white border rounded-lg">
+            <div className="p-4 border-b">
               <h3 className="text-lg font-semibold flex items-center">
-                <Lightbulb className="w-5 h-5 mr-2" />
-                Agent Decisions
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Performance
               </h3>
             </div>
-            <div className="card-body space-y-3">
-              {recentDecisions.length > 0 ? recentDecisions.map(decision => (
-                <AgentDecisionCard 
+            <div className="p-4 space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Opportunities Discovered</span>
+                <span className="font-semibold">{performanceMetrics.opportunitiesDiscovered || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Applications Generated</span>
+                <span className="font-semibold">{performanceMetrics.applicationsGenerated || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Success Rate</span>
+                <span className="font-semibold">{Math.round((performanceMetrics.successRate || 0) * 100)}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Decisions */}
+          <div className="card bg-white border rounded-lg">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-semibold flex items-center">
+                <Lightbulb className="w-5 h-5 mr-2" />
+                Pending Decisions
+              </h3>
+            </div>
+            <div className="p-4 space-y-3">
+              {recentDecisions.length > 0 ? recentDecisions.slice(0,3).map(decision => (
+                <UnifiedDecisionCard 
                   key={decision.id} 
                   decision={decision}
                   onRespond={respondToDecision}
                 />
               )) : (
                 <p className="text-gray-500 text-center py-4">
-                  No recent decisions to review.
+                  No pending decisions to review.
                 </p>
               )}
             </div>
           </div>
-
-          {/* Agent Thoughts Display - Only show if real data exists */}
-          {agentThoughts && (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <Brain className="w-5 h-5 mr-2" />
-                  Agent Insights
-                </h3>
-              </div>
-              <div className="card-body">
-                <div className="space-y-2 text-sm">
-                  {agentThoughts.next_focus && (
-                    <>
-                      <p className="font-medium text-gray-900">Current Focus:</p>
-                      <p className="text-gray-700">{agentThoughts.next_focus}</p>
-                    </>
-                  )}
-                  
-                  {agentThoughts.insights && agentThoughts.insights.length > 0 && (
-                    <>
-                      <p className="font-medium text-gray-900 mt-3">Key Insights:</p>
-                      <ul className="text-gray-700 space-y-1">
-                        {agentThoughts.insights.slice(0, 2).map((insight, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="text-blue-500 mr-2">•</span>
-                            {insight}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
         </div>
 
         {/* Chat Interface */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Chat Interface */}
-          <div className="card">
-            <div className="card-header">
+          <div className="card bg-white border rounded-lg">
+            <div className="p-4 border-b">
               <h3 className="text-lg font-semibold flex items-center">
                 <MessageSquare className="w-5 h-5 mr-2" />
-                Chat with Your Agent
+                Chat with Your Unified Agent
                 {isSearching && (
                   <span className="ml-2 text-sm text-emerald-600 flex items-center">
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-600 mr-2"></div>
@@ -482,9 +443,9 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                 )}
               </h3>
             </div>
-            <div className="card-body">
+            <div className="p-4">
               
-              {/* Enhanced Chat Messages */}
+              {/* Chat Messages */}
               <div className="h-64 overflow-y-auto mb-4 space-y-3 p-3 bg-gray-50 rounded-lg">
                 <AnimatePresence>
                   {chatMessages.map((message, index) => (
@@ -501,7 +462,6 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                           ? 'bg-blue-50 border border-blue-200 text-blue-800'
                           : 'bg-white border shadow-sm'
                       }`}>
-                        {/* Enhanced message content rendering with proper formatting */}
                         <div className={`text-sm whitespace-pre-line ${
                           message.type === 'user' 
                             ? 'text-white' 
@@ -511,6 +471,16 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                         }`}>
                           {message.content}
                         </div>
+                        {message.capabilities && (
+                          <div className="mt-2 text-xs text-emerald-100">
+                            <strong>Capabilities:</strong>
+                            <ul className="list-disc list-inside mt-1">
+                              {message.capabilities.map((cap, i) => (
+                                <li key={i}>{cap}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                         <p className={`text-xs mt-2 ${
                           message.type === 'user' 
                             ? 'text-emerald-100' 
@@ -558,14 +528,14 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                  placeholder="Ask your agent anything... (try 'analyze opportunities')"
-                  className="flex-1 form-input"
+                  placeholder="Ask your unified agent anything... (try 'analyze my funding strategy')"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={agentStatus !== 'active' || isTyping}
                 />
                 <button
                   onClick={sendMessage}
                   disabled={agentStatus !== 'active' || !newMessage.trim() || isTyping}
-                  className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -585,10 +555,10 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
               {chatMessages.length === 1 && agentStatus === 'active' && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button 
-                    onClick={() => setNewMessage('Analyze my opportunities')}
+                    onClick={() => setNewMessage('Analyze my complete funding strategy')}
                     className="text-xs px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition-colors"
                   >
-                    Analyze opportunities
+                    Analyze strategy
                   </button>
                   <button 
                     onClick={() => setNewMessage('Search online for more opportunities')}
@@ -603,10 +573,10 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
                     Check deadlines
                   </button>
                   <button 
-                    onClick={() => setNewMessage('Show me my best matches')}
+                    onClick={() => setNewMessage('Generate application drafts')}
                     className="text-xs px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition-colors"
                   >
-                    Best matches
+                    Generate applications
                   </button>
                 </div>
               )}
@@ -619,13 +589,14 @@ export default function AIAgentInterface({ user, userProfile, projects, opportun
   )
 }
 
-// Enhanced Goal card component with better visual design
-function AgentGoalCard({ goal }) {
+// Goal card component
+function UnifiedGoalCard({ goal }) {
   const getGoalIcon = (type) => {
     switch (type) {
-      case 'opportunity_discovery': return <Zap className="w-4 h-4" />
-      case 'deadline_management': return <Clock className="w-4 h-4" />
-      case 'application_tracking': return <TrendingUp className="w-4 h-4" />
+      case 'funding_acquisition': return <DollarSign className="w-4 h-4" />
+      case 'opportunity_discovery': return <Search className="w-4 h-4" />
+      case 'deadline_management': return <Calendar className="w-4 h-4" />
+      case 'application_tracking': return <FileText className="w-4 h-4" />
       default: return <Target className="w-4 h-4" />
     }
   }
@@ -657,14 +628,13 @@ function AgentGoalCard({ goal }) {
             <div 
               className={`h-2 rounded-full transition-all duration-300 ${
                 goal.progress >= 80 ? 'bg-green-600' : 
-                goal.progress >= 50 ? 'bg-green-600' : 'bg-yellow-600'
+                goal.progress >= 50 ? 'bg-yellow-600' : 'bg-red-600'
               }`}
               style={{ width: `${goal.progress}%` }}
             ></div>
           </div>
           <div className="text-xs text-gray-500">
-            {goal.progress}% complete 
-            <span className="text-green-500 ml-1">• Live tracking</span>
+            {goal.progress}% complete
           </div>
         </>
       )}
@@ -672,13 +642,16 @@ function AgentGoalCard({ goal }) {
   )
 }
 
-// Enhanced Decision card component with better visual hierarchy
-function AgentDecisionCard({ decision, onRespond }) {
+// Decision card component
+function UnifiedDecisionCard({ decision, onRespond }) {
   const getPriorityBadge = (priority) => {
     switch (priority) {
-      case 'high': return <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">High Priority</span>
-      case 'medium': return <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Medium Priority</span>
-      case 'low': return <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Low Priority</span>
+      case 'high': case 10: case 9: case 8: 
+        return <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">High Priority</span>
+      case 'medium': case 7: case 6: case 5:
+        return <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Medium Priority</span>
+      case 'low': case 4: case 3: case 2: case 1:
+        return <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Low Priority</span>
       default: return null
     }
   }
@@ -701,24 +674,24 @@ function AgentDecisionCard({ decision, onRespond }) {
           <div className="flex-1 bg-gray-200 rounded-full h-1.5">
             <div 
               className="bg-green-600 h-1.5 rounded-full" 
-              style={{ width: `${decision.confidence}%` }}
+              style={{ width: `${decision.confidence * 100}%` }}
             ></div>
           </div>
-          <span className="text-xs text-green-600">{decision.confidence}% confidence</span>
+          <span className="text-xs text-green-600">{Math.round(decision.confidence * 100)}% confidence</span>
         </div>
       )}
       
       <div className="flex space-x-2">
         <button
           onClick={() => onRespond(decision.id, 'approve')}
-          className="btn-sm bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
+          className="px-3 py-1 text-sm bg-green-100 text-green-800 hover:bg-green-200 rounded transition-colors flex items-center"
         >
           <CheckCircle className="w-3 h-3 mr-1" />
           Approve
         </button>
         <button
           onClick={() => onRespond(decision.id, 'decline')}
-          className="btn-sm bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+          className="px-3 py-1 text-sm bg-gray-100 text-gray-800 hover:bg-gray-200 rounded transition-colors"
         >
           Decline
         </button>
