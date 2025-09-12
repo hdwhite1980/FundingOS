@@ -98,7 +98,7 @@ async function analyzeDocument(documentText: string, documentType: string, conte
     metadata: {
       documentType,
       analyzedAt: new Date().toISOString(),
-      tokensUsed: response.usage?.total_tokens || 0,
+      tokensUsed: (response.usage as any)?.total_tokens || (response.usage as any)?.input_tokens + (response.usage as any)?.output_tokens || 0,
       confidence: calculateConfidence(analysis),
       processingTime: Date.now(),
       provider: response.provider,
