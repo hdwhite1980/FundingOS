@@ -1097,10 +1097,14 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
 
         {activeTab === 'app-assistant' && (
           <ApplicationAssistant 
-            user={user}
+            isOpen={true}
+            onClose={() => setActiveTab('overview')}
             userProfile={userProfile}
-            projects={projects}
-            selectedOpportunity={opportunities?.[0]} // Use first opportunity as example
+            projectData={projects[0]} // Use first project as default
+            applicationForm={{}} // Empty form for now
+            documentAnalyses={[]}
+            onFormUpdate={(updates) => console.log('Form updates:', updates)}
+            onSuggestionApply={(suggestion) => console.log('Suggestion applied:', suggestion)}
           />
         )}
 

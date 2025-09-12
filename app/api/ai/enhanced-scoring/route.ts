@@ -19,35 +19,70 @@ export async function POST(request: Request) {
       userProfileKeys: userProfile ? Object.keys(userProfile) : 'null'
     })
 
-    if (!opportunity || !project || !userProfile) {
-      console.error('Missing required parameters:', {
-        opportunity: !!opportunity,
-        project: !!project,
+    // More specific validation to handle empty objects
+    const isValidOpportunity = opportunity && typeof opportunity === 'object' && Object.keys(opportunity).length > 0
+    const isValidProject = project && typeof project === 'object' && Object.keys(project).length > 0
+
+    if (!isValidOpportunity || !isValidProject) {
+      console.error('Missing or empty required parameters:', {
+        opportunity: {
+          exists: !!opportunity,
+          isObject: typeof opportunity === 'object',
+          hasKeys: opportunity ? Object.keys(opportunity).length : 0
+        },
+        project: {
+          exists: !!project,
+          isObject: typeof project === 'object', 
+          hasKeys: project ? Object.keys(project).length : 0
+        },
         userProfile: !!userProfile
       })
       return NextResponse.json(
-        { error: 'Missing required parameters: opportunity, project, userProfile' },
+        { 
+          error: 'Missing required parameters: opportunity and project must be non-empty objects. userProfile is optional but recommended for better accuracy.',
+          details: {
+            opportunityValid: isValidOpportunity,
+            projectValid: isValidProject,
+            received: {
+              opportunityKeys: opportunity ? Object.keys(opportunity) : 'null',
+              projectKeys: project ? Object.keys(project) : 'null'
+            }
+          }
+        },
         { status: 400 }
       )
     }
+
+    // Create a default userProfile if not provided
+    const defaultUserProfile = {
+      organization_type: 'unknown',
+      organization_name: 'Unknown Organization',
+      user_role: 'company',
+      location: 'Unknown',
+      full_name: 'Unknown User'
+    }
+
+    const finalUserProfile = userProfile && Object.keys(userProfile).length > 0 ? userProfile : defaultUserProfile
+
+    console.log('Using userProfile:', finalUserProfile.organization_type, finalUserProfile.organization_name)
 
     let result;
     switch (action) {
       case 'fast-score':
         // NEW: Fast rule-based scoring only
-        result = await fastScoreOnly(opportunity, project, userProfile)
+        result = await fastScoreOnly(opportunity, project, finalUserProfile)
         break
       case 'enhanced-score':
         // EXISTING: Full hybrid scoring (rule + AI)
-        result = await enhancedScoring(opportunity, project, userProfile)
+        result = await enhancedScoring(opportunity, project, finalUserProfile)
         break
       case 'pre-score':
         // EXISTING: Rule-based only
-        result = await preScoreAnalysis(opportunity, project, userProfile)
+        result = await preScoreAnalysis(opportunity, project, finalUserProfile)
         break
       case 'ai-analysis':
         // EXISTING: AI analysis only
-        result = await aiAnalysis(opportunity, project, userProfile)
+        result = await aiAnalysis(opportunity, project, finalUserProfile)
         break
       default:
         return NextResponse.json(
