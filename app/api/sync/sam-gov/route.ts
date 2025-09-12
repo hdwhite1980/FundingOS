@@ -83,6 +83,35 @@ interface SearchConfiguration {
 
 const SAM_GOV_API_KEY = process.env.SAM_GOV_API_KEY
 
+// Helper function to update daily usage tracking
+async function updateDailyUsage(supabase: any, dateStr: string) {
+  try {
+    const { data, error } = await supabase
+      .from('sam_gov_usage')
+      .upsert({
+        date: dateStr,
+        request_count: 1
+      }, {
+        onConflict: 'date',
+        ignoreDuplicates: false
+      })
+      .select()
+
+    if (error) {
+      // If upsert failed, try increment
+      const { error: incrementError } = await supabase.rpc('increment_sam_usage', {
+        usage_date: dateStr
+      })
+      
+      if (incrementError) {
+        console.error('Error updating SAM.gov usage:', incrementError)
+      }
+    }
+  } catch (error) {
+    console.error('Error in updateDailyUsage:', error)
+  }
+}
+
 // Map common department names to their full official names
 const DEPARTMENT_MAPPINGS = {
   'DOD': 'DEPARTMENT OF DEFENSE',
@@ -289,7 +318,13 @@ function getContractCategories(userProfile: any, userProjects: any[] = []) {
 
 export async function GET(request: Request) {
   try {
-    console.log('Starting AI-enhanced SAM.gov sync...')
+    // Parse request body for automated sync parameters
+    const url = new URL(request.url)
+    const automated = url.searchParams.get('automated') === 'true'
+    const maxSearchesParam = url.searchParams.get('maxSearches')
+    const requestedMaxSearches = maxSearchesParam ? parseInt(maxSearchesParam) : null
+
+    console.log(`Starting AI-enhanced SAM.gov sync... ${automated ? '(Automated)' : '(Manual)'}`)
     
     if (!SAM_GOV_API_KEY) {
       throw new Error('SAM_GOV_API_KEY environment variable is required')
@@ -552,10 +587,49 @@ export async function GET(request: Request) {
       })
     }
 
-    // Limit total searches to avoid rate limits (max 10 searches per run)
-    if (searchConfigurations.length > 10) {
-      console.log(`Limiting searches from ${searchConfigurations.length} to 10 to avoid rate limits`)
-      searchConfigurations = searchConfigurations.slice(0, 10)
+    // Implement non-federal rate limiting (10 requests per day)
+    const dailyLimit = 10
+    const todayDate = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+    
+    // Check current daily usage
+    const { data: dailyUsage, error: usageError } = await supabase
+      .from('sam_gov_usage')
+      .select('request_count')
+      .eq('date', todayDate)
+      .single()
+      
+    if (usageError && usageError.code !== 'PGRST116') {
+      console.error('Error checking SAM.gov usage:', usageError)
+    }
+    
+    const currentUsage = dailyUsage?.request_count || 0
+    const remainingRequests = dailyLimit - currentUsage
+    
+    console.log(`SAM.gov daily usage: ${currentUsage}/${dailyLimit} requests`)
+    
+    if (remainingRequests <= 0) {
+      console.warn('SAM.gov daily rate limit exceeded')
+      return NextResponse.json({
+        success: false,
+        message: 'SAM.gov daily rate limit exceeded (10 requests per day for non-federal users)',
+        dailyUsage: currentUsage,
+        dailyLimit: dailyLimit,
+        nextResetTime: new Date(new Date().setHours(24, 0, 0, 0)).toISOString()
+      }, { status: 429 })
+    }
+
+    // Limit total searches to available requests and automation constraints
+    let maxSearches = Math.min(searchConfigurations.length, remainingRequests)
+    
+    // Apply automated sync constraints
+    if (requestedMaxSearches !== null) {
+      maxSearches = Math.min(maxSearches, requestedMaxSearches)
+      console.log(`Applying automated search limit: ${requestedMaxSearches}`)
+    }
+    
+    if (searchConfigurations.length > maxSearches) {
+      console.log(`Limiting searches from ${searchConfigurations.length} to ${maxSearches} due to rate limiting and automation constraints`)
+      searchConfigurations = searchConfigurations.slice(0, maxSearches)
     }
 
     console.log(`Executing ${searchConfigurations.length} SAM.gov search configurations with rate limiting...`)
@@ -645,6 +719,9 @@ export async function GET(request: Request) {
           // Reset rate limit tracking on success
           rateLimitHit = false
           baseDelay = 1000
+          
+          // Track successful API usage for daily rate limiting
+          await updateDailyUsage(supabase, todayDate)
           
         } else if (response.status === 429) {
           // Rate limit hit
@@ -767,10 +844,19 @@ export async function GET(request: Request) {
 
     console.log(`Successfully inserted ${inserted?.length || 0} contract opportunities`)
 
+    // Get updated usage info for response
+    const { data: finalUsage } = await supabase
+      .from('sam_gov_usage')
+      .select('request_count')
+      .eq('date', todayDate)
+      .single()
+
     return NextResponse.json({
       success: true,
       imported: inserted?.length || 0,
       message: `Successfully imported ${inserted?.length || 0} government contract opportunities`,
+      dailyUsage: finalUsage?.request_count || 0,
+      dailyLimit: 10,
       summary: {
         total_fetched: allOpportunities.length,
         total_processed: processedOpportunities.length,
@@ -779,7 +865,8 @@ export async function GET(request: Request) {
         ai_strategies_used: aiContractStrategies.length,
         total_search_configurations: searchConfigurations.length,
         source: 'sam_gov',
-        last_sync: new Date().toISOString()
+        last_sync: new Date().toISOString(),
+        automated: automated
       },
       ai_insights: aiContractStrategies.map(strategy => ({
         project_name: strategy.project.name,

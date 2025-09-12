@@ -11,11 +11,18 @@
     {
       "path": "/api/ai/agent/cron/start-agents",
       "schedule": "0 */1 * * *"
+    },
+    {
+      "path": "/api/cron/sam-gov-sync",
+      "schedule": "0 12,14,16,17,19,20,22,23,1 * * *"
     }
   ],
   "functions": {
     "app/api/sync/grants-gov/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/sam-gov-sync/route.ts": {
+      "maxDuration": 30
     },
     "pages/api/data/sync-opportunities.js": {
       "maxDuration": 300

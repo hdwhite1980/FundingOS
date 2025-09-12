@@ -1,6 +1,6 @@
 // app/api/chat/logout/route.js
 import { NextResponse } from 'next/server'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import chatSessionService from '../../../../lib/chatSessionService'
 import { MailgunEmailService } from '../../../../lib/email-service'
@@ -9,7 +9,7 @@ const emailService = new MailgunEmailService()
 
 export async function POST(request) {
   try {
-    const supabase = createServerComponentClient({ cookies })
+    const supabase = createRouteHandlerClient({ cookies })
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
