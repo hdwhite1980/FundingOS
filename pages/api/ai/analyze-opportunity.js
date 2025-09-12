@@ -1,4 +1,6 @@
-import { AIService } from '../../../lib/aiService'
+import ScoringServiceIntegration from '../../../lib/scoringServiceIntegration'
+
+const scoringService = new ScoringServiceIntegration()
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,10 +14,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'Missing required data' })
     }
 
-    const analysis = await AIService.analyzeOpportunityFit(
-      userProfile,
+    const analysis = await scoringService.scoreOpportunity(
+      opportunity,
       project,
-      opportunity
+      userProfile
     )
 
     res.status(200).json(analysis)
