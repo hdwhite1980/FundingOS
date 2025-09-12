@@ -146,17 +146,17 @@ export default function OpportunityCard({
           </div>
           {fitScore && (
             <div className={`ml-4 px-3 py-1.5 rounded-lg text-sm font-bold border ${getFitScoreColor(fitScore)} relative group cursor-help`}>
-              <div className="text-xs font-medium opacity-75">Project Match</div>
+              <div className="text-xs font-medium opacity-75">Quick Match</div>
               <div className="text-lg">{fitScore}%</div>
               
               {/* Tooltip */}
-              <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                <div className="font-medium mb-1">Project Match Score</div>
+              <div className="absolute right-0 top-full mt-2 w-72 p-3 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                <div className="font-medium mb-1">Quick Match Score</div>
                 <div className="text-gray-300">
-                  Quick assessment based on project description, funding amount, requirements, and timeline alignment with your specific project needs.
+                  Fast categorical assessment based on project requirements, funding amount, timeline, and basic eligibility. This is a preliminary screening score.
                 </div>
-                <div className="mt-1 text-gray-400 italic">
-                  Hover on "AI Analysis" for detailed strategic assessment.
+                <div className="mt-2 text-blue-400 italic font-medium">
+                  💡 Click "AI Strategic Analysis" for comprehensive evaluation including competition analysis, success probability, and strategic recommendations.
                 </div>
               </div>
             </div>

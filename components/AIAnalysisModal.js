@@ -6,7 +6,7 @@ import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import toast from 'react-hot-toast'
 
-export default function AIAnalysisModal({ opportunity, project, userProfile, onClose }) {
+export default function AIAnalysisModal({ opportunity, project, userProfile, quickMatchScore, onClose }) {
   const { user, loading: authLoading, initializing } = useAuth()
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState(null)
@@ -375,11 +375,13 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, onC
                       {analysis.fitScore}% Strategic Match
                     </div>
                     <p className="text-slate-600 mt-4 text-lg">
-                      AI strategic assessment including competition analysis, resource requirements, and success probability
+                      Comprehensive AI strategic assessment including competition analysis, resource requirements, success probability, and market timing
                     </p>
-                    <p className="text-slate-500 mt-2 text-sm">
-                      This differs from the "Project Match" score which focuses on basic categorical alignment
-                    </p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                      <p className="text-blue-800 text-sm">
+                        <strong>Strategic vs Quick Match:</strong> This detailed analysis considers factors like competition level, organizational readiness, and success probability that the Quick Match score ({quickMatchScore || 'N/A'}%) doesn't evaluate.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Strengths */}

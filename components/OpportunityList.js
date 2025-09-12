@@ -210,9 +210,9 @@ export default function OpportunityList({
   const calculateEnhancedFitScore = (selectedProject, opportunity, userProfile) => {
     let score = 0
     
-    // === PROJECT-SPECIFIC ALIGNMENT (Higher Weight) ===
+    // === PROJECT-SPECIFIC ALIGNMENT (More Generous Scoring) ===
     
-    // 1. Project Description & Content Matching (30 points max)
+    // 1. Project Description & Content Matching (35 points max - increased)
     if (selectedProject.description && opportunity.description) {
       const projectDesc = selectedProject.description.toLowerCase()
       const oppDesc = opportunity.description.toLowerCase()
@@ -222,109 +222,184 @@ export default function OpportunityList({
       const oppTerms = extractMeaningfulTerms(oppDesc)
       const overlap = calculateTermOverlap(projectTerms, oppTerms)
       
-      score += Math.floor(overlap * 30) // 0-30 points based on content similarity
+      // More generous scoring - even 20% overlap gets decent points
+      if (overlap >= 0.6) {
+        score += 35 // Excellent overlap
+      } else if (overlap >= 0.4) {
+        score += 30 // Good overlap
+      } else if (overlap >= 0.2) {
+        score += 25 // Moderate overlap
+      } else if (overlap >= 0.1) {
+        score += 20 // Some overlap
+      } else if (overlap > 0) {
+        score += 15 // Minimal but present overlap
+      } else {
+        score += 10 // Default points for having descriptions
+      }
+    } else {
+      score += 12 // Default points if no description comparison possible
     }
     
-    // 2. Project Goals vs Opportunity Focus (25 points max)
-    if (selectedProject.goals && opportunity.focus_areas) {
-      const goalAlignment = calculateGoalAlignment(selectedProject.goals, opportunity.focus_areas)
-      score += Math.floor(goalAlignment * 25)
-    } else if (opportunity.project_types?.includes(selectedProject.project_type)) {
-      score += 25 // Full points for exact project type match
-    } else if (selectedProject.project_type && opportunity.project_types?.some(type => 
-      type.includes(selectedProject.project_type?.split('_')[0]) || 
-      selectedProject.project_type?.includes(type.split('_')[0])
-    )) {
-      score += 15 // Partial points for related project types
+    // 2. Project Type & Focus Alignment (30 points max - increased and more generous)
+    if (selectedProject.project_type && opportunity.project_types) {
+      if (opportunity.project_types.includes(selectedProject.project_type)) {
+        score += 30 // Perfect project type match
+      } else if (opportunity.project_types.some(type => 
+        type.includes(selectedProject.project_type?.split('_')[0]) || 
+        selectedProject.project_type?.includes(type.split('_')[0])
+      )) {
+        score += 25 // Related project type
+      } else if (opportunity.project_types.some(type =>
+        isRelatedProjectType(selectedProject.project_type, type)
+      )) {
+        score += 20 // Broadly related
+      } else {
+        score += 15 // Different but potentially viable
+      }
+    } else {
+      score += 18 // Default points when project type comparison isn't available
     }
     
-    // 3. Funding Amount Precision (20 points max)
+    // 3. Funding Amount Compatibility (25 points max - more forgiving)
     if (opportunity.amount_min && opportunity.amount_max && selectedProject.funding_needed) {
       const projectNeed = selectedProject.funding_needed
       if (projectNeed >= opportunity.amount_min && projectNeed <= opportunity.amount_max) {
-        score += 20 // Perfect fit within range
-      } else if (projectNeed <= opportunity.amount_max * 1.1) {
-        score += 15 // Very close fit (within 10% of max)
-      } else if (projectNeed <= opportunity.amount_max) {
-        score += 10 // Can cover the need
-      } else if (projectNeed >= opportunity.amount_min) {
-        score += 5 // Partial funding possible
+        score += 25 // Perfect fit within range
+      } else if (projectNeed <= opportunity.amount_max * 1.5) {
+        score += 22 // Close fit (within 50% of max)
+      } else if (projectNeed <= opportunity.amount_max * 2) {
+        score += 18 // Reasonable fit (within 2x max)
+      } else if (projectNeed >= opportunity.amount_min * 0.5) {
+        score += 15 // Partial funding possible
+      } else {
+        score += 10 // Some funding potential
       }
-      // No points if completely outside range
+    } else if (!opportunity.amount_min && !opportunity.amount_max) {
+      score += 20 // Variable amount opportunities get good score
+    } else {
+      score += 15 // Default when amounts can't be compared
     }
 
-    // === ELIGIBILITY & VIABILITY (Medium Weight) ===
+    // === ELIGIBILITY & ORGANIZATIONAL FIT (More Generous) ===
     
-    // 4. Eligibility Assessment (15 points max)
+    // 4. Eligibility Assessment (15 points max - more forgiving)
     if (enableEligibilityCheck && opportunity.eligibility) {
       if (opportunity.eligibility.eligible) {
-        // Base eligibility points scaled by confidence
-        const confidencePoints = Math.floor(opportunity.eligibility.confidence * 0.12) // 0-12 points
+        // More generous confidence scaling
+        const confidencePoints = Math.max(12, Math.floor(opportunity.eligibility.confidence * 0.15))
         score += confidencePoints
         
-        // Bonus for having specific advantages
+        // Bonus for advantages
         if (opportunity.eligibility.checks?.certifications?.advantages?.length > 0) {
           score += 3
         }
       } else {
-        score -= 15 // Penalty for ineligible opportunities
+        score -= 5 // Smaller penalty - maybe eligibility check was wrong
       }
       
-      // Smaller penalty for warnings (shows complexity but not impossibility)
+      // Minimal penalty for warnings
       if (opportunity.eligibility.warnings?.length > 0) {
-        score -= Math.min(3, opportunity.eligibility.warnings.length)
+        score -= Math.min(2, opportunity.eligibility.warnings.length)
       }
     } else {
-      score += 8 // Assume eligible if no check available
+      score += 12 // Assume eligible with good score if no check available
     }
     
-    // 5. Timeline Viability (10 points max)
+    // 5. Organization Type Match (10 points max - increased importance)
+    if (opportunity.organization_types?.includes(userProfile.organization_type)) {
+      score += 10
+    } else if (opportunity.organization_types?.includes('all') || 
+               opportunity.organization_types?.length === 0 ||
+               !opportunity.organization_types) {
+      score += 8 // Broadly eligible opportunities
+    } else {
+      score += 5 // Some eligibility potential
+    }
+    
+    // 6. Timeline Viability (10 points max - more generous)
     if (opportunity.deadline_date) {
       const daysUntilDeadline = differenceInDays(new Date(opportunity.deadline_date), new Date())
-      if (daysUntilDeadline > 30 && daysUntilDeadline <= 90) {
-        score += 10 // Optimal timing for preparation
-      } else if (daysUntilDeadline > 14 && daysUntilDeadline <= 180) {
-        score += 8 // Good timing window
-      } else if (daysUntilDeadline > 7 && daysUntilDeadline <= 14) {
-        score += 4 // Urgent but possible
-      } else if (daysUntilDeadline > 0 && daysUntilDeadline <= 7) {
-        score += 1 // Very urgent, risky
+      if (daysUntilDeadline > 180) {
+        score += 8 // Far future - good for planning
+      } else if (daysUntilDeadline > 30) {
+        score += 10 // Optimal timing
+      } else if (daysUntilDeadline > 14) {
+        score += 9 // Good timing
+      } else if (daysUntilDeadline > 7) {
+        score += 7 // Tight but doable
+      } else if (daysUntilDeadline > 0) {
+        score += 4 // Very urgent but possible
       }
     } else {
-      score += 6 // Rolling deadlines are flexible
-    }
-
-    // === STRATEGIC & ORGANIZATIONAL FIT (Lower Weight) ===
-    
-    // 6. Organization Type Match (5 points max)
-    if (opportunity.organization_types?.includes(userProfile.organization_type)) {
-      score += 5
+      score += 9 // Rolling deadlines are flexible
     }
     
-    // 7. Geographic Accessibility (5 points max)
-    if (opportunity.geography?.includes('nationwide')) {
-      score += 5
+    // 7. Geographic Accessibility (10 points max - more generous)
+    if (opportunity.geography?.includes('nationwide') || 
+        opportunity.geography?.includes('national')) {
+      score += 10
     } else if (selectedProject.location && opportunity.geography?.some(geo => 
       selectedProject.location.toLowerCase().includes(geo.toLowerCase())
     )) {
-      score += 5
-    } else if (opportunity.geography?.length > 3) {
-      score += 2 // Multi-region opportunity
+      score += 10
+    } else if (opportunity.geography?.length > 10) {
+      score += 8 // Multi-region opportunity
+    } else if (opportunity.geography?.length > 5) {
+      score += 6 // Regional opportunity
+    } else {
+      score += 4 // Limited geography but still possible
+    }
+
+    // 8. Special Certifications & Set-Asides (10 points max - bonus system)
+    let certificationBonus = 0
+    if (opportunity.minority_business && userProfile.minority_owned) certificationBonus += 3
+    if (opportunity.woman_owned_business && userProfile.woman_owned) certificationBonus += 3
+    if (opportunity.veteran_owned_business && userProfile.veteran_owned) certificationBonus += 3
+    if (opportunity.small_business_only && userProfile.small_business) certificationBonus += 3
+    
+    // Add bonus even if no special certifications to not penalize general opportunities
+    if (certificationBonus === 0) {
+      certificationBonus = 5 // Default bonus for general opportunities
+    }
+    score += Math.min(certificationBonus, 10)
+
+    // 9. AI Enhancement & Strategy Bonus (15 points max - significantly increased)
+    if (opportunity.ai_metadata?.projectId === selectedProject.id) {
+      const strategy = opportunity.ai_metadata?.strategy
+      if (strategy?.includes('ai-')) {
+        score += 15 // Major bonus for AI-targeted opportunities
+      } else {
+        score += 10 // Good bonus for AI-matched opportunities
+      }
+    } else if (opportunity.ai_metadata?.strategy) {
+      score += 8 // Bonus for AI-discovered opportunities even if not project-specific
+    } else if (opportunity.last_updated && 
+               differenceInDays(new Date(), new Date(opportunity.last_updated)) < 30) {
+      score += 5 // Recent opportunities
+    } else {
+      score += 3 // Default bonus
+    }
+
+    // Special boost for AI keyword opportunities (they should score higher)
+    if (opportunity.ai_metadata?.strategy === 'ai-keyword') {
+      score += 10 // Extra boost for AI keyword matches
+    }
+
+    // Ensure minimum viable score for any opportunity that passes basic filters
+    let minimumScore = 50
+    
+    // Higher minimum for AI-discovered opportunities
+    if (opportunity.ai_metadata?.strategy?.includes('ai-')) {
+      minimumScore = 60
     }
     
-    // 8. Special Certifications Bonus (5 points max total)
-    let certificationBonus = 0
-    if (opportunity.minority_business && userProfile.minority_owned) certificationBonus += 2
-    if (opportunity.woman_owned_business && userProfile.woman_owned) certificationBonus += 2
-    if (opportunity.veteran_owned_business && userProfile.veteran_owned) certificationBonus += 2
-    if (opportunity.small_business_only && userProfile.small_business) certificationBonus += 2
-    score += Math.min(certificationBonus, 5) // Cap at 5 points total
-
-    // 9. AI Enhancement Bonus (5 points max)
+    // Even higher minimum for AI-targeted opportunities
     if (opportunity.ai_metadata?.projectId === selectedProject.id) {
-      score += 5 // Bonus for AI-targeted opportunities
+      minimumScore = 65
     }
-
+    
+    score = Math.max(score, minimumScore)
+    
     return Math.min(score, 100) // Cap at 100
   }
 
@@ -345,13 +420,40 @@ export default function OpportunityList({
     return overlap / Math.max(terms1.length, terms2.length)
   }
 
+  // New helper function for related project types
+  const isRelatedProjectType = (projectType, opportunityType) => {
+    const relatedTypes = {
+      'commercial_development': ['development', 'construction', 'infrastructure', 'community', 'economic'],
+      'technology': ['innovation', 'research', 'development', 'technical', 'digital'],
+      'research': ['study', 'analysis', 'investigation', 'development', 'innovation'],
+      'infrastructure': ['construction', 'development', 'improvement', 'renovation', 'upgrade'],
+      'community_development': ['development', 'community', 'social', 'economic', 'improvement'],
+      'healthcare': ['health', 'medical', 'clinical', 'wellness', 'care'],
+      'education': ['training', 'learning', 'educational', 'academic', 'development'],
+      'environmental': ['green', 'sustainability', 'conservation', 'environmental', 'climate']
+    }
+    
+    const projectKeywords = relatedTypes[projectType] || [projectType?.split('_')[0] || '']
+    return projectKeywords.some(keyword => 
+      opportunityType.toLowerCase().includes(keyword.toLowerCase())
+    )
+  }
+
   const calculateGoalAlignment = (projectGoals, opportunityFocus) => {
     if (!projectGoals || !opportunityFocus) return 0
     const goalText = JSON.stringify(projectGoals).toLowerCase()
     const focusText = JSON.stringify(opportunityFocus).toLowerCase()
-    const goalTerms = extractMeaningfulTerms(goalText)
-    const focusTerms = extractMeaningfulTerms(focusText)
-    return calculateTermOverlap(goalTerms, focusTerms)
+    
+    // Look for common themes
+    const commonThemes = ['development', 'community', 'research', 'innovation', 'improvement', 'support', 'enhance']
+    let matches = 0
+    commonThemes.forEach(theme => {
+      if (goalText.includes(theme) && focusText.includes(theme)) {
+        matches++
+      }
+    })
+    
+    return Math.max(0.3, matches / commonThemes.length) // Minimum 30% alignment
   }
 
   const getDeadlineStatus = (deadlineDate) => {
@@ -900,6 +1002,7 @@ export default function OpportunityList({
           opportunity={selectedOpportunity}
           project={selectedProject}
           userProfile={userProfile}
+          quickMatchScore={selectedOpportunity.fitScore}
           onClose={() => {
             setShowAIModal(false)
             setSelectedOpportunity(null)
