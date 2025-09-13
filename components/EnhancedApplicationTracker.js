@@ -3,6 +3,55 @@
  * into the Application Progress workflow for smart form completion
  */
 
+  // Handle answers to missing info questions
+  const handleQuestionAnswer = (questionId, answer) => {
+    setUserAnswers(prev => ({
+      ...prev,
+      [questionId]: answer
+    }))
+
+    // Update filled form with the answer
+    const question = missingQuestions.find(q => q.id === questionId)
+    if (question) {
+      setFilledForm(prev => ({
+        ...prev,
+        [question.field || questionId]: answer
+      }))
+    }
+  }
+
+  // Handle completion of missing info collection
+  const handleInfoCollected = async (completedData) => {
+    setUserAnswers(completedData.collectedInfo)
+    
+    // Merge collected information with auto-fill suggestions
+    const updatedForm = { ...filledForm }
+    
+    // Apply auto-fill suggestions
+    Object.entries(completedData.autoFillSuggestions).forEach(([fieldName, suggestion]) => {
+      if (suggestion.confidence > 0.8) { // High confidence auto-fill
+        updatedForm[fieldName] = suggestion.value
+      }
+    })
+    
+    // Apply collected user answers
+    Object.entries(completedData.collectedInfo).forEach(([fieldName, info]) => {
+      updatedForm[fieldName] = info.answer
+    })
+    
+    setFilledForm(updatedForm)
+    setShowMissingInfo(false)
+    setStep('complete')
+    
+    toast.success('Information collected! Your application is now ready for review.')
+  }
+
+  // Handle cancellation of missing info collection
+/**
+ * Enhanced Application Tracker - Integrates ApplicationAssistant functionality 
+ * into the Application Progress workflow for smart form completion
+ */
+
 'use client'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -28,6 +77,7 @@ import {
 import toast from 'react-hot-toast'
 import smartFormCompletionService from '../lib/smartFormCompletionService'
 import documentAnalysisService from '../lib/documentAnalysisService'
+import MissingInfoCollector from './MissingInfoCollector'
 
 export default function EnhancedApplicationTracker({ 
   projects, 
@@ -35,7 +85,7 @@ export default function EnhancedApplicationTracker({
   onClose, 
   onSubmit 
 }) {
-  const [step, setStep] = useState('upload') // upload, analyze, complete, review
+  const [step, setStep] = useState('upload') // upload, analyze, missing_info, complete, review
   const [uploadedFiles, setUploadedFiles] = useState([])
   const [documentAnalysis, setDocumentAnalysis] = useState(null)
   const [formCompletion, setFormCompletion] = useState(null)
@@ -45,6 +95,8 @@ export default function EnhancedApplicationTracker({
   const [selectedProject, setSelectedProject] = useState('')
   const [processing, setProcessing] = useState(false)
   const [analysisComplete, setAnalysisComplete] = useState(false)
+  const [showMissingInfo, setShowMissingInfo] = useState(false)
+  const [aiAnalysisResult, setAiAnalysisResult] = useState(null)
 
   // Handle file upload and analysis
   const handleFileUpload = async (files) => {
@@ -128,19 +180,27 @@ export default function EnhancedApplicationTracker({
       )
 
       setFormCompletion(completion)
-      setFilledForm(completion.fieldCompletions || {})
+      setFilledForm(completion.filledForm || completion.fieldCompletions || {})
+      
+      // Check if we have a blank application that needs missing info collection
+      if (completion.formStatus?.isBlank && completion.questionsForUser?.length > 0) {
+        setAiAnalysisResult(completion)
+        setShowMissingInfo(true)
+        setStep('missing_info')
+        toast.info('We detected a blank application. Let\'s collect the required information.')
+      } else {
+        // Generate questions for missing information if needed
+        if (completion.missingInformation && completion.missingInformation.length > 0) {
+          const questions = await smartFormCompletionService.generateClarifyingQuestions(
+            { missing_critical: completion.missingInformation },
+            { userProfile, projectData: project, requirements: combinedRequirements }
+          )
+          setMissingQuestions(questions)
+        }
 
-      // Generate questions for missing information
-      if (completion.missingInformation && completion.missingInformation.length > 0) {
-        const questions = await smartFormCompletionService.generateClarifyingQuestions(
-          { missing_critical: completion.missingInformation },
-          { userProfile, projectData: project, requirements: combinedRequirements }
-        )
-        setMissingQuestions(questions)
+        setStep('complete')
+        toast.success('Form analysis complete!')
       }
-
-      setStep('complete')
-      toast.success('Form analysis complete!')
 
     } catch (error) {
       console.error('Form completion failed:', error)
@@ -165,6 +225,39 @@ export default function EnhancedApplicationTracker({
         [question.field || questionId]: answer
       }))
     }
+  }
+
+  // Handle completion of missing info collection
+  const handleInfoCollected = async (completedData) => {
+    setUserAnswers(completedData.collectedInfo)
+    
+    // Merge collected information with auto-fill suggestions
+    const updatedForm = { ...filledForm }
+    
+    // Apply auto-fill suggestions
+    Object.entries(completedData.autoFillSuggestions).forEach(([fieldName, suggestion]) => {
+      if (suggestion.confidence > 0.8) { // High confidence auto-fill
+        updatedForm[fieldName] = suggestion.value
+      }
+    })
+    
+    // Apply collected user answers
+    Object.entries(completedData.collectedInfo).forEach(([fieldName, info]) => {
+      updatedForm[fieldName] = info.answer
+    })
+    
+    setFilledForm(updatedForm)
+    setShowMissingInfo(false)
+    setStep('complete')
+    
+    toast.success('Information collected! Your application is now ready for review.')
+  }
+
+  // Handle cancellation of missing info collection
+  const handleInfoCancelled = () => {
+    setShowMissingInfo(false)
+    setStep('analyze')
+    toast.info('Info collection cancelled. You can try again when ready.')
   }
 
   // Finalize and submit the application
@@ -532,20 +625,20 @@ export default function EnhancedApplicationTracker({
 
           {/* Step indicators */}
           <div className="flex items-center justify-center mb-8">
-            {['upload', 'analyze', 'complete', 'review'].map((stepName, index) => (
+            {['upload', 'analyze', 'missing_info', 'complete', 'review'].map((stepName, index) => (
               <div key={stepName} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   step === stepName
                     ? 'bg-emerald-600 text-white'
-                    : index < ['upload', 'analyze', 'complete', 'review'].indexOf(step)
+                    : index < ['upload', 'analyze', 'missing_info', 'complete', 'review'].indexOf(step)
                     ? 'bg-emerald-100 text-emerald-600'
                     : 'bg-slate-100 text-slate-400'
                 }`}>
                   {index + 1}
                 </div>
-                {index < 3 && (
+                {index < 4 && (
                   <div className={`w-12 h-0.5 mx-2 ${
-                    index < ['upload', 'analyze', 'complete', 'review'].indexOf(step)
+                    index < ['upload', 'analyze', 'missing_info', 'complete', 'review'].indexOf(step)
                       ? 'bg-emerald-600'
                       : 'bg-slate-200'
                   }`} />
@@ -565,6 +658,15 @@ export default function EnhancedApplicationTracker({
             >
               {step === 'upload' && renderUploadStep()}
               {step === 'analyze' && renderAnalysisStep()}
+              {step === 'missing_info' && (
+                <MissingInfoCollector
+                  analysisResult={aiAnalysisResult}
+                  onInfoCollected={handleInfoCollected}
+                  onCancel={handleInfoCancelled}
+                  userProfile={userProfile}
+                  projectData={projects.find(p => p.id === selectedProject)}
+                />
+              )}
               {step === 'complete' && renderCompletionStep()}
               {step === 'review' && renderReviewStep()}
             </motion.div>

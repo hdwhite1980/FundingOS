@@ -339,14 +339,73 @@ ${JSON.stringify(userProfile, null, 2)}
 PROJECT DATA:
 ${JSON.stringify(projectData, null, 2)}
 
-Provide:
-1. COMPLETION SUGGESTIONS: Specific text/values for each field we can fill
-2. MISSING INFORMATION: What we need from the user, organized by priority
-3. QUESTIONS TO ASK: Intelligent questions to gather missing info
-4. STRATEGIC RECOMMENDATIONS: How to best position this application
-5. RISK ASSESSMENT: Potential issues and how to address them
+ANALYSIS REQUIREMENTS:
 
-Focus on maximizing the application's competitiveness while ensuring accuracy.
+1. FORM STATUS DETECTION:
+   - Is this a blank/template form or partially completed?
+   - What percentage of fields are already filled?
+   - Identify empty fields that can be auto-filled
+
+2. AUTO-FILL SUGGESTIONS:
+   - For each empty field, provide specific values from user/project data
+   - Include confidence level (0-1) for each suggestion
+   - Mark which fields require user confirmation
+
+3. MISSING INFORMATION ANALYSIS:
+   - Categorize missing info by: CRITICAL, IMPORTANT, OPTIONAL
+   - Identify what we can extract from existing documents vs what user must provide
+   - Create specific questions to collect missing information
+
+4. COMPLETION STRATEGY:
+   - Suggest order of completion (most important fields first)
+   - Identify fields that depend on other fields
+   - Recommend sections that need user review
+
+5. INTELLIGENT RECOMMENDATIONS:
+   - Strategic positioning suggestions
+   - Compliance and eligibility considerations
+   - Risk assessment and mitigation
+
+Return JSON with these sections:
+{
+  "formStatus": {
+    "isBlank": boolean,
+    "completionPercentage": number,
+    "totalFields": number,
+    "filledFields": number,
+    "emptyFields": string[]
+  },
+  "autoFillSuggestions": {
+    "fieldName": {
+      "value": "suggested value",
+      "confidence": 0.95,
+      "source": "user_profile|project_data",
+      "requiresConfirmation": boolean
+    }
+  },
+  "missingInformation": {
+    "critical": [],
+    "important": [],
+    "optional": []
+  },
+  "questionsForUser": [
+    {
+      "question": "specific question",
+      "fieldName": "target field",
+      "priority": "critical|important|optional",
+      "suggestedAnswers": ["option1", "option2"]
+    }
+  ],
+  "completionStrategy": {
+    "recommendedOrder": [],
+    "dependencies": {},
+    "reviewSections": []
+  },
+  "strategicRecommendations": [],
+  "riskAssessment": []
+}
+
+Focus on maximizing auto-fill accuracy while ensuring the user maintains control over critical decisions.
   `
 }
 

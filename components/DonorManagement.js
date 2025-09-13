@@ -37,6 +37,7 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState({})
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [modalType, setModalType] = useState('donor') // 'donor' or 'investor'
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showCampaignModal, setShowCampaignModal] = useState(false)
   const [showDonationDetailModal, setShowDonationDetailModal] = useState(false)
@@ -654,7 +655,10 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
                 <span>Export</span>
               </button>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setModalType('investor')
+                  setShowCreateModal(true)
+                }}
                 className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
@@ -678,7 +682,10 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
               <h3 className="text-lg font-semibold text-slate-900 mb-2">No investors yet</h3>
               <p className="text-slate-600 mb-6">Connect with individual investors interested in your projects.</p>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setModalType('investor')
+                  setShowCreateModal(true)
+                }}
                 className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
               >
                 Add First Investor
@@ -931,7 +938,9 @@ function CreateDonorModal({ onClose, onSubmit }) {
         className="bg-white rounded-xl shadow-xl max-w-md w-full"
       >
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Add New Donor</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">
+            {modalType === 'investor' ? 'Add New Investor' : 'Add New Donor'}
+          </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
