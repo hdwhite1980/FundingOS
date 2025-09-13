@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
-  Search, 
   Filter, 
   CheckCircle, 
   AlertTriangle, 
@@ -35,12 +34,16 @@ export default function OpportunityList({
 }) {
   const [opportunities, setOpportunities] = useState(initialOpportunities || [])
   const [filteredOpportunities, setFilteredOpportunities] = useState([])
-  const [searchQuery, setSearchQuery] = useState('')
   const [selectedOpportunity, setSelectedOpportunity] = useState(null)
   const [showAIModal, setShowAIModal] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showEligibilitySettings, setShowEligibilitySettings] = useState(false)
   const [opportunityScores, setOpportunityScores] = useState({}) // Added missing state for opportunity scores
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  const [aiScanningRange, setAiScanningRange] = useState({ start: 0, end: 40 }) // Current + next page
   
   // Combined filters
   const [filters, setFilters] = useState({
@@ -48,7 +51,6 @@ export default function OpportunityList({
     deadlineType: 'all', // all, upcoming, rolling
     amountRange: 'all', // all, small, medium, large
     organizationType: 'all',
-    aiRelevance: 'all', // all, ai_targeted, high_score
     
     // Eligibility filters (when enabled)
     onlyEligible: enableEligibilityCheck,
@@ -73,15 +75,35 @@ export default function OpportunityList({
 
   useEffect(() => {
     applyFilters()
-  }, [opportunities, searchQuery])
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [opportunities])
+
+  // Update AI scanning range when pagination changes
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + (itemsPerPage * 2) // Current page + next page
+    setAiScanningRange({ start: startIndex, end: endIndex })
+  }, [currentPage, itemsPerPage, filteredOpportunities.length])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredOpportunities.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentPageOpportunities = filteredOpportunities.slice(startIndex, endIndex)
+  const aiScanOpportunities = filteredOpportunities.slice(aiScanningRange.start, aiScanningRange.end)
 
   // Calculate opportunity scores when opportunities or selectedProject change
   useEffect(() => {
     const calculateScores = async () => {
-      if (selectedProject && opportunities.length > 0) {
+      if (selectedProject && aiScanOpportunities.length > 0) {
         try {
-          const scores = {}
-          for (const opportunity of opportunities) {
+          const scores = { ...opportunityScores } // Keep existing scores
+          
+          // Only calculate scores for opportunities in AI scanning range
+          for (const opportunity of aiScanOpportunities) {
+            // Skip if we already have a score for this opportunity
+            if (scores[opportunity.id] !== undefined) continue
+            
             try {
               const scoreResult = await scoringService.calculateScore(selectedProject, opportunity, userProfile)
               // Extract numerical score from the result
@@ -97,10 +119,12 @@ export default function OpportunityList({
           setOpportunityScores(scores)
         } catch (error) {
           console.error('Error calculating opportunity scores:', error)
-          // Set all scores to 0 on error
-          const defaultScores = {}
-          opportunities.forEach(opp => {
-            defaultScores[opp.id] = 0
+          // Set default scores for AI scan opportunities only
+          const defaultScores = { ...opportunityScores }
+          aiScanOpportunities.forEach(opp => {
+            if (defaultScores[opp.id] === undefined) {
+              defaultScores[opp.id] = 0
+            }
           })
           setOpportunityScores(defaultScores)
         }
@@ -108,7 +132,7 @@ export default function OpportunityList({
     }
 
     calculateScores()
-  }, [selectedProject, opportunities])
+  }, [selectedProject, aiScanOpportunities])
 
   const loadOpportunities = async () => {
     try {
@@ -175,15 +199,6 @@ export default function OpportunityList({
   const applyFilters = () => {
     let filtered = [...opportunities]
 
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(opp =>
-        opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        opp.sponsor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        opp.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    }
-
     // Deadline filter
     if (filters.deadlineType === 'upcoming') {
       filtered = filtered.filter(opp => 
@@ -194,18 +209,19 @@ export default function OpportunityList({
     }
 
     // Amount filter
-    if (selectedProject && filters.amountRange !== 'all') {
-      const fundingNeeded = selectedProject.funding_needed
+    if (filters.amountRange !== 'all') {
       filtered = filtered.filter(opp => {
-        if (!opp.amount_max) return true
+        if (!opp.amount_max && !opp.amount_min) return true
+        
+        const maxAmount = opp.amount_max || opp.amount_min || 0
         
         switch (filters.amountRange) {
           case 'small':
-            return opp.amount_max <= fundingNeeded * 0.5
+            return maxAmount <= 50000
           case 'medium':
-            return opp.amount_max >= fundingNeeded * 0.5 && opp.amount_max <= fundingNeeded * 2
+            return maxAmount >= 50000 && maxAmount <= 500000
           case 'large':
-            return opp.amount_max >= fundingNeeded
+            return maxAmount >= 500000
           default:
             return true
         }
@@ -215,24 +231,10 @@ export default function OpportunityList({
     // Organization type filter
     if (filters.organizationType !== 'all') {
       filtered = filtered.filter(opp => 
-        !opp.organization_types || opp.organization_types.includes(filters.organizationType)
+        !opp.organization_types || 
+        opp.organization_types.includes(filters.organizationType) ||
+        opp.organization_types.includes('all')
       )
-    }
-
-    // AI relevance filter
-    if (selectedProject && filters.aiRelevance !== 'all') {
-      if (filters.aiRelevance === 'ai_targeted') {
-        filtered = filtered.filter(opp => 
-          opp.ai_metadata?.projectId === selectedProject.id
-        )
-      } else if (filters.aiRelevance === 'high_score') {
-        // For high score filtering, we need to calculate scores asynchronously
-        // This will be handled in the useEffect that manages async scoring
-        filtered = filtered.filter(opp => {
-          const cachedScore = opportunityScores[opp.id]
-          return cachedScore !== undefined && cachedScore >= 70
-        })
-      }
     }
 
     // Smart ranking based on selected project
@@ -449,6 +451,30 @@ export default function OpportunityList({
     setShowAIModal(true)
   }
 
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1) // Reset to first page
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1)
+    }
+  }
+
   // Eligibility helper functions
   const getEligibilityIcon = (eligibility) => {
     if (!eligibility) return <Info className="w-4 h-4 text-gray-400" />
@@ -467,9 +493,6 @@ export default function OpportunityList({
     if (!eligibility) return { text: 'Unknown', color: 'text-gray-600 bg-gray-100' }
     
     if (eligibility.eligible) {
-      if (eligibility.warnings?.length > 0) {
-        return { text: 'Eligible (Warnings)', color: 'text-yellow-800 bg-yellow-100' }
-      }
       return { text: 'Eligible', color: 'text-emerald-800 bg-emerald-100' }
     }
     
@@ -674,6 +697,120 @@ export default function OpportunityList({
     )
   }
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null
+    
+    const getPageNumbers = () => {
+      const pages = []
+      const maxVisiblePages = 5
+      
+      if (totalPages <= maxVisiblePages) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i)
+        }
+      } else {
+        const half = Math.floor(maxVisiblePages / 2)
+        let start = Math.max(currentPage - half, 1)
+        let end = Math.min(start + maxVisiblePages - 1, totalPages)
+        
+        if (end === totalPages) {
+          start = Math.max(end - maxVisiblePages + 1, 1)
+        }
+        
+        if (start > 1) {
+          pages.push(1)
+          if (start > 2) pages.push('...')
+        }
+        
+        for (let i = start; i <= end; i++) {
+          pages.push(i)
+        }
+        
+        if (end < totalPages) {
+          if (end < totalPages - 1) pages.push('...')
+          pages.push(totalPages)
+        }
+      }
+      
+      return pages
+    }
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between bg-white px-6 py-4 border-t border-gray-200">
+        {/* Results info and items per page */}
+        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-6">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+            <span className="font-medium">{Math.min(endIndex, filteredOpportunities.length)}</span> of{' '}
+            <span className="font-medium">{filteredOpportunities.length}</span> opportunities
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-700">Show:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+              className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-sm text-gray-700">per page</span>
+          </div>
+          
+          {aiScanOpportunities.length > currentPageOpportunities.length && (
+            <div className="text-xs text-blue-600 flex items-center">
+              <Zap className="w-3 h-3 mr-1" />
+              AI analyzing {aiScanOpportunities.length} opportunities (current + next page)
+            </div>
+          )}
+        </div>
+
+        {/* Page navigation */}
+        <div className="flex items-center space-x-1 mt-3 sm:mt-0">
+          <button
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1}
+            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          
+          <div className="flex space-x-1">
+            {getPageNumbers().map((page, index) => (
+              <div key={index}>
+                {page === '...' ? (
+                  <span className="px-3 py-2 text-sm font-medium text-gray-500">...</span>
+                ) : (
+                  <button
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-2 text-sm font-medium border ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // Main component render - checking if project is selected
   if (!selectedProject) {
     return (
@@ -709,6 +846,11 @@ export default function OpportunityList({
               </h2>
               <p className="text-sm text-gray-600">
                 {filteredOpportunities.length} opportunities found
+                {totalPages > 1 && (
+                  <span className="ml-2">
+                    • Page {currentPage} of {totalPages}
+                  </span>
+                )}
                 {selectedProject.project_type && (
                   <span className="ml-2 text-xs text-gray-500">
                     • {selectedProject.project_type.replace('_', ' ')} project
@@ -743,17 +885,6 @@ export default function OpportunityList({
         <div className="card-body">
           {/* Enhanced Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search opportunities..."
-                className="form-input pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            
             <select
               className="form-input"
               value={filters.deadlineType}
@@ -770,19 +901,21 @@ export default function OpportunityList({
               onChange={(e) => setFilters({...filters, amountRange: e.target.value})}
             >
               <option value="all">All Amounts</option>
-              <option value="small">Partial Funding</option>
-              <option value="medium">Good Fit</option>
-              <option value="large">Full Funding+</option>
+              <option value="small">Small Grants</option>
+              <option value="medium">Medium Grants</option>
+              <option value="large">Large Grants</option>
             </select>
 
             <select
               className="form-input"
-              value={filters.aiRelevance}
-              onChange={(e) => setFilters({...filters, aiRelevance: e.target.value})}
+              value={filters.organizationType}
+              onChange={(e) => setFilters({...filters, organizationType: e.target.value})}
             >
               <option value="all">All Opportunities</option>
-              <option value="ai_targeted">AI-Targeted Only</option>
-              <option value="high_score">High Match (70%+)</option>
+              <option value="nonprofit">Nonprofit</option>
+              <option value="for_profit">For Profit</option>
+              <option value="university">University/Research</option>
+              <option value="government">Government</option>
             </select>
           </div>
 
@@ -800,7 +933,7 @@ export default function OpportunityList({
       </div>
 
       {/* Enhanced Opportunities List */}
-      <div className="space-y-4">
+      <div>
         {loading ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -836,126 +969,55 @@ export default function OpportunityList({
                     </button>
                   </>
                 ) : (
-                  filters.aiRelevance !== 'all' && (
-                    <button 
-                      onClick={() => setFilters({...filters, aiRelevance: 'all'})}
-                      className="btn-secondary btn-sm"
-                    >
-                      Show All Opportunities
-                    </button>
-                  )
+                  <button 
+                    onClick={loadOpportunities}
+                    className="btn-secondary btn-sm"
+                  >
+                    Refresh Opportunities
+                  </button>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          filteredOpportunities.map((opportunity, index) => (
-            <motion.div
-              key={opportunity.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
-              className={`relative ${
-                enableEligibilityCheck && opportunity.eligibility && !opportunity.eligibility.eligible 
-                  ? 'opacity-75' 
-                  : ''
-              }`}
-            >
-              {/* AI Badge Overlay */}
-              {selectedProject && opportunity.ai_metadata?.projectId === selectedProject.id && (
-                <div className="absolute top-2 right-2 z-10">
-                  {getAIBadge(opportunity)}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Table Header */}
+            <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 w-24">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</span>
                 </div>
-              )}
-              
-              {/* Enhanced Opportunity Card */}
-              <div className={`card transition-all duration-300 ${
-                enableEligibilityCheck && opportunity.eligibility 
-                  ? (opportunity.eligibility.eligible 
-                      ? 'hover:shadow-lg' 
-                      : 'border-red-200')
-                  : 'hover:shadow-lg'
-              }`}>
-                <div className="card-body">
-                  {/* Eligibility Status Header */}
-                  {enableEligibilityCheck && opportunity.eligibility && (
-                    <div className="flex items-center justify-between mb-4">
-                      <EligibilityBadge opportunity={opportunity} />
-                      {opportunity.eligibility.eligible && opportunity.eligibility.checks?.certifications?.advantages?.length > 0 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                          <Award className="w-3 h-3 mr-1" />
-                          Certification Advantage
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Original Opportunity Card Content */}
-                  <OpportunityCard
-                    opportunity={opportunity}
-                    selectedProject={selectedProject}
-                    userProfile={userProfile}
-                    onAnalyze={() => handleAnalyzeOpportunity(opportunity)}
-                    fitScore={opportunity.fitScore}
-                    deadlineStatus={getDeadlineStatus(opportunity.deadline_date)}
-                    index={index}
-                  />
-                  
-                  {/* Eligibility Details */}
-                  {enableEligibilityCheck && opportunity.eligibility && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      {!opportunity.eligibility.eligible && (
-                        <div className="mb-3">
-                          <h4 className="text-sm font-medium text-red-800 mb-2">Eligibility Issues:</h4>
-                          <div className="space-y-1">
-                            {opportunity.eligibility.blockers.map((blocker, i) => (
-                              <div key={i} className="text-xs text-red-700 flex items-start">
-                                <XCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
-                                {blocker.reason}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {opportunity.eligibility.warnings?.length > 0 && (
-                        <div className="mb-3">
-                          <h4 className="text-sm font-medium text-yellow-800 mb-2">Warnings:</h4>
-                          <div className="space-y-1">
-                            {opportunity.eligibility.warnings.map((warning, i) => (
-                              <div key={i} className="text-xs text-yellow-700 flex items-start">
-                                <AlertTriangle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
-                                {warning}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {opportunity.eligibility.requirements?.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-blue-800 mb-2">Requirements:</h4>
-                          <div className="space-y-1">
-                            {opportunity.eligibility.requirements.slice(0, 3).map((req, i) => (
-                              <div key={i} className="text-xs text-blue-700 flex items-start">
-                                <Info className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
-                                {req}
-                              </div>
-                            ))}
-                            {opportunity.eligibility.requirements.length > 3 && (
-                              <div className="text-xs text-blue-600">
-                                +{opportunity.eligibility.requirements.length - 3} more requirements
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                <div className="flex-1 mx-6">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Opportunity</span>
+                </div>
+                <div className="text-right w-32">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</span>
+                </div>
+                <div className="w-24 text-center">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</span>
                 </div>
               </div>
-            </motion.div>
-          ))
+            </div>
+            
+            {/* Table Rows */}
+            <div className="divide-y divide-gray-100">
+              {currentPageOpportunities.map((opportunity, index) => (
+                <OpportunityCard
+                  key={opportunity.id}
+                  opportunity={opportunity}
+                  selectedProject={selectedProject}
+                  userProfile={userProfile}
+                  onAnalyze={() => handleAnalyzeOpportunity(opportunity)}
+                  fitScore={opportunity.fitScore}
+                  deadlineStatus={getDeadlineStatus(opportunity.deadline_date)}
+                  index={index}
+                />
+              ))}
+            </div>
+            
+            {/* Pagination Controls */}
+            <PaginationControls />
+          </div>
         )}
       </div>
 

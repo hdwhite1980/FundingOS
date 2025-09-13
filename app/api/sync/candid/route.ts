@@ -523,7 +523,7 @@ export async function GET(request: Request) {
         })
         
         const response = await fetch(
-          `https://api.candid.org/premiere/v3/${config.endpoint}?${queryParams.toString()}`,
+          `https://api.candid.org/grants/${config.endpoint}?${queryParams.toString()}`,
           {
             headers: {
               'Ocp-Apim-Subscription-Key': CANDID_API_KEY,
