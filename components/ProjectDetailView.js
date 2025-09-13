@@ -44,9 +44,13 @@ export default function ProjectDetailView({
   // Load real project data instead of mock data
   useEffect(() => {
     const fetchProjectData = async () => {
-      if (!project?.id) return
+      if (!project?.id) {
+        console.warn('ProjectDetailView: No project ID provided')
+        return
+      }
       
       setLoading(true)
+      console.log('ProjectDetailView: Fetching data for project:', project.id, 'user:', project.user_id)
       
       try {
         // Get real data from database
@@ -59,11 +63,26 @@ export default function ProjectDetailView({
           directUserServices.donors.getDonationsByProject(project.id)
         ])
 
+        console.log('ProjectDetailView: API responses:', {
+          applications: applications.status,
+          savedOpportunities: savedOpportunities.status,
+          campaigns: campaigns.status,
+          angelInvestments: angelInvestments.status,
+          directDonations: directDonations.status
+        })
+
         // Calculate metrics from real data
         const applicationData = applications.status === 'fulfilled' ? applications.value : []
         const savedOppsData = savedOpportunities.status === 'fulfilled' ? savedOpportunities.value.filter(opp => opp.project_id === project.id) : []
         const campaignData = campaigns.status === 'fulfilled' ? campaigns.value : []
         const donationData = directDonations.status === 'fulfilled' ? directDonations.value : []
+        
+        console.log('ProjectDetailView: Data counts:', {
+          applications: applicationData.length,
+          savedOpportunities: savedOppsData.length,
+          campaigns: campaignData.length,
+          donations: donationData.length
+        })
         
         const metrics = {
           totalFunding: (applicationData.reduce((sum, app) => sum + (app.awarded_amount || 0), 0) + 
@@ -84,6 +103,8 @@ export default function ProjectDetailView({
           directDonations: donationData,
           metrics
         })
+
+        console.log('ProjectDetailView: Data loaded successfully')
       } catch (error) {
         console.error('Error fetching project data:', error)
         // Set empty data on error
@@ -205,7 +226,7 @@ export default function ProjectDetailView({
                   {project.name || project.title}
                 </h1>
                 <p className="text-sm text-slate-600">
-                  {project.project_type?.replace('_', ' ')} project
+                  {project.project_category?.replace('_', ' ') || 'Project'}
                 </p>
               </div>
             </div>
@@ -319,27 +340,116 @@ export default function ProjectDetailView({
                         <dl className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <dt className="text-slate-600">Type:</dt>
-                            <dd className="text-slate-900">{project.project_type?.replace('_', ' ') || 'Not specified'}</dd>
+                            <dd className="text-slate-900">{project.project_category?.replace('_', ' ') || 'Not specified'}</dd>
                           </div>
                           <div className="flex justify-between">
                             <dt className="text-slate-600">Location:</dt>
-                            <dd className="text-slate-900">{project.location || 'Not specified'}</dd>
+                            <dd className="text-slate-900">{project.project_location || 'Not specified'}</dd>
                           </div>
                           <div className="flex justify-between">
                             <dt className="text-slate-600">Funding Needed:</dt>
-                            <dd className="text-slate-900">${project.funding_needed?.toLocaleString() || 'Not specified'}</dd>
+                            <dd className="text-slate-900">${project.funding_request_amount ? parseFloat(project.funding_request_amount).toLocaleString() : 'Not specified'}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-slate-600">Total Budget:</dt>
+                            <dd className="text-slate-900">${project.total_project_budget ? parseFloat(project.total_project_budget).toLocaleString() : 'Not specified'}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-slate-600">People Served:</dt>
+                            <dd className="text-slate-900">{project.estimated_people_served ? parseInt(project.estimated_people_served).toLocaleString() : 'Not specified'}</dd>
                           </div>
                           <div className="flex justify-between">
                             <dt className="text-slate-600">Created:</dt>
                             <dd className="text-slate-900">{project.created_at ? new Date(project.created_at).toLocaleDateString() : 'Unknown'}</dd>
                           </div>
+                          {project.updated_at && (
+                            <div className="flex justify-between">
+                              <dt className="text-slate-600">Last Updated:</dt>
+                              <dd className="text-slate-900">{new Date(project.updated_at).toLocaleDateString()}</dd>
+                            </div>
+                          )}
                         </dl>
                       </div>
                       <div>
-                        <h3 className="font-medium text-slate-900 mb-2">Description</h3>
-                        <p className="text-sm text-slate-600">
-                          {project.description || 'No description provided'}
-                        </p>
+                        <h3 className="font-medium text-slate-900 mb-2">Detailed Description</h3>
+                        <div className="text-sm text-slate-600 space-y-3">
+                          {project.description ? (
+                            <div className="bg-white p-4 rounded-md border">
+                              <p className="leading-relaxed">{project.description}</p>
+                            </div>
+                          ) : (
+                            <div className="bg-white p-4 rounded-md border border-dashed border-slate-300">
+                              <p className="text-slate-400 italic">No detailed description provided</p>
+                            </div>
+                          )}
+
+                          {/* Additional project information */}
+                          {project.primary_goals && project.primary_goals.length > 0 && project.primary_goals.some(goal => goal.trim()) && (
+                            <div>
+                              <h4 className="font-medium text-slate-800 mb-1">Project Objectives:</h4>
+                              <ul className="list-disc list-inside space-y-1">
+                                {project.primary_goals.filter(goal => goal.trim()).map((goal, index) => (
+                                  <li key={index} className="text-slate-600">{goal}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {project.target_population_description && (
+                            <div>
+                              <h4 className="font-medium text-slate-800 mb-1">Target Audience:</h4>
+                              <p className="text-slate-600">{project.target_population_description}</p>
+                            </div>
+                          )}
+
+                          {project.impact_measures && (
+                            <div>
+                              <h4 className="font-medium text-slate-800 mb-1">Expected Impact:</h4>
+                              <p className="text-slate-600">{project.impact_measures}</p>
+                            </div>
+                          )}
+
+                          {project.project_duration && (
+                            <div>
+                              <h4 className="font-medium text-slate-800 mb-1">Project Timeline:</h4>
+                              <p className="text-slate-600">{project.project_duration.replace('_', ' ')}</p>
+                            </div>
+                          )}
+
+                          {(project.total_project_budget || project.funding_request_amount) && (
+                            <div>
+                              <h4 className="font-medium text-slate-800 mb-1">Budget Breakdown:</h4>
+                              <div className="space-y-1">
+                                {project.total_project_budget && (
+                                  <p className="text-slate-600">Total Budget: ${parseFloat(project.total_project_budget).toLocaleString()}</p>
+                                )}
+                                {project.funding_request_amount && (
+                                  <p className="text-slate-600">Funding Requested: ${parseFloat(project.funding_request_amount).toLocaleString()}</p>
+                                )}
+                                {project.cash_match_available && (
+                                  <p className="text-slate-600">Cash Match Available: ${parseFloat(project.cash_match_available).toLocaleString()}</p>
+                                )}
+                                {project.in_kind_match_available && (
+                                  <p className="text-slate-600">In-Kind Match Available: ${parseFloat(project.in_kind_match_available).toLocaleString()}</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {project.key_milestones && (
+                            <div>
+                              <h4 className="font-medium text-slate-800 mb-1">Key Milestones:</h4>
+                              <p className="text-slate-600">{project.key_milestones}</p>
+                            </div>
+                          )}
+
+                          {project.unique_innovation && (
+                            <div>
+                              <h4 className="font-medium text-slate-800 mb-1">Unique Innovation:</h4>
+                              <p className="text-slate-600">{project.unique_innovation}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

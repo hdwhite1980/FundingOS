@@ -335,6 +335,16 @@ export default function EnhancedApplicationTracker({
       setProcessing(false)
     }
   }
+
+  // Handle AI Analysis Modal close
+  const handleAIAnalysisModalClose = () => {
+    setShowAIAnalysisModal(false)
+    setAnalysisData(null)
+    // Move to the next step after analysis
+    if (step === 'analyze') {
+      setStep('complete')
+    }
+  }
   const handleFinalSubmit = () => {
     const finalData = {
       project_id: selectedProject,

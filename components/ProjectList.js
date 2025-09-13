@@ -141,15 +141,15 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
                   <div className="flex items-center text-slate-600">
                     <DollarSign className="w-4 h-4 mr-2 text-emerald-600" />
                     <span className="text-sm font-medium">
-                      ${project.funding_needed?.toLocaleString() || '0'} needed
+                      ${project.funding_request_amount ? parseFloat(project.funding_request_amount).toLocaleString() : '0'} needed
                     </span>
                   </div>
                   
                   {/* Project Type Badge */}
-                  {project.project_type && (
+                  {project.project_category && (
                     <div className="inline-flex items-center px-2.5 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-xs font-medium">
                       <Target className="w-3 h-3 mr-1" />
-                      {project.project_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {project.project_category?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </div>
                   )}
                 </div>
@@ -164,10 +164,10 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
                 {/* Additional Details */}
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <div className="flex items-center space-x-4">
-                    {project.location && (
+                    {project.project_location && (
                       <div className="flex items-center">
                         <MapPin className="w-3 h-3 mr-1" />
-                        <span>{project.location}</span>
+                        <span>{project.project_location}</span>
                       </div>
                     )}
                     {project.created_at && (
