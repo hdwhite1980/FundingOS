@@ -22,6 +22,7 @@ export default function OpportunityCard({
   selectedProject, 
   userProfile, 
   onAnalyze, 
+  onShowDetails,
   fitScore, 
   deadlineStatus,
   index 
@@ -119,7 +120,11 @@ export default function OpportunityCard({
               </a>
             )}
             
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors duration-150">
+            <button 
+              onClick={() => onShowDetails && onShowDetails(opportunity)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors duration-150"
+              title="Show Details"
+            >
               <Info className="w-4 h-4" />
             </button>
           </div>

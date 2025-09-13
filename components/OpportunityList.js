@@ -441,6 +441,11 @@ export default function OpportunityList({
     }
   }
 
+  const handleShowOpportunityDetails = (opportunity) => {
+    // You can customize this to show a modal, navigate to a details page, etc.
+    alert(`Opportunity Details:\n\nTitle: ${opportunity.title}\nSponsor: ${opportunity.sponsor}\nAmount: $${opportunity.amount_min?.toLocaleString() || 'N/A'} - $${opportunity.amount_max?.toLocaleString() || 'N/A'}\nDeadline: ${opportunity.deadline_date || 'Rolling'}\n\nDescription: ${opportunity.description || 'No description available'}\n\nURL: ${opportunity.source_url || 'No URL available'}`)
+  }
+
   const handleAnalyzeOpportunity = (opportunity) => {
     if (!selectedProject) {
       toast.error('Please select a project first')
@@ -453,23 +458,27 @@ export default function OpportunityList({
 
   // Pagination handlers
   const handlePageChange = (page) => {
+    console.log('Page change requested:', page)
     setCurrentPage(page)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
+    console.log('Items per page change requested:', newItemsPerPage)
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1) // Reset to first page
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handlePreviousPage = () => {
+    console.log('Previous page requested, current page:', currentPage)
     if (currentPage > 1) {
       handlePageChange(currentPage - 1)
     }
   }
 
   const handleNextPage = () => {
+    console.log('Next page requested, current page:', currentPage, 'total pages:', totalPages)
     if (currentPage < totalPages) {
       handlePageChange(currentPage + 1)
     }
@@ -969,6 +978,7 @@ export default function OpportunityList({
                   selectedProject={selectedProject}
                   userProfile={userProfile}
                   onAnalyze={() => handleAnalyzeOpportunity(opportunity)}
+                  onShowDetails={handleShowOpportunityDetails}
                   fitScore={opportunity.fitScore}
                   deadlineStatus={getDeadlineStatus(opportunity.deadline_date)}
                   index={index}
