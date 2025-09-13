@@ -10,6 +10,17 @@ import aiProviderService from '../../../../lib/aiProviderService'
 
 const MAX_TOKENS = 4000
 
+export async function GET(request: NextRequest) {
+  return NextResponse.json(
+    { 
+      error: 'Document analysis requires POST method with document content',
+      supportedMethods: ['POST'],
+      supportedActions: ['analyze', 'form-analysis', 'requirements-checklist', 'questions', 'batch-summary']
+    },
+    { status: 405 }
+  )
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { 
@@ -272,6 +283,9 @@ Focus on actionable insights and avoid redundancy.
 }
 
 function buildAnalysisPrompt(documentText: string, documentType: string, context: any) {
+  // Ensure documentText is actually a string
+  const textContent = typeof documentText === 'string' ? documentText : JSON.stringify(documentText)
+  
   const basePrompt = `
 Analyze this ${documentType} document and extract structured information. Focus on:
 
@@ -299,7 +313,7 @@ Analyze this ${documentType} document and extract structured information. Focus 
    - Recommended approach/strategy
 
 DOCUMENT CONTENT:
-${documentText.substring(0, 12000)} ${documentText.length > 12000 ? '...[truncated]' : ''}
+${textContent.substring(0, 12000)} ${textContent.length > 12000 ? '...[truncated]' : ''}
   `
 
   if (context.userProfile || context.project) {
@@ -310,11 +324,14 @@ ${documentText.substring(0, 12000)} ${documentText.length > 12000 ? '...[truncat
 }
 
 function buildFormAnalysisPrompt(formContent: string, userProfile: any, projectData: any) {
+  // Ensure formContent is actually a string
+  const textContent = typeof formContent === 'string' ? formContent : JSON.stringify(formContent)
+  
   return `
 Analyze this application form and provide intelligent completion suggestions:
 
 APPLICATION FORM:
-${formContent.substring(0, 10000)}
+${textContent.substring(0, 10000)}
 
 USER PROFILE:
 ${JSON.stringify(userProfile, null, 2)}
