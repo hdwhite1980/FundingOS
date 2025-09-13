@@ -19,7 +19,8 @@ import {
   Filter,
   Search,
   Paperclip,
-  MessageSquare
+  MessageSquare,
+  Copy
 } from 'lucide-react'
 import { directUserServices } from '../lib/supabase'
 import { format, differenceInDays } from 'date-fns'
@@ -272,6 +273,18 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
                 <span className="flex items-center">
                   <Paperclip className="w-4 h-4 mr-1" />
                   {submission.documents.length} docs
+                </span>
+              )}
+              {submission.generated_document && (
+                <span className="flex items-center text-emerald-600">
+                  <FileText className="w-4 h-4 mr-1" />
+                  AI Generated
+                </span>
+              )}
+              {submission.ai_completion_data && (
+                <span className="flex items-center text-blue-600">
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                  {submission.ai_completion_data.completionPercentage}% Complete
                 </span>
               )}
               {submission.status_updates?.length > 0 && (
@@ -845,6 +858,83 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
                       <p className="text-slate-900">{format(new Date(submission.response_date), 'MMM d, yyyy')}</p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Generated Application Content */}
+            {submission.generated_document && (
+              <div>
+                <h4 className="font-medium text-slate-900 mb-4 flex items-center">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Generated Application Document
+                </h4>
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  <div className="max-h-96 overflow-y-auto">
+                    <div className="whitespace-pre-wrap font-mono text-sm text-slate-800 leading-relaxed">
+                      {submission.generated_document}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex space-x-2">
+                    <button
+                      onClick={() => {
+                        const blob = new Blob([submission.generated_document], { 
+                          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+                        })
+                        const url = window.URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.style.display = 'none'
+                        a.href = url
+                        a.download = `${submission.projects?.name || 'Project'}_${submission.opportunity?.title || 'Application'}.docx`
+                        document.body.appendChild(a)
+                        a.click()
+                        window.URL.revokeObjectURL(url)
+                        toast.success('Document downloaded!')
+                      }}
+                      className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(submission.generated_document)
+                        toast.success('Document copied to clipboard!')
+                      }}
+                      className="px-3 py-2 bg-slate-600 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors flex items-center"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* AI Analysis Data */}
+            {submission.ai_completion_data && (
+              <div>
+                <h4 className="font-medium text-slate-900 mb-4 flex items-center">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  AI Analysis Summary
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500 font-medium">Completion Percentage</p>
+                    <p className="font-bold text-emerald-600">{submission.ai_completion_data.completionPercentage || 0}%</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 font-medium">Confidence Level</p>
+                    <p className="font-bold text-blue-600">{Math.round((submission.ai_completion_data.confidence || 0) * 100)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 font-medium">Documents Analyzed</p>
+                    <p className="text-slate-900">{submission.ai_completion_data.documentsAnalyzed || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 font-medium">Questions Answered</p>
+                    <p className="text-slate-900">{submission.ai_completion_data.questionsAnswered || 0}</p>
+                  </div>
                 </div>
               </div>
             )}

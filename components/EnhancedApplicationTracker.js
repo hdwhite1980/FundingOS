@@ -30,6 +30,7 @@ import toast from 'react-hot-toast'
 import smartFormCompletionService from '../lib/smartFormCompletionService'
 import documentAnalysisService from '../lib/documentAnalysisService'
 import MissingInfoCollector from './MissingInfoCollector'
+import AIAnalysisModal from './AIAnalysisModal'
 
 export default function EnhancedApplicationTracker({ 
   projects, 
@@ -51,6 +52,8 @@ export default function EnhancedApplicationTracker({
   const [aiAnalysisResult, setAiAnalysisResult] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentFileName, setCurrentFileName] = useState('')
+  const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false)
+  const [analysisData, setAnalysisData] = useState(null)
 
   // Handle file upload and analysis
   const handleFileUpload = async (files) => {
@@ -151,6 +154,38 @@ export default function EnhancedApplicationTracker({
       setFormCompletion(completion)
       setFilledForm(completion.filledForm || completion.fieldCompletions || {})
       
+      // Create mock opportunity data for AI analysis
+      const mockOpportunity = {
+        id: `ai-generated-${Date.now()}`,
+        title: completion.opportunityTitle || 'AI-Analyzed Grant Opportunity',
+        description: completion.opportunityDescription || 'Opportunity analyzed from uploaded documents',
+        sponsor: completion.sponsor || 'Various Sponsors',
+        amount_min: completion.amountMin || 0,
+        amount_max: completion.amountMax || 50000,
+        deadline_date: completion.deadline || null,
+        eligibility_requirements: completion.requirements || 'Standard requirements apply'
+      }
+
+      // Prepare analysis data for the modal
+      const analysisDataForModal = {
+        opportunity: mockOpportunity,
+        project: project,
+        userProfile: userProfile,
+        analysis: {
+          fitScore: completion.completionPercentage || 75,
+          strengths: completion.strengths || ['Document analysis completed', 'Form fields identified'],
+          challenges: completion.challenges || ['Some information may need verification'],
+          recommendations: completion.recommendations || ['Review generated content', 'Customize for specific requirements'],
+          nextSteps: completion.nextSteps || ['Review application', 'Submit to grant agency'],
+          confidence: completion.confidence || 0.8,
+          reasoning: completion.reasoning || 'Analysis based on document content and project information'
+        },
+        quickMatchScore: completion.completionPercentage || 75
+      }
+
+      setAnalysisData(analysisDataForModal)
+      setShowAIAnalysisModal(true)
+      
       // Check if we have a blank application that needs missing info collection
       if (completion.formStatus?.isBlank && completion.questionsForUser?.length > 0) {
         setAiAnalysisResult(completion)
@@ -229,7 +264,77 @@ export default function EnhancedApplicationTracker({
     toast.info('Info collection cancelled. You can try again when ready.')
   }
 
-  // Finalize and submit the application
+  // Handle download of generated application
+  const handleDownloadApplication = async () => {
+    try {
+      setProcessing(true)
+      
+      const project = projects.find(p => p.id === selectedProject)
+      const mockOpportunity = {
+        id: `ai-generated-${Date.now()}`,
+        title: filledForm.opportunity_title || 'AI-Generated Application',
+        description: 'Generated from uploaded documents',
+        sponsor: filledForm.sponsor || 'Various Sponsors',
+        amount_min: parseFloat(filledForm.funding_amount || filledForm.budget_amount || 0),
+        amount_max: parseFloat(filledForm.funding_amount || filledForm.budget_amount || 50000),
+        deadline_date: filledForm.deadline || null,
+        eligibility_requirements: filledForm.requirements || 'Standard requirements apply'
+      }
+
+      const applicationData = {
+        opportunity: mockOpportunity,
+        project: project,
+        userProfile: userProfile,
+        analysis: {
+          fitScore: formCompletion?.completionPercentage || 75,
+          strengths: formCompletion?.strengths || ['Application generated successfully'],
+          challenges: formCompletion?.challenges || [],
+          recommendations: formCompletion?.recommendations || ['Review and customize as needed'],
+          nextSteps: formCompletion?.nextSteps || ['Submit to grant agency'],
+          confidence: formCompletion?.confidence || 0.8,
+          reasoning: formCompletion?.reasoning || 'AI-generated application'
+        },
+        applicationDraft: '',
+        createdAt: new Date().toISOString()
+      }
+
+      const response = await fetch('/api/ai/generate-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationData,
+          documentType: 'grant-application'
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate document')
+      }
+
+      const result = await response.json()
+      
+      // Create and download the document
+      const blob = new Blob([result.document], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = `${project.name}_${mockOpportunity.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_application.docx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+
+      toast.success('Application document downloaded successfully!')
+      
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error('Failed to download application: ' + error.message)
+    } finally {
+      setProcessing(false)
+    }
+  }
   const handleFinalSubmit = () => {
     const finalData = {
       project_id: selectedProject,
@@ -544,6 +649,18 @@ export default function EnhancedApplicationTracker({
           Back to Edit
         </button>
         <button
+          onClick={handleDownloadApplication}
+          disabled={processing}
+          className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {processing ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Download className="w-5 h-5" />
+          )}
+          <span>{processing ? 'Generating...' : 'Download Application'}</span>
+        </button>
+        <button
           onClick={handleFinalSubmit}
           className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-2"
         >
@@ -621,6 +738,17 @@ export default function EnhancedApplicationTracker({
           </div>
         </div>
       </motion.div>
+
+      {/* AI Analysis Modal */}
+      {showAIAnalysisModal && analysisData && (
+        <AIAnalysisModal
+          opportunity={analysisData.opportunity}
+          project={analysisData.project}
+          userProfile={analysisData.userProfile}
+          quickMatchScore={analysisData.quickMatchScore}
+          onClose={handleAIAnalysisModalClose}
+        />
+      )}
     </div>
   )
 }
