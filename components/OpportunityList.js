@@ -83,8 +83,12 @@ export default function OpportunityList({
           const scores = {}
           for (const opportunity of opportunities) {
             try {
-              const score = await scoringService.calculateScore(selectedProject, opportunity, userProfile)
-              scores[opportunity.id] = score
+              const scoreResult = await scoringService.calculateScore(selectedProject, opportunity, userProfile)
+              // Extract numerical score from the result
+              const numericalScore = typeof scoreResult === 'object' && scoreResult !== null 
+                ? (scoreResult.overallScore || scoreResult.fitScore || 0) 
+                : (scoreResult || 0)
+              scores[opportunity.id] = Math.max(0, Math.min(100, numericalScore)) // Ensure valid range
             } catch (error) {
               console.error(`Error calculating score for opportunity ${opportunity.id}:`, error)
               scores[opportunity.id] = 0 // Default score on error
@@ -233,10 +237,16 @@ export default function OpportunityList({
 
     // Smart ranking based on selected project
     if (selectedProject) {
-      filtered = filtered.map(opp => ({
-        ...opp,
-        fitScore: opportunityScores[opp.id] || 0
-      })).sort((a, b) => b.fitScore - a.fitScore)
+      filtered = filtered.map(opp => {
+        const scoreData = opportunityScores[opp.id]
+        // Since we now store numerical scores directly, just ensure it's a valid number
+        const fitScore = typeof scoreData === 'number' ? scoreData : 0
+        
+        return {
+          ...opp,
+          fitScore: Math.max(0, Math.min(100, fitScore)) // Ensure it's a valid number between 0-100
+        }
+      }).sort((a, b) => b.fitScore - a.fitScore)
     }
 
     setFilteredOpportunities(filtered)
