@@ -1,58 +1,10 @@
-/**
- * Enhanced Application Tracker - Integrates ApplicationAssistant functionality 
- * into the Application Progress workflow for smart form completion
- */
-
-  // Handle answers to missing info questions
-  const handleQuestionAnswer = (questionId, answer) => {
-    setUserAnswers(prev => ({
-      ...prev,
-      [questionId]: answer
-    }))
-
-    // Update filled form with the answer
-    const question = missingQuestions.find(q => q.id === questionId)
-    if (question) {
-      setFilledForm(prev => ({
-        ...prev,
-        [question.field || questionId]: answer
-      }))
-    }
-  }
-
-  // Handle completion of missing info collection
-  const handleInfoCollected = async (completedData) => {
-    setUserAnswers(completedData.collectedInfo)
-    
-    // Merge collected information with auto-fill suggestions
-    const updatedForm = { ...filledForm }
-    
-    // Apply auto-fill suggestions
-    Object.entries(completedData.autoFillSuggestions).forEach(([fieldName, suggestion]) => {
-      if (suggestion.confidence > 0.8) { // High confidence auto-fill
-        updatedForm[fieldName] = suggestion.value
-      }
-    })
-    
-    // Apply collected user answers
-    Object.entries(completedData.collectedInfo).forEach(([fieldName, info]) => {
-      updatedForm[fieldName] = info.answer
-    })
-    
-    setFilledForm(updatedForm)
-    setShowMissingInfo(false)
-    setStep('complete')
-    
-    toast.success('Information collected! Your application is now ready for review.')
-  }
-
-  // Handle cancellation of missing info collection
-/**
- * Enhanced Application Tracker - Integrates ApplicationAssistant functionality 
- * into the Application Progress workflow for smart form completion
- */
-
 'use client'
+
+/**
+ * Enhanced Application Tracker - Integrates ApplicationAssistant functionality 
+ * into the Application Progress workflow for smart form completion
+ */
+
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -103,30 +55,35 @@ export default function EnhancedApplicationTracker({
     if (!files || files.length === 0) return
 
     setProcessing(true)
-    try {
-      const fileArray = Array.from(files)
-      setUploadedFiles(fileArray)
+    const fileArray = Array.from(files)
+    setUploadedFiles(fileArray)
 
-      // Analyze documents to extract form structure and requirements
+    try {
       const analyses = []
+      
       for (const file of fileArray) {
-        try {
+        const reader = new FileReader()
+        const fileContent = await new Promise((resolve) => {
+          reader.onload = (e) => resolve(e.target.result)
+          reader.readAsText(file)
+        })
+
+        if (fileContent) {
           const analysis = await documentAnalysisService.analyzeDocument(
-            file,
-            userProfile,
-            { enableFormExtraction: true, enableRequirementAnalysis: true }
-          )
-          analyses.push({ file: file.name, analysis })
-        } catch (error) {
-          console.error(`Error analyzing ${file.name}:`, error)
-          analyses.push({ 
-            file: file.name, 
-            analysis: { 
-              error: error.message,
-              documentType: 'unknown',
-              formFields: {},
-              requirements: []
+            fileContent, 
+            file.type || 'application/pdf',
+            {
+              userProfile,
+              projectData: projects.find(p => p.id === selectedProject),
+              analysisType: 'application_form'
             }
+          )
+          
+          analyses.push({
+            fileName: file.name,
+            analysis,
+            fileSize: file.size,
+            fileType: file.type
           })
         }
       }
@@ -210,8 +167,8 @@ export default function EnhancedApplicationTracker({
     }
   }
 
-  // Handle user answers to missing information questions
-  const handleAnswerQuestion = (questionId, answer) => {
+  // Handle answers to missing info questions
+  const handleQuestionAnswer = (questionId, answer) => {
     setUserAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -296,49 +253,64 @@ export default function EnhancedApplicationTracker({
       <div>
         <label className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2 block">Select Project *</label>
         <select
-          className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           value={selectedProject}
           onChange={(e) => setSelectedProject(e.target.value)}
+          className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
         >
-          <option value="">Choose project for this application</option>
+          <option value="">Choose a project...</option>
           {projects.map(project => (
             <option key={project.id} value={project.id}>
-              {project.name}
+              {project.title}
             </option>
           ))}
         </select>
       </div>
 
-      <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-emerald-400 transition-colors">
-        <input
-          type="file"
-          multiple
-          accept=".pdf,.doc,.docx,.txt"
-          onChange={(e) => handleFileUpload(e.target.files)}
-          className="hidden"
-          id="document-upload"
-          disabled={!selectedProject}
-        />
-        <label
-          htmlFor="document-upload"
-          className={`cursor-pointer ${!selectedProject ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-          <p className="text-sm font-medium text-slate-900 mb-1">
-            Drop application documents here or click to browse
-          </p>
-          <p className="text-xs text-slate-500">
-            Supports PDF, Word documents, and text files
-          </p>
+      <div>
+        <label className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2 block">
+          Upload Application Forms
         </label>
+        <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-emerald-400 hover:bg-emerald-50 transition-all">
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.txt"
+            onChange={(e) => handleFileUpload(e.target.files)}
+            className="hidden"
+            id="file-upload"
+            disabled={!selectedProject || processing}
+          />
+          <label 
+            htmlFor="file-upload" 
+            className={`cursor-pointer ${!selectedProject || processing ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <h4 className="text-lg font-medium text-slate-900 mb-2">
+              Drop files here or click to upload
+            </h4>
+            <p className="text-slate-600">
+              Supports PDF, Word documents, and text files
+            </p>
+          </label>
+        </div>
       </div>
 
+      {uploadedFiles.length > 0 && (
+        <div className="bg-slate-50 rounded-lg p-4">
+          <h4 className="font-medium text-slate-900 mb-2">Uploaded Files:</h4>
+          {uploadedFiles.map((file, index) => (
+            <div key={index} className="flex items-center space-x-2 text-sm text-slate-600">
+              <FileText className="w-4 h-4" />
+              <span>{file.name}</span>
+              <span className="text-xs">({Math.round(file.size / 1024)}KB)</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!selectedProject && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 text-amber-600 mr-2" />
-            <p className="text-sm text-amber-800">Please select a project before uploading documents</p>
-          </div>
+        <div className="text-center text-amber-600 text-sm">
+          Please select a project before uploading documents
         </div>
       )}
     </div>
@@ -352,69 +324,49 @@ export default function EnhancedApplicationTracker({
           <Brain className="w-6 h-6 text-blue-600" />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">Document Analysis Complete</h3>
-        <p className="text-slate-600">We've analyzed your documents and identified the required fields</p>
+        <p className="text-slate-600">AI has analyzed your documents. Ready to generate intelligent form completion?</p>
       </div>
 
-      {documentAnalysis && documentAnalysis.map(({ file, analysis }, index) => (
-        <div key={index} className="bg-white border border-slate-200 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center">
-              <FileText className="w-5 h-5 text-slate-400 mr-2" />
-              <span className="font-medium text-slate-900">{file}</span>
+      {documentAnalysis && (
+        <div className="bg-slate-50 rounded-lg p-6 space-y-4">
+          <h4 className="font-medium text-slate-900">Analysis Results:</h4>
+          {documentAnalysis.map((doc, index) => (
+            <div key={index} className="border border-slate-200 rounded-lg p-4 bg-white">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="font-medium text-slate-900">{doc.fileName}</h5>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                  <span className="text-xs text-emerald-600">Analyzed</span>
+                </div>
+              </div>
+              <div className="text-sm text-slate-600">
+                <p><strong>Type:</strong> {doc.analysis?.documentType || 'Unknown'}</p>
+                <p><strong>Fields Found:</strong> {Object.keys(doc.analysis?.formFields || {}).length}</p>
+                <p><strong>Requirements:</strong> {doc.analysis?.requirements?.length || 0} found</p>
+              </div>
             </div>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              analysis.error 
-                ? 'bg-red-100 text-red-700'
-                : analysis.documentType === 'application'
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-blue-100 text-blue-700'
-            }`}>
-              {analysis.error ? 'Error' : analysis.documentType || 'Analyzed'}
-            </span>
-          </div>
-          
-          {analysis.error ? (
-            <p className="text-sm text-red-600">{analysis.error}</p>
-          ) : (
-            <div className="space-y-2">
-              {analysis.formFields && Object.keys(analysis.formFields).length > 0 && (
-                <p className="text-sm text-slate-600">
-                  Found {Object.keys(analysis.formFields).length} form fields
-                </p>
-              )}
-              {analysis.requirements && analysis.requirements.length > 0 && (
-                <p className="text-sm text-slate-600">
-                  Identified {analysis.requirements.length} requirements
-                </p>
-              )}
-            </div>
-          )}
+          ))}
         </div>
-      ))}
+      )}
 
-      <div className="flex justify-between pt-4">
+      <div className="flex space-x-4">
         <button
           onClick={() => setStep('upload')}
-          className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+          className="flex-1 py-3 px-4 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
         >
-          Back
+          Back to Upload
         </button>
         <button
           onClick={handleFormCompletion}
           disabled={processing}
-          className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+          className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
           {processing ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Analyzing...</span>
-            </>
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
-            <>
-              <Zap className="w-4 h-4" />
-              <span>AI Complete Form</span>
-            </>
+            <Zap className="w-5 h-5" />
           )}
+          <span>{processing ? 'Analyzing...' : 'Generate Smart Completion'}</span>
         </button>
       </div>
     </div>
@@ -424,104 +376,92 @@ export default function EnhancedApplicationTracker({
   const renderCompletionStep = () => (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="mx-auto w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-          <Sparkles className="w-6 h-6 text-purple-600" />
+        <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
+          <CheckCircle className="w-6 h-6 text-emerald-600" />
         </div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">Smart Form Completion</h3>
-        <p className="text-slate-600">
-          AI completed {formCompletion?.completionPercentage || 0}% of the form using your project data
-        </p>
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">Form Completion Ready</h3>
+        <p className="text-slate-600">AI has analyzed and pre-filled your application form</p>
       </div>
 
       {formCompletion && (
-        <div className="bg-slate-50 rounded-lg p-4">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-emerald-600">{formCompletion.completionPercentage || 0}%</p>
-              <p className="text-xs text-slate-600">Completed</p>
+        <div className="bg-emerald-50 rounded-lg p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-emerald-600">
+                {formCompletion.completionPercentage || 0}%
+              </div>
+              <div className="text-sm text-slate-600">Complete</div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">{Object.keys(filledForm).length}</p>
-              <p className="text-xs text-slate-600">Fields Filled</p>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {Math.round((formCompletion.confidence || 0) * 100)}%
+              </div>
+              <div className="text-sm text-slate-600">Confidence</div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-blue-600">{Math.round((formCompletion.confidence || 0) * 100)}%</p>
-              <p className="text-xs text-slate-600">Confidence</p>
+          </div>
+          
+          {Object.keys(filledForm).length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-slate-900">Pre-filled Fields:</h4>
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {Object.entries(filledForm).slice(0, 10).map(([field, value]) => (
+                  <div key={field} className="flex justify-between text-sm">
+                    <span className="text-slate-600 capitalize">{field.replace(/_/g, ' ')}:</span>
+                    <span className="text-slate-900 font-medium truncate max-w-xs">
+                      {typeof value === 'string' ? value.substring(0, 50) + (value.length > 50 ? '...' : '') : String(value)}
+                    </span>
+                  </div>
+                ))}
+                {Object.keys(filledForm).length > 10 && (
+                  <div className="text-xs text-slate-500">
+                    +{Object.keys(filledForm).length - 10} more fields
+                  </div>
+                )}
+              </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {missingQuestions.length > 0 && (
+        <div className="bg-amber-50 rounded-lg p-4">
+          <h4 className="font-medium text-slate-900 mb-2 flex items-center">
+            <HelpCircle className="w-4 h-4 mr-2 text-amber-600" />
+            Additional Information Needed
+          </h4>
+          <p className="text-sm text-slate-600 mb-3">
+            Answer these questions to complete your application:
+          </p>
+          <div className="space-y-3">
+            {missingQuestions.slice(0, 3).map((question, index) => (
+              <div key={question.id || index} className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">
+                  {question.question}
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your answer..."
+                  onChange={(e) => handleQuestionAnswer(question.id, e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Show filled form fields */}
-      <div className="space-y-3">
-        <h4 className="font-medium text-slate-900">Auto-filled Fields</h4>
-        <div className="max-h-40 overflow-y-auto space-y-2">
-          {Object.entries(filledForm).map(([field, value]) => (
-            <div key={field} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200">
-              <span className="text-sm font-medium text-slate-700">
-                {field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </span>
-              <span className="text-sm text-slate-600 truncate ml-2">{String(value).substring(0, 50)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Missing information questions */}
-      {missingQuestions.length > 0 && (
-        <div className="space-y-4">
-          <h4 className="font-medium text-slate-900 flex items-center">
-            <HelpCircle className="w-5 h-5 text-blue-600 mr-2" />
-            Additional Information Needed
-          </h4>
-          {missingQuestions.map((question) => (
-            <div key={question.id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <label className="block text-sm font-medium text-slate-900 mb-2">
-                {question.question}
-              </label>
-              {question.helpText && (
-                <p className="text-xs text-slate-600 mb-3">{question.helpText}</p>
-              )}
-              <input
-                type="text"
-                className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your answer..."
-                value={userAnswers[question.id] || ''}
-                onChange={(e) => handleAnswerQuestion(question.id, e.target.value)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Strategic recommendations */}
-      {formCompletion?.strategicRecommendations && formCompletion.strategicRecommendations.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="font-medium text-slate-900 flex items-center">
-            <Lightbulb className="w-5 h-5 text-amber-600 mr-2" />
-            AI Recommendations
-          </h4>
-          {formCompletion.strategicRecommendations.map((rec, index) => (
-            <div key={index} className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-sm font-medium text-slate-900">{rec.title}</p>
-              <p className="text-sm text-slate-700 mt-1">{rec.description}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex justify-between pt-4">
+      <div className="flex space-x-4">
         <button
           onClick={() => setStep('analyze')}
-          className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+          className="flex-1 py-3 px-4 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
         >
-          Back
+          Back to Analysis
         </button>
         <button
           onClick={() => setStep('review')}
-          className="bg-purple-600 text-white hover:bg-purple-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
+          className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-2"
         >
-          <ArrowRight className="w-4 h-4" />
+          <Edit className="w-5 h-5" />
           <span>Review & Submit</span>
         </button>
       </div>
@@ -529,94 +469,70 @@ export default function EnhancedApplicationTracker({
   )
 
   // Render review step
-  const renderReviewStep = () => {
-    const project = projects.find(p => p.id === selectedProject)
-    
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <div className="mx-auto w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-            <CheckCircle className="w-6 h-6 text-green-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">Review Application Details</h3>
-          <p className="text-slate-600">Review the AI-completed information before tracking this application</p>
+  const renderReviewStep = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="mx-auto w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+          <Save className="w-6 h-6 text-blue-600" />
         </div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">Review Your Application</h3>
+        <p className="text-slate-600">Final review before submission</p>
+      </div>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs font-medium text-slate-600">Project</p>
-              <p className="font-medium text-slate-900">{project?.name}</p>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs font-medium text-slate-600">Documents Processed</p>
-              <p className="font-medium text-slate-900">{documentAnalysis?.length || 0}</p>
-            </div>
-          </div>
-
-          <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-xs font-medium text-slate-600">Application Title</p>
-            <p className="font-medium text-slate-900">
-              {filledForm.opportunity_title || documentAnalysis?.[0]?.analysis?.title || 'AI-Assisted Application'}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs font-medium text-slate-600">Requested Amount</p>
-              <p className="font-medium text-slate-900">
-                ${parseFloat(filledForm.funding_amount || filledForm.budget_amount || filledForm.requested_amount || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-3">
-              <p className="text-xs font-medium text-slate-600">AI Completion</p>
-              <p className="font-medium text-slate-900">{formCompletion?.completionPercentage || 0}%</p>
+      <div className="bg-slate-50 rounded-lg p-6 space-y-4">
+        <h4 className="font-medium text-slate-900">Application Summary:</h4>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-slate-600">Project:</span>
+            <div className="font-medium text-slate-900">
+              {projects.find(p => p.id === selectedProject)?.title || 'Unknown Project'}
             </div>
           </div>
-
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-            <h5 className="font-medium text-slate-900 mb-2 flex items-center">
-              <Sparkles className="w-4 h-4 text-emerald-600 mr-2" />
-              AI Enhancement Summary
-            </h5>
-            <ul className="text-sm text-slate-700 space-y-1">
-              <li>• Analyzed {documentAnalysis?.length || 0} document(s)</li>
-              <li>• Auto-filled {Object.keys(filledForm).length} form fields</li>
-              <li>• Answered {Object.keys(userAnswers).length} clarifying question(s)</li>
-              <li>• {formCompletion?.completionPercentage || 0}% completion confidence</li>
-            </ul>
+          <div>
+            <span className="text-slate-600">Funding Amount:</span>
+            <div className="font-medium text-slate-900">
+              ${filledForm.funding_amount || filledForm.budget_amount || filledForm.requested_amount || '0'}
+            </div>
           </div>
-        </div>
-
-        <div className="flex justify-between pt-4">
-          <button
-            onClick={() => setStep('complete')}
-            className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
-          >
-            Back to Edit
-          </button>
-          <button
-            onClick={handleFinalSubmit}
-            className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
-          >
-            <Save className="w-4 h-4" />
-            <span>Track Application</span>
-          </button>
+          <div>
+            <span className="text-slate-600">Documents Analyzed:</span>
+            <div className="font-medium text-slate-900">{documentAnalysis?.length || 0}</div>
+          </div>
+          <div>
+            <span className="text-slate-600">Completion:</span>
+            <div className="font-medium text-slate-900">{formCompletion?.completionPercentage || 0}%</div>
+          </div>
         </div>
       </div>
-    )
-  }
+
+      <div className="flex space-x-4">
+        <button
+          onClick={() => setStep('complete')}
+          className="flex-1 py-3 px-4 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+        >
+          Back to Edit
+        </button>
+        <button
+          onClick={handleFinalSubmit}
+          className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-2"
+        >
+          <CheckCircle className="w-5 h-5" />
+          <span>Submit Application</span>
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
       >
-        <div className="p-6">
-          {/* Header with progress */}
-          <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between p-6 border-b border-slate-200">
             <h2 className="text-xl font-bold text-slate-900">AI-Enhanced Application Tracker</h2>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
               <X className="w-5 h-5" />
@@ -647,30 +563,31 @@ export default function EnhancedApplicationTracker({
             ))}
           </div>
 
-          {/* Content based on current step */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              {step === 'upload' && renderUploadStep()}
-              {step === 'analyze' && renderAnalysisStep()}
-              {step === 'missing_info' && (
-                <MissingInfoCollector
-                  analysisResult={aiAnalysisResult}
-                  onInfoCollected={handleInfoCollected}
-                  onCancel={handleInfoCancelled}
-                  userProfile={userProfile}
-                  projectData={projects.find(p => p.id === selectedProject)}
-                />
-              )}
-              {step === 'complete' && renderCompletionStep()}
-              {step === 'review' && renderReviewStep()}
-            </motion.div>
-          </AnimatePresence>
+          <div className="flex-1 overflow-y-auto p-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {step === 'upload' && renderUploadStep()}
+                {step === 'analyze' && renderAnalysisStep()}
+                {step === 'missing_info' && (
+                  <MissingInfoCollector
+                    analysisResult={aiAnalysisResult}
+                    onInfoCollected={handleInfoCollected}
+                    onCancel={handleInfoCancelled}
+                    userProfile={userProfile}
+                    projectData={projects.find(p => p.id === selectedProject)}
+                  />
+                )}
+                {step === 'complete' && renderCompletionStep()}
+                {step === 'review' && renderReviewStep()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </motion.div>
     </div>
