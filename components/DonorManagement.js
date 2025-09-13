@@ -37,6 +37,8 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState({})
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingDonor, setEditingDonor] = useState(null)
   const [modalType, setModalType] = useState('donor') // 'donor' or 'investor'
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showCampaignModal, setShowCampaignModal] = useState(false)
@@ -108,6 +110,19 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       loadData()
     } catch (error) {
       toast.error('Failed to create donor: ' + error.message)
+    }
+  }
+
+  const handleUpdateDonor = async (donorData) => {
+    try {
+      const updatedDonor = await directUserServices.donors?.updateDonor(editingDonor.id, donorData)
+      setDonors(donors.map(d => d.id === editingDonor.id ? updatedDonor : d))
+      setShowEditModal(false)
+      setEditingDonor(null)
+      toast.success('Donor updated successfully!')
+      loadData()
+    } catch (error) {
+      toast.error('Failed to update donor: ' + error.message)
     }
   }
 
@@ -275,7 +290,11 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
                 Add Donation
               </button>
               <button
-                onClick={() => setSelectedDonor(donor)}
+                onClick={() => {
+                  setEditingDonor(donor)
+                  setModalType('donor')
+                  setShowEditModal(true)
+                }}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
               >
                 <Edit3 className="w-4 h-4" />
@@ -594,7 +613,10 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
                 <span>Export</span>
               </button>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setModalType('donor')
+                  setShowCreateModal(true)
+                }}
                 className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
@@ -618,7 +640,10 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
               <h3 className="text-lg font-semibold text-slate-900 mb-2">No donors yet</h3>
               <p className="text-slate-600 mb-6">Get started by adding your first donor.</p>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setModalType('donor')
+                  setShowCreateModal(true)
+                }}
                 className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5"
               >
                 Add First Donor
@@ -876,6 +901,17 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
         />
       )}
 
+      {showEditModal && (
+        <EditDonorModal
+          donor={editingDonor}
+          onClose={() => {
+            setShowEditModal(false)
+            setEditingDonor(null)
+          }}
+          onSubmit={handleUpdateDonor}
+        />
+      )}
+
       {showDonationModal && (
         <CreateDonationModal
           donors={donors}
@@ -1054,6 +1090,157 @@ function CreateDonorModal({ onClose, onSubmit }) {
                 className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
               >
                 Add Donor
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// Edit Donor Modal
+function EditDonorModal({ donor, onClose, onSubmit }) {
+  const [formData, setFormData] = useState({
+    name: donor?.name || '',
+    email: donor?.email || '',
+    phone: donor?.phone || '',
+    address_line1: donor?.address_line1 || '',
+    city: donor?.city || '',
+    state: donor?.state || '',
+    zip_code: donor?.zip_code || '',
+    donor_type: donor?.donor_type || 'individual',
+    notes: donor?.notes || '',
+    tags: donor?.tags || []
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSubmit(formData)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-xl shadow-xl max-w-md w-full"
+      >
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Edit Donor</h3>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+              <input
+                type="text"
+                value={formData.address_line1}
+                onChange={(e) => setFormData({...formData, address_line1: e.target.value})}
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Street address"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({...formData, city: e.target.value})}
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">State</label>
+                <input
+                  type="text"
+                  value={formData.state}
+                  onChange={(e) => setFormData({...formData, state: e.target.value})}
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">ZIP Code</label>
+              <input
+                type="text"
+                value={formData.zip_code}
+                onChange={(e) => setFormData({...formData, zip_code: e.target.value})}
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Donor Type</label>
+              <select
+                value={formData.donor_type}
+                onChange={(e) => setFormData({...formData, donor_type: e.target.value})}
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="individual">Individual</option>
+                <option value="corporate">Corporate</option>
+                <option value="foundation">Foundation</option>
+                <option value="government">Government</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                rows="3"
+                placeholder="Additional notes about this donor..."
+              />
+            </div>
+            
+            <div className="flex space-x-3 pt-4">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
+              >
+                Update Donor
               </button>
             </div>
           </form>

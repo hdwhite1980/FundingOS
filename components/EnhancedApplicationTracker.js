@@ -258,9 +258,9 @@ export default function EnhancedApplicationTracker({
           className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
         >
           <option value="">Choose a project...</option>
-          {projects.map(project => (
+          {(projects || []).filter(project => project && project.id).map(project => (
             <option key={project.id} value={project.id}>
-              {project.title}
+              {project.name || project.title || 'Untitled Project'}
             </option>
           ))}
         </select>
@@ -485,7 +485,7 @@ export default function EnhancedApplicationTracker({
           <div>
             <span className="text-slate-600">Project:</span>
             <div className="font-medium text-slate-900">
-              {projects.find(p => p.id === selectedProject)?.title || 'Unknown Project'}
+              {projects.find(p => p.id === selectedProject)?.name || projects.find(p => p.id === selectedProject)?.title || 'Unknown Project'}
             </div>
           </div>
           <div>
