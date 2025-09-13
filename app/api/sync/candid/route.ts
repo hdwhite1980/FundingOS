@@ -328,13 +328,17 @@ export async function GET(request: Request) {
       funderTypes: Array.from(smartFunderTypes)
     })
 
-    // Create search configurations
+    // Create search configurations for ACTIVE opportunities
     const searchConfigurations: SearchConfiguration[] = []
     
-    // Recent grants (last 2 years)
-    const twoYearsAgo = new Date()
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-    const fromDate = twoYearsAgo.toISOString().split('T')[0]
+    // Focus on recent activity (last 6 months to find active patterns)
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    const recentDate = sixMonthsAgo.toISOString().split('T')[0]
+    
+    // Current year for most recent grants to identify active funders
+    const currentYear = new Date().getFullYear()
+    const currentYearStart = `${currentYear}-01-01`
 
     // AI-driven searches
     aiFoundationStrategies.forEach(({ project, userProfile, aiCategories }) => {
@@ -345,7 +349,7 @@ export async function GET(request: Request) {
           endpoint: 'grants',
           params: {
             subject: [subject],
-            award_date_from: fromDate,
+            award_date_from: currentYearStart,
             limit: 50,
             offset: 0
           },
@@ -364,7 +368,7 @@ export async function GET(request: Request) {
           endpoint: 'grants',
           params: {
             population_served: [population],
-            award_date_from: fromDate,
+            award_date_from: currentYearStart,
             limit: 30,
             offset: 0
           },
@@ -383,7 +387,7 @@ export async function GET(request: Request) {
           endpoint: 'grants',
           params: {
             support_type: supportType,
-            award_date_from: fromDate,
+            award_date_from: currentYearStart,
             limit: 25,
             offset: 0
           },
@@ -402,7 +406,7 @@ export async function GET(request: Request) {
           endpoint: 'grants',
           params: {
             funder_state: userProfile.state,
-            award_date_from: fromDate,
+            award_date_from: currentYearStart,
             limit: 40,
             offset: 0
           },
@@ -426,7 +430,7 @@ export async function GET(request: Request) {
           endpoint: 'grants',
           params: {
             subject: [subject],
-            award_date_from: fromDate,
+            award_date_from: currentYearStart,
             limit: 100,
             offset: 0
           },
@@ -444,7 +448,7 @@ export async function GET(request: Request) {
           endpoint: 'grants',
           params: {
             population_served: [population],
-            award_date_from: fromDate,
+            award_date_from: currentYearStart,
             limit: 60,
             offset: 0
           },
@@ -462,7 +466,7 @@ export async function GET(request: Request) {
           endpoint: 'grants',
           params: {
             funder_type: [funderType],
-            award_date_from: fromDate,
+            award_date_from: currentYearStart,
             limit: 80,
             offset: 0
           },
@@ -480,7 +484,7 @@ export async function GET(request: Request) {
         name: "Emergency Foundation Search",
         endpoint: 'grants',
         params: {
-          award_date_from: fromDate,
+          award_date_from: currentYearStart,
           limit: 200,
           offset: 0
         },
@@ -592,15 +596,15 @@ export async function GET(request: Request) {
       return {
         external_id: grant.id,
         source: 'candid',
-        title: grant.title || 'Foundation Grant Opportunity',
+        title: grant.title || `Active Funding Pattern - ${grant.funder.name}`,
         sponsor: grant.funder.name,
         agency: grant.funder.name,
-        description: grant.description || grant.purpose || `Grant from ${grant.funder.name}`,
+        description: grant.description || grant.purpose || `Active funding opportunity pattern from ${grant.funder.name} - Contact directly for current opportunities`,
         amount_min: grant.amount,
         amount_max: grant.amount,
         credit_percentage: null,
-        deadline_date: null, // Historical grants, no deadline
-        deadline_type: 'rolling',
+        deadline_date: null, // Contact funder for current deadlines
+        deadline_type: 'contact_funder',
         match_requirement_percentage: 0,
         eligibility_criteria: ['nonprofit'],
         geography: geography,
@@ -612,8 +616,8 @@ export async function GET(request: Request) {
         veteran_owned_business: false,
         small_business_only: false,
         cfda_number: null,
-        source_url: `https://candid.org/grants/${grant.id}`,
-        application_process: 'Contact funder directly for application guidelines',
+        source_url: `https://candid.org/funders/${grant.funder.id}`,
+        application_process: 'Contact funder directly - this represents recent funding patterns indicating active interest in similar projects',
         required_documents: ['grant_proposal', 'budget', 'organizational_documents'],
         contact_email: null,
         contact_phone: null,
