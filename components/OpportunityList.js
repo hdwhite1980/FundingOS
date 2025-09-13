@@ -759,13 +759,6 @@ export default function OpportunityList({
             </select>
             <span className="text-sm text-gray-700">per page</span>
           </div>
-          
-          {aiScanOpportunities.length > currentPageOpportunities.length && (
-            <div className="text-xs text-blue-600 flex items-center">
-              <Zap className="w-3 h-3 mr-1" />
-              AI analyzing {aiScanOpportunities.length} opportunities (current + next page)
-            </div>
-          )}
         </div>
 
         {/* Page navigation */}
@@ -844,40 +837,8 @@ export default function OpportunityList({
                 )}
                 {enableEligibilityCheck ? 'Eligible ' : ''}Opportunities for {selectedProject.name}
               </h2>
-              <p className="text-sm text-gray-600">
-                {filteredOpportunities.length} opportunities found
-                {totalPages > 1 && (
-                  <span className="ml-2">
-                    • Page {currentPage} of {totalPages}
-                  </span>
-                )}
-                {selectedProject.project_type && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    • {selectedProject.project_type.replace('_', ' ')} project
-                  </span>
-                )}
-              </p>
             </div>
             <div className="mt-4 sm:mt-0 flex items-center space-x-2">
-              {enableEligibilityCheck && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowEligibilitySettings(!showEligibilitySettings)}
-                    className="btn-outline text-sm flex items-center"
-                  >
-                    <Settings className="w-4 h-4 mr-2" />
-                    Eligibility Filters
-                  </button>
-                  {showEligibilitySettings && <EligibilitySettings />}
-                </div>
-              )}
-              <button 
-                onClick={() => setShowAIModal(true)}
-                className="btn-outline text-sm flex items-center hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                AI Analysis
-              </button>
             </div>
           </div>
         </div>

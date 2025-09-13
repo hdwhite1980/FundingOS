@@ -153,7 +153,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
     // No previous session, create welcome messages
     const welcomeMessages = [{
       type: 'agent',
-      content: `Hello ${userProfile?.full_name || 'there'}! I'm your Unified AI Funding Agent. I'm now managing your complete funding ecosystem - from opportunity discovery to application generation to deadline monitoring. How can I help optimize your funding strategy today?`,
+      content: `Hello ${userProfile?.full_name || 'there'}! I'm your Unified Funding Agent. I'm now managing your complete funding ecosystem - from opportunity discovery to application generation to deadline monitoring. How can I help optimize your funding strategy today?`,
       timestamp: new Date()
     }]
 
@@ -364,7 +364,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing your Unified AI Funding Agent...</p>
+          <p className="text-gray-600">Initializing your Unified Funding Agent...</p>
         </div>
       </div>
     )
@@ -388,7 +388,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
           <div className="flex items-center">
             <Brain className="w-8 h-8 mr-3" />
             <div>
-              <h2 className="text-2xl font-bold">Unified AI Funding Agent</h2>
+              <h2 className="text-2xl font-bold">Unified Funding Agent</h2>
               <p className="text-blue-100">
                 {agentStatus === 'active' 
                   ? `Managing ${opportunities?.length || 0} opportunities • ${activeGoals.length} active goals • ${currentStrategy || 'Developing strategy'}` 
