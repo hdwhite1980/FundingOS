@@ -1,4 +1,4 @@
-import { AIService } from '../../../lib/aiService'
+import AIService from '../../../lib/aiService'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

@@ -1,5 +1,5 @@
 import { supabase } from '../../../../lib/supabase'
-import { AIService } from '../../../../lib/aiService'
+import AIService from '../../../../lib/aiService'
 import { NextResponse } from 'next/server'
 
 interface SAMOpportunity {

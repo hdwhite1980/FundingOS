@@ -13,7 +13,6 @@ import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './EnhancedCreateProjectModal'
 import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
-import ApplicationAssistant from './ApplicationAssistant'
 import { directUserServices } from '../lib/supabase'
 import { 
   Plus, 
@@ -97,7 +96,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     { id: 'overview', label: 'Dashboard', icon: BarChart3, description: 'Financial summary & insights' },
     { id: 'opportunities', label: 'Projects & Funding', icon: Target, description: 'Funding opportunities, applications & project matching' },
     { id: 'applications', label: 'Applications', icon: FileText, description: 'Active applications' },
-    { id: 'app-assistant', label: 'App Assistant', icon: Brain, description: 'AI-powered application assistance' },
     { id: 'donations', label: 'Donors & Investors', icon: Heart, description: 'Donor & investor management' },
     { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }
   ]
@@ -1092,19 +1090,6 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             userProfile={userProfile}
             projects={projects}
             opportunities={opportunities}
-          />
-        )}
-
-        {activeTab === 'app-assistant' && (
-          <ApplicationAssistant 
-            isOpen={true}
-            onClose={() => setActiveTab('overview')}
-            userProfile={userProfile}
-            projectData={projects[0]} // Use first project as default
-            applicationForm={{}} // Empty form for now
-            documentAnalyses={[]}
-            onFormUpdate={(updates) => console.log('Form updates:', updates)}
-            onSuggestionApply={(suggestion) => console.log('Suggestion applied:', suggestion)}
           />
         )}
 
