@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { format, isAfter, differenceInDays } from 'date-fns'
 import OpportunityCard from './OpportunityCard'
+import OpportunityDetailModal from './OpportunityDetailModal'
 import AIAnalysisModal from './AIAnalysisModal'
 import { opportunityService } from '../lib/supabase'
 import scoringService from '../lib/scoringServiceIntegration'
@@ -36,6 +37,7 @@ export default function OpportunityList({
   const [filteredOpportunities, setFilteredOpportunities] = useState([])
   const [selectedOpportunity, setSelectedOpportunity] = useState(null)
   const [showAIModal, setShowAIModal] = useState(false)
+  const [showOpportunityModal, setShowOpportunityModal] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showEligibilitySettings, setShowEligibilitySettings] = useState(false)
   const [opportunityScores, setOpportunityScores] = useState({}) // Added missing state for opportunity scores
@@ -444,6 +446,11 @@ export default function OpportunityList({
   const handleShowOpportunityDetails = (opportunity) => {
     // You can customize this to show a modal, navigate to a details page, etc.
     alert(`Opportunity Details:\n\nTitle: ${opportunity.title}\nSponsor: ${opportunity.sponsor}\nAmount: $${opportunity.amount_min?.toLocaleString() || 'N/A'} - $${opportunity.amount_max?.toLocaleString() || 'N/A'}\nDeadline: ${opportunity.deadline_date || 'Rolling'}\n\nDescription: ${opportunity.description || 'No description available'}\n\nURL: ${opportunity.source_url || 'No URL available'}`)
+  }
+
+  const handleOpportunityRowClick = (opportunity) => {
+    setSelectedOpportunity(opportunity)
+    setShowOpportunityModal(true)
   }
 
   const handleAnalyzeOpportunity = (opportunity) => {
@@ -979,6 +986,7 @@ export default function OpportunityList({
                   userProfile={userProfile}
                   onAnalyze={() => handleAnalyzeOpportunity(opportunity)}
                   onShowDetails={handleShowOpportunityDetails}
+                  onRowClick={handleOpportunityRowClick}
                   fitScore={opportunity.fitScore}
                   deadlineStatus={getDeadlineStatus(opportunity.deadline_date)}
                   index={index}
@@ -1003,6 +1011,20 @@ export default function OpportunityList({
             setShowAIModal(false)
             setSelectedOpportunity(null)
           }}
+        />
+      )}
+
+      {/* Opportunity Detail Modal */}
+      {showOpportunityModal && selectedOpportunity && (
+        <OpportunityDetailModal
+          opportunity={selectedOpportunity}
+          isOpen={showOpportunityModal}
+          onClose={() => {
+            setShowOpportunityModal(false)
+            setSelectedOpportunity(null)
+          }}
+          selectedProject={selectedProject}
+          fitScore={selectedOpportunity.fitScore}
         />
       )}
       

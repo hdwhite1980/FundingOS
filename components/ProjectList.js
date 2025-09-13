@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Building, MapPin, DollarSign, Calendar, ChevronRight, Target, Edit3, MoreVertical, Trash2 } from 'lucide-react'
 
-export default function ProjectList({ projects, selectedProject, onProjectSelect, onProjectEdit, onProjectDelete }) {
+export default function ProjectList({ projects, selectedProject, onProjectSelect, onProjectViewDetails, onProjectEdit, onProjectDelete }) {
   const [showActionsFor, setShowActionsFor] = useState(null)
 
   const handleActionClick = (e, projectId) => {
@@ -38,6 +38,12 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
   const handleProjectClick = (project) => {
     if (typeof onProjectSelect === 'function') {
       onProjectSelect(project)
+    }
+  }
+
+  const handleProjectDoubleClick = (project) => {
+    if (typeof onProjectViewDetails === 'function') {
+      onProjectViewDetails(project)
     }
   }
 
@@ -82,6 +88,8 @@ export default function ProjectList({ projects, selectedProject, onProjectSelect
             }
           `}
           onClick={() => handleProjectClick(project)}
+          onDoubleClick={() => handleProjectDoubleClick(project)}
+          title="Click to select • Double-click to view project details"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">

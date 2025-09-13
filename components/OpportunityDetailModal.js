@@ -1,0 +1,297 @@
+'use client'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  X, 
+  Calendar, 
+  DollarSign, 
+  Building, 
+  ExternalLink, 
+  MapPin, 
+  Award, 
+  Clock, 
+  FileText,
+  Users,
+  Target,
+  CheckCircle,
+  AlertCircle,
+  Info,
+  Bookmark,
+  Share2
+} from 'lucide-react'
+import { format } from 'date-fns'
+
+export default function OpportunityDetailModal({ 
+  opportunity, 
+  isOpen, 
+  onClose, 
+  selectedProject,
+  fitScore 
+}) {
+  if (!isOpen || !opportunity) return null
+
+  const formatAmount = (min, max) => {
+    if (!min && !max) return 'Amount varies'
+    if (!min) return `Up to $${max.toLocaleString()}`
+    if (!max) return `From $${min.toLocaleString()}`
+    if (min === max) return `$${min.toLocaleString()}`
+    return `$${min.toLocaleString()} - $${max.toLocaleString()}`
+  }
+
+  const getDeadlineStatus = () => {
+    if (!opportunity.deadline_date) return { status: 'rolling', color: 'text-blue-600 bg-blue-50' }
+    
+    const now = new Date()
+    const deadline = new Date(opportunity.deadline_date)
+    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24))
+    
+    if (daysLeft < 0) return { status: 'expired', color: 'text-gray-500 bg-gray-50', text: 'Expired' }
+    if (daysLeft <= 7) return { status: 'urgent', color: 'text-red-600 bg-red-50', text: `${daysLeft} days left` }
+    if (daysLeft <= 30) return { status: 'soon', color: 'text-yellow-600 bg-yellow-50', text: `${daysLeft} days left` }
+    return { status: 'active', color: 'text-green-600 bg-green-50', text: `${daysLeft} days left` }
+  }
+
+  const deadlineStatus = getDeadlineStatus()
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="flex min-h-screen items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black bg-opacity-50"
+          />
+          
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 text-white">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold mb-2 pr-8">
+                    {opportunity.title}
+                  </h2>
+                  <div className="flex items-center space-x-4 text-blue-100">
+                    <div className="flex items-center">
+                      <Building className="w-4 h-4 mr-1" />
+                      <span className="text-sm">{opportunity.sponsor}</span>
+                    </div>
+                    {fitScore && (
+                      <div className="flex items-center">
+                        <Target className="w-4 h-4 mr-1" />
+                        <span className="text-sm">{fitScore}% match</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center space-x-2">
+                  <button className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors">
+                    <Bookmark className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors">
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* Key Information Bar */}
+              <div className="bg-gray-50 px-6 py-4 border-b">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center">
+                    <DollarSign className="w-5 h-5 text-green-600 mr-2" />
+                    <div>
+                      <div className="text-sm text-gray-600">Funding Amount</div>
+                      <div className="font-semibold">{formatAmount(opportunity.amount_min, opportunity.amount_max)}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <Calendar className="w-5 h-5 text-blue-600 mr-2" />
+                    <div>
+                      <div className="text-sm text-gray-600">Deadline</div>
+                      <div className={`font-semibold px-2 py-1 rounded-full text-xs ${deadlineStatus.color}`}>
+                        {opportunity.deadline_date ? format(new Date(opportunity.deadline_date), 'MMM d, yyyy') : 'Rolling'}
+                        {deadlineStatus.text && ` (${deadlineStatus.text})`}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <Award className="w-5 h-5 text-purple-600 mr-2" />
+                    <div>
+                      <div className="text-sm text-gray-600">Program Type</div>
+                      <div className="font-semibold">{opportunity.opportunity_type || 'Grant'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Description */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                    Description
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-gray-700 leading-relaxed">
+                      {opportunity.description || 'No description available for this opportunity.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Project Match Analysis */}
+                {selectedProject && fitScore && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 flex items-center">
+                      <Target className="w-5 h-5 mr-2 text-green-600" />
+                      Project Match Analysis
+                    </h3>
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium">Match Score for "{selectedProject.name}"</span>
+                        <span className="text-2xl font-bold text-green-600">{fitScore}%</span>
+                      </div>
+                      <div className="w-full bg-green-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${fitScore}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2">
+                        {fitScore >= 80 ? "Excellent match! This opportunity aligns very well with your project." :
+                         fitScore >= 60 ? "Good match. Consider applying with some modifications." :
+                         fitScore >= 40 ? "Moderate match. May require significant adaptation." :
+                         "Lower match. Consider if this opportunity fits your project goals."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Eligibility Requirements */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                    Eligibility Requirements
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    {opportunity.eligibility_requirements ? (
+                      <ul className="space-y-2">
+                        {opportunity.eligibility_requirements.split('\n').filter(req => req.trim()).map((req, index) => (
+                          <li key={index} className="flex items-start">
+                            <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-gray-700">{req.trim()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-gray-500 text-sm">No specific eligibility requirements listed. Check the full opportunity details.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Location & Focus Areas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {opportunity.geographic_focus && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center">
+                        <MapPin className="w-5 h-5 mr-2 text-red-600" />
+                        Geographic Focus
+                      </h3>
+                      <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                        <p className="text-gray-700">{opportunity.geographic_focus}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {opportunity.focus_areas && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3 flex items-center">
+                        <Users className="w-5 h-5 mr-2 text-purple-600" />
+                        Focus Areas
+                      </h3>
+                      <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                        <p className="text-gray-700">{opportunity.focus_areas}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Application Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <Info className="w-5 h-5 mr-2 text-blue-600" />
+                    Application Information
+                  </h3>
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Application Process:</label>
+                        <p className="text-sm text-gray-700 mt-1">
+                          {opportunity.application_process || 'Standard application process applies'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Contact Information:</label>
+                        <p className="text-sm text-gray-700 mt-1">
+                          {opportunity.contact_info || 'See opportunity website for contact details'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="bg-gray-50 px-6 py-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-500">
+                    Last updated: {opportunity.last_updated ? format(new Date(opportunity.last_updated), 'MMM d, yyyy') : 'Unknown'}
+                  </div>
+                  <div className="flex space-x-3">
+                    <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      Save for Later
+                    </button>
+                    {opportunity.source_url && (
+                      <a
+                        href={opportunity.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        View Full Details
+                      </a>
+                    )}
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                      Start Application
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </AnimatePresence>
+  )
+}

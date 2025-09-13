@@ -23,6 +23,7 @@ export default function OpportunityCard({
   userProfile, 
   onAnalyze, 
   onShowDetails,
+  onRowClick,
   fitScore, 
   deadlineStatus,
   index 
@@ -61,8 +62,21 @@ export default function OpportunityCard({
     return 'Active'
   }
 
+  const handleRowClick = (e) => {
+    // Don't trigger row click if clicking on action buttons
+    if (e.target.closest('button') || e.target.closest('a')) {
+      return
+    }
+    if (onRowClick) {
+      onRowClick(opportunity)
+    }
+  }
+
   return (
-    <div className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150">
+    <div 
+      className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+      onClick={handleRowClick}
+    >
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Status Column */}

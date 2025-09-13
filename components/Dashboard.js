@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Header from './Header'
 import ProjectList from './ProjectList'
 import OpportunityList from './OpportunityList'
+import ProjectDetailView from './ProjectDetailView'
 import DonorManagement from './DonorManagement'
 import CampaignList from './CampaignList'
 import DirectDonationsList from './DirectDonationsList'
@@ -55,6 +56,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [opportunities, setOpportunities] = useState([])
   const [projectOpportunities, setProjectOpportunities] = useState([])
   const [selectedProject, setSelectedProject] = useState(null)
+  const [viewMode, setViewMode] = useState('dashboard') // 'dashboard' or 'project-detail'
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -521,6 +523,19 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     await loadEnhancedStats(updatedProjects, opportunities)
   }
 
+  const handleProjectSelect = (project) => {
+    setSelectedProject(project)
+  }
+
+  const handleProjectViewDetails = (project) => {
+    setSelectedProject(project)
+    setViewMode('project-detail')
+  }
+
+  const handleBackToDashboard = () => {
+    setViewMode('dashboard')
+  }
+
   const handleProjectUpdated = async (updatedProject) => {
     const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p)
     setProjects(updatedProjects)
@@ -599,6 +614,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   }
 
   // Main dashboard render with FULL MOBILE RESPONSIVENESS
+  if (viewMode === 'project-detail' && selectedProject) {
+    return (
+      <ProjectDetailView 
+        project={selectedProject} 
+        onBack={handleBackToDashboard}
+      />
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Use the proper Header component */}
@@ -939,7 +963,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                       <ProjectList
                         projects={projects}
                         selectedProject={selectedProject}
-                        onProjectSelect={setSelectedProject}
+                        onProjectSelect={handleProjectSelect}
+                        onProjectViewDetails={handleProjectViewDetails}
                         onProjectEdit={handleProjectEdit}
                         onProjectDelete={handleProjectDelete}
                       />
