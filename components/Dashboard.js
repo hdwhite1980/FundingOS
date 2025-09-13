@@ -1123,6 +1123,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             user={user}
             userProfile={userProfile}
             projects={projects}
+            onNavigateToProject={handleProjectViewDetails}
           />
         )}
 

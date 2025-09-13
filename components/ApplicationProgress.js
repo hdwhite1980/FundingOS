@@ -26,7 +26,7 @@ import { format, differenceInDays } from 'date-fns'
 import toast from 'react-hot-toast'
 import EnhancedApplicationTracker from './EnhancedApplicationTracker'
 
-export default function ApplicationProgress({ user, userProfile, projects }) {
+export default function ApplicationProgress({ user, userProfile, projects, onNavigateToProject }) {
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({})
@@ -81,8 +81,9 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
         throw new Error('Project is required')
       }
       
-      if (!cleanData.submitted_amount || cleanData.submitted_amount <= 0) {
-        throw new Error('Submitted amount must be greater than 0')
+      // Allow 0 submitted_amount for AI-Enhanced applications that don't have funding amounts extracted
+      if (cleanData.submitted_amount < 0 || (cleanData.submitted_amount === 0 && !cleanData.opportunity_title?.includes('AI-'))) {
+        throw new Error('Submitted amount must be greater than or equal to 0')
       }
       
       console.log('Clean data to submit:', cleanData)
@@ -92,7 +93,16 @@ export default function ApplicationProgress({ user, userProfile, projects }) {
       await loadSubmissions()
       
       setShowCreateModal(false)
+      setShowEnhancedTracker(false)
       toast.success('Application submission tracked!')
+      
+      // Navigate to project details page to view the tracked application
+      if (onNavigateToProject && cleanData.project_id) {
+        const project = projects.find(p => p.id === cleanData.project_id)
+        if (project) {
+          onNavigateToProject(project)
+        }
+      }
     } catch (error) {
       console.error('Create submission error:', error)
       toast.error('Failed to create submission: ' + (error.message || 'Unknown error'))

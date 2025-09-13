@@ -302,29 +302,69 @@ export default function ProjectDetailView({
     )
   }
 
+  // Button handlers
+  const handleExportReport = () => {
+    // Generate and download project report
+    const reportData = {
+      project: project.name,
+      date: new Date().toISOString().split('T')[0],
+      metrics: data.metrics,
+      applications: data.appliedOpportunities,
+      opportunities: data.savedOpportunities,
+      campaigns: data.campaigns
+    }
+    
+    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${project.name}-report-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleNewApplication = () => {
+    // Navigate to create new application
+    setActiveTab('applications')
+    // Could trigger modal or form here
+  }
+
+  const handleApplyNow = (opportunityId) => {
+    // Navigate to application creation for specific opportunity
+    console.log('Apply to opportunity:', opportunityId)
+    setActiveTab('applications')
+    // Could integrate with application creation flow
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-emerald-600 shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
                 onClick={onBack}
-                className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="mr-4 p-2 hover:bg-emerald-700 rounded-full transition-colors"
               >
-                <ArrowLeft className="h-5 w-5 text-gray-600" />
+                <ArrowLeft className="h-5 w-5 text-white" />
               </button>
               <div>
-                <h1 className="text-xl font-bold text-emerald-800">{project.name}</h1>
-                <p className="text-sm text-gray-500">{project.project_type?.replace('_', ' ')} Project</p>
+                <h1 className="text-xl font-bold text-white">{project.name}</h1>
+                <p className="text-sm text-emerald-100">{project.project_type?.replace('_', ' ')} Project</p>
               </div>
             </div>
             <div className="flex space-x-2">
-              <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+              <button 
+                onClick={handleExportReport}
+                className="px-4 py-2 text-sm font-medium text-emerald-700 bg-white border border-emerald-300 rounded-md hover:bg-emerald-50"
+              >
                 Export Report
               </button>
-              <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
+              <button 
+                onClick={handleNewApplication}
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 New Application
               </button>
@@ -499,7 +539,10 @@ export default function ProjectDetailView({
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(opp.status)}`}>
                           {opp.status}
                         </span>
-                        <button className="px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50">
+                        <button 
+                          onClick={() => handleApplyNow(opp.id)}
+                          className="px-3 py-1.5 text-sm font-medium text-emerald-600 border border-emerald-600 rounded hover:bg-emerald-50"
+                        >
                           Apply Now
                         </button>
                       </div>

@@ -48,7 +48,7 @@ export default function OpportunityDetailModal({
         selectedProject.id,
         opportunity.id,
         {
-          aiScore: fitScore || 0,
+          fit_score: fitScore || 0,
           status: 'saved'
         }
       )
@@ -110,7 +110,7 @@ export default function OpportunityDetailModal({
             className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-amber-600 to-yellow-600 px-6 py-4 text-white">
+            <div className="bg-gradient-to-r from-yellow-500 to-emerald-600 px-6 py-4 text-white">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h2 className="text-xl font-bold mb-2 pr-8">

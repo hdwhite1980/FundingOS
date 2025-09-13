@@ -100,12 +100,17 @@ export default function OpportunityList({
       if (selectedProject && aiScanOpportunities.length > 0) {
         try {
           const scores = { ...opportunityScores } // Keep existing scores
+          const needsCalculation = aiScanOpportunities.filter(opp => scores[opp.id] === undefined)
           
-          // Only calculate scores for opportunities in AI scanning range
-          for (const opportunity of aiScanOpportunities) {
-            // Skip if we already have a score for this opportunity
-            if (scores[opportunity.id] !== undefined) continue
-            
+          // Only calculate if there are opportunities that need scoring
+          if (needsCalculation.length === 0) {
+            return // All opportunities in range already have scores
+          }
+          
+          console.log(`📊 Calculating scores for ${needsCalculation.length} new opportunities...`)
+          
+          // Only calculate scores for opportunities that don't have scores yet
+          for (const opportunity of needsCalculation) {
             try {
               const scoreResult = await scoringService.calculateScore(selectedProject, opportunity, userProfile)
               // Extract numerical score from the result
@@ -121,7 +126,7 @@ export default function OpportunityList({
           setOpportunityScores(scores)
         } catch (error) {
           console.error('Error calculating opportunity scores:', error)
-          // Set default scores for AI scan opportunities only
+          // Set default scores for new opportunities only
           const defaultScores = { ...opportunityScores }
           aiScanOpportunities.forEach(opp => {
             if (defaultScores[opp.id] === undefined) {
@@ -134,7 +139,7 @@ export default function OpportunityList({
     }
 
     calculateScores()
-  }, [selectedProject, aiScanOpportunities])
+  }, [selectedProject, opportunities]) // Remove aiScanOpportunities dependency to prevent constant rescanning
 
   const loadOpportunities = async () => {
     try {
