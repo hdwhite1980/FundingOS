@@ -159,7 +159,8 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       const newInvestor = await directUserServices.investors?.createInvestor(user.id, investorData)
       setInvestors([newInvestor, ...investors])
       setShowCreateModal(false)
-      toast.success('Investor created successfully!')
+      toast.success('Investor added successfully!')
+      loadData()
     } catch (error) {
       toast.error('Failed to create investor: ' + error.message)
     }
@@ -896,8 +897,9 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       {/* Modals */}
       {showCreateModal && (
         <CreateDonorModal
+          modalType={modalType}
           onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateDonor}
+          onSubmit={modalType === 'investor' ? handleCreateInvestor : handleCreateDonor}
         />
       )}
 
@@ -947,7 +949,7 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
 }
 
 // Modal Components
-function CreateDonorModal({ onClose, onSubmit }) {
+function CreateDonorModal({ modalType, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -956,15 +958,22 @@ function CreateDonorModal({ onClose, onSubmit }) {
     city: '',
     state: '',
     zip_code: '',
-    donor_type: 'individual',
+    donor_type: modalType === 'investor' ? 'individual' : 'individual',
     notes: '',
-    tags: []
+    tags: [],
+    // Investor-specific fields
+    type: modalType === 'investor' ? 'individual' : null,
+    focus_areas: '',
+    website: '',
+    linkedin: ''
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
     onSubmit(formData)
   }
+
+  const isInvestor = modalType === 'investor'
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -975,7 +984,7 @@ function CreateDonorModal({ onClose, onSubmit }) {
       >
         <div className="p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">
-            {modalType === 'investor' ? 'Add New Investor' : 'Add New Donor'}
+            {isInvestor ? 'Add New Investor' : 'Add New Donor'}
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -1011,19 +1020,73 @@ function CreateDonorModal({ onClose, onSubmit }) {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Type</label>
-              <select
-                className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                value={formData.donor_type}
-                onChange={(e) => setFormData({...formData, donor_type: e.target.value})}
-              >
-                <option value="individual">Individual</option>
-                <option value="foundation">Foundation</option>
-                <option value="corporation">Corporation</option>
-                <option value="government">Government</option>
-              </select>
-            </div>
+            {isInvestor ? (
+              <div>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Investor Type</label>
+                <select
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                >
+                  <option value="individual">Individual Investor</option>
+                  <option value="angel">Angel Investor</option>
+                  <option value="venture_capital">Venture Capital Firm</option>
+                  <option value="family_office">Family Office</option>
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Type</label>
+                <select
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  value={formData.donor_type}
+                  onChange={(e) => setFormData({...formData, donor_type: e.target.value})}
+                >
+                  <option value="individual">Individual</option>
+                  <option value="foundation">Foundation</option>
+                  <option value="corporation">Corporation</option>
+                  <option value="government">Government</option>
+                </select>
+              </div>
+            )}
+
+            {isInvestor && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Focus Areas</label>
+                  <input
+                    type="text"
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="e.g., Healthcare, Technology, Education"
+                    value={formData.focus_areas}
+                    onChange={(e) => setFormData({...formData, focus_areas: e.target.value})}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Website</label>
+                    <input
+                      type="url"
+                      className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      placeholder="https://..."
+                      value={formData.website}
+                      onChange={(e) => setFormData({...formData, website: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">LinkedIn</label>
+                    <input
+                      type="url"
+                      className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      placeholder="https://linkedin.com/in/..."
+                      value={formData.linkedin}
+                      onChange={(e) => setFormData({...formData, linkedin: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div>
               <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Address</label>
@@ -1073,7 +1136,7 @@ function CreateDonorModal({ onClose, onSubmit }) {
                 rows="3"
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                placeholder="Additional notes about this donor..."
+                placeholder={`Additional notes about this ${isInvestor ? 'investor' : 'donor'}...`}
               />
             </div>
 
@@ -1089,7 +1152,7 @@ function CreateDonorModal({ onClose, onSubmit }) {
                 type="submit" 
                 className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm"
               >
-                Add Donor
+                Add {isInvestor ? 'Investor' : 'Donor'}
               </button>
             </div>
           </form>
