@@ -49,19 +49,27 @@ export default function EnhancedApplicationTracker({
   const [analysisComplete, setAnalysisComplete] = useState(false)
   const [showMissingInfo, setShowMissingInfo] = useState(false)
   const [aiAnalysisResult, setAiAnalysisResult] = useState(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [currentFileName, setCurrentFileName] = useState('')
 
   // Handle file upload and analysis
   const handleFileUpload = async (files) => {
     if (!files || files.length === 0) return
 
     setProcessing(true)
+    setUploadProgress(0)
     const fileArray = Array.from(files)
     setUploadedFiles(fileArray)
 
     try {
       const analyses = []
+      const totalFiles = fileArray.length
       
-      for (const file of fileArray) {
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i]
+        setCurrentFileName(file.name)
+        setUploadProgress(((i) / totalFiles) * 100)
+        
         const reader = new FileReader()
         const fileContent = await new Promise((resolve) => {
           reader.onload = (e) => resolve(e.target.result)
@@ -86,6 +94,8 @@ export default function EnhancedApplicationTracker({
             fileType: file.type
           })
         }
+        
+        setUploadProgress(((i + 1) / totalFiles) * 100)
       }
 
       setDocumentAnalysis(analyses)
@@ -98,6 +108,8 @@ export default function EnhancedApplicationTracker({
       toast.error('Failed to analyze documents: ' + error.message)
     } finally {
       setProcessing(false)
+      setUploadProgress(0)
+      setCurrentFileName('')
     }
   }
 
@@ -292,6 +304,25 @@ export default function EnhancedApplicationTracker({
               Supports PDF, Word documents, and text files
             </p>
           </label>
+          
+          {/* Upload Progress Bar */}
+          {processing && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-emerald-600">
+                  {currentFileName ? `Analyzing: ${currentFileName}` : 'Processing...'}
+                </span>
+                <span className="text-sm text-slate-500">{Math.round(uploadProgress)}%</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2">
+                <div 
+                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">AI is analyzing your documents...</p>
+            </div>
+          )}
         </div>
       </div>
 

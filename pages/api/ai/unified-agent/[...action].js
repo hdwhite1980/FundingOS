@@ -1,14 +1,42 @@
 // pages/api/ai/unified-agent/[...action].js
 // Production-optimized unified AI agent API with comprehensive functionality
 
-import { supabase } from '../../../../lib/supabase'
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs'
 import { unifiedAgentManager } from '../../../../lib/ai-agent/UnifiedManager'
 
 export default async function handler(req, res) {
   const { action } = req.query
-  const { userId } = req.body || req.query
+  
+  // Initialize Supabase client for authentication
+  const supabase = createPagesServerClient({ req, res })
+  
+  // Check authentication for most actions (except health-check)
+  if (action[0] !== 'health-check') {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        console.log('Unified agent auth error:', authError?.message || 'No user found')
+        return res.status(401).json({ 
+          error: 'Authentication required',
+          message: 'Please log in to access AI agent features'
+        })
+      }
+      
+      // Use authenticated user's ID instead of from request body
+      req.userId = user.id
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      return res.status(401).json({ 
+        error: 'Authentication failed',
+        message: 'Unable to verify user session'
+      })
+    }
+  }
 
-  if (!userId) {
+  const userId = req.userId || req.body?.userId || req.query?.userId
+
+  if (!userId && action[0] !== 'health-check') {
     return res.status(400).json({ error: 'User ID required' })
   }
 

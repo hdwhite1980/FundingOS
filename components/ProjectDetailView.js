@@ -20,7 +20,8 @@ import {
   ExternalLink,
   Plus,
   Filter,
-  Bookmark
+  Bookmark,
+  Download
 } from 'lucide-react'
 import { directUserServices } from '../lib/supabase'
 
@@ -40,669 +41,486 @@ export default function ProjectDetailView({
     metrics: {}
   })
 
-  // Mock data - replace with real API calls
+  // Load real project data instead of mock data
   useEffect(() => {
     const fetchProjectData = async () => {
+      if (!project?.id) return
+      
       setLoading(true)
       
-      // Simulate API calls
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      setData({
-        appliedOpportunities: [
-          {
-            id: 1,
-            title: 'NSF Small Business Innovation Research (SBIR)',
-            status: 'submitted',
-            submittedDate: '2024-08-15',
-            amount: 50000,
-            deadline: '2024-09-30',
-            progress: 65
-          },
-          {
-            id: 2,
-            title: 'Department of Energy Clean Energy Grant',
-            status: 'in_progress',
-            submittedDate: null,
-            amount: 75000,
-            deadline: '2024-10-15',
-            progress: 30
-          },
-          {
-            id: 3,
-            title: 'EPA Environmental Innovation Grant',
-            status: 'approved',
-            submittedDate: '2024-07-01',
-            amount: 25000,
-            deadline: '2024-08-01',
-            progress: 100
-          }
-        ],
-        savedOpportunities: [
-          {
-            id: 1,
-            title: 'USDA Rural Business Development Grant',
-            funder_name: 'U.S. Department of Agriculture',
-            amount_min: 10000,
-            amount_max: 50000,
-            deadline_date: '2024-11-30',
-            status: 'open',
-            fit_score: 85,
-            saved_date: '2024-09-10'
-          },
-          {
-            id: 2,
-            title: 'NIH Small Business Innovation Research',
-            funder_name: 'National Institutes of Health',
-            amount_min: 50000,
-            amount_max: 300000,
-            deadline_date: '2024-12-15',
-            status: 'open',
-            fit_score: 78,
-            saved_date: '2024-09-08'
-          },
-          {
-            id: 3,
-            title: 'Gates Foundation Innovation Grant',
-            funder_name: 'Bill & Melinda Gates Foundation',
-            amount_min: 100000,
-            amount_max: 500000,
-            deadline_date: '2025-01-31',
-            status: 'open',
-            fit_score: 92,
-            saved_date: '2024-09-05'
-          }
-        ],
-        campaigns: [
-          {
-            id: 1,
-            name: 'Seed Funding Campaign',
-            type: 'equity',
-            target: 100000,
-            raised: 67500,
-            investors: 15,
-            status: 'active',
-            endDate: '2024-12-31'
-          },
-          {
-            id: 2,
-            name: 'Product Development Fund',
-            type: 'rewards',
-            target: 50000,
-            raised: 32000,
-            backers: 45,
-            status: 'active',
-            endDate: '2024-11-15'
-          }
-        ],
-        angelInvestments: [
-          {
-            id: 1,
-            investor: 'TechStart Angels',
-            amount: 25000,
-            date: '2024-06-15',
-            equity: 5,
-            status: 'completed'
-          },
-          {
-            id: 2,
-            investor: 'Innovation Ventures',
-            amount: 40000,
-            date: '2024-07-20',
-            equity: 8,
-            status: 'completed'
-          }
-        ],
-        reits: [
-          {
-            id: 1,
-            name: 'Green Energy REIT Investment',
-            amount: 15000,
-            date: '2024-05-10',
-            returns: 7.5,
-            status: 'active'
-          }
-        ],
-        directDonations: [
-          {
-            id: 1,
-            donor: 'Environmental Foundation',
-            amount: 5000,
-            date: '2024-04-20',
-            purpose: 'Research materials',
-            status: 'received'
-          },
-          {
-            id: 2,
-            donor: 'Community Impact Fund',
-            amount: 3000,
-            date: '2024-05-15',
-            purpose: 'Equipment purchase',
-            status: 'received'
-          }
-        ],
-        metrics: {
-          totalFunding: 247500,
-          targetFunding: 300000,
-          fundingProgress: 82.5,
-          activeApplications: 2,
-          approvedGrants: 1,
-          totalInvestors: 17,
-          monthlyBurn: 8500,
-          runway: 18
+      try {
+        // Get real data from database
+        const [applications, savedOpportunities, campaigns, angelInvestments, reits, directDonations] = await Promise.allSettled([
+          directUserServices.applications.getApplications(project.user_id, { projectId: project.id }),
+          directUserServices.opportunities.getSavedOpportunities(project.user_id),
+          directUserServices.campaigns.getCampaignsByProject(project.id),
+          directUserServices.investors.getInvestmentsByProject(project.id),
+          [], // REITs functionality not yet implemented
+          directUserServices.donors.getDonationsByProject(project.id)
+        ])
+
+        // Calculate metrics from real data
+        const applicationData = applications.status === 'fulfilled' ? applications.value : []
+        const savedOppsData = savedOpportunities.status === 'fulfilled' ? savedOpportunities.value.filter(opp => opp.project_id === project.id) : []
+        const campaignData = campaigns.status === 'fulfilled' ? campaigns.value : []
+        const donationData = directDonations.status === 'fulfilled' ? directDonations.value : []
+        
+        const metrics = {
+          totalFunding: (applicationData.reduce((sum, app) => sum + (app.awarded_amount || 0), 0) + 
+                        donationData.reduce((sum, don) => sum + (don.amount || 0), 0)),
+          activeApplications: applicationData.filter(app => ['submitted', 'in_review', 'approved'].includes(app.status)).length,
+          successRate: applicationData.length > 0 ? 
+            (applicationData.filter(app => app.status === 'approved').length / applicationData.length * 100) : 0,
+          avgProcessingTime: 45, // This would need to be calculated from actual data
+          totalRaised: campaignData.reduce((sum, camp) => sum + (camp.current_amount || 0), 0)
         }
-      })
-      
-      setLoading(false)
+
+        setData({
+          appliedOpportunities: applicationData,
+          savedOpportunities: savedOppsData,
+          campaigns: campaignData,
+          angelInvestments: angelInvestments.status === 'fulfilled' ? angelInvestments.value : [],
+          reits: [],
+          directDonations: donationData,
+          metrics
+        })
+      } catch (error) {
+        console.error('Error fetching project data:', error)
+        // Set empty data on error
+        setData({
+          appliedOpportunities: [],
+          savedOpportunities: [],
+          campaigns: [],
+          angelInvestments: [],
+          reits: [],
+          directDonations: [],
+          metrics: {
+            totalFunding: 0,
+            activeApplications: 0,
+            successRate: 0,
+            avgProcessingTime: 0,
+            totalRaised: 0
+          }
+        })
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchProjectData()
-  }, [project])
+  }, [project?.id, project?.user_id])
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Target },
+    { id: 'opportunities', label: 'Saved Opportunities', icon: Bookmark },
     { id: 'applications', label: 'Grant Applications', icon: FileText },
-    { id: 'opportunities', label: 'Saved Opportunities', icon: Award },
-    { id: 'campaigns', label: 'Campaigns', icon: TrendingUp },
-    { id: 'investments', label: 'Investments', icon: DollarSign },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 }
+    { id: 'crowdfunding', label: 'Crowdfunding', icon: Users },
+    { id: 'angel-investors', label: 'Angel Investors', icon: TrendingUp },
+    { id: 'reits', label: 'REITs', icon: Building2 },
+    { id: 'direct-donations', label: 'Direct Donations', icon: DollarSign }
   ]
 
-  const getStatusColor = (status) => {
-    const colors = {
-      submitted: 'bg-blue-100 text-blue-800',
-      in_progress: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      active: 'bg-green-100 text-green-800',
-      completed: 'bg-gray-100 text-gray-800',
-      received: 'bg-green-100 text-green-800'
+  const exportData = () => {
+    const exportObj = {
+      project: project.name || project.title,
+      exportDate: new Date().toISOString(),
+      summary: data.metrics,
+      applications: data.appliedOpportunities,
+      savedOpportunities: data.savedOpportunities,
+      campaigns: data.campaigns,
+      angelInvestments: data.angelInvestments,
+      reits: data.reits,
+      directDonations: data.directDonations
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+
+    const dataStr = JSON.stringify(exportObj, null, 2)
+    const dataBlob = new Blob([dataStr], {type: 'application/json'})
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${project.name || project.title}-project-report.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
-  const FundingProgressChart = () => (
-    <div className="bg-white rounded-lg border p-6">
-      <h3 className="text-lg font-semibold mb-4">Funding Progress</h3>
-      <div className="mb-4">
-        <div className="flex justify-between text-sm text-gray-600 mb-2">
-          <span>Current: ${data.metrics.totalFunding?.toLocaleString()}</span>
-          <span>Target: ${data.metrics.targetFunding?.toLocaleString()}</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-4">
-          <div 
-            className="bg-gradient-to-r from-green-400 to-blue-500 h-4 rounded-full transition-all duration-500"
-            style={{ width: `${data.metrics.fundingProgress}%` }}
-          ></div>
-        </div>
-        <div className="text-center mt-2 text-lg font-bold text-gray-800">
-          {data.metrics.fundingProgress}%
-        </div>
-      </div>
-    </div>
-  )
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved':
+      case 'funded':
+      case 'active':
+        return 'bg-green-100 text-green-800'
+      case 'submitted':
+      case 'in_review':
+        return 'bg-blue-100 text-blue-800'
+      case 'rejected':
+      case 'declined':
+        return 'bg-red-100 text-red-800'
+      case 'draft':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
 
-  const MetricsGrid = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div className="bg-white rounded-lg border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Total Funding</p>
-            <p className="text-2xl font-bold text-green-600">
-              ${data.metrics.totalFunding?.toLocaleString()}
-            </p>
-          </div>
-          <DollarSign className="h-8 w-8 text-green-500" />
-        </div>
-      </div>
-      
-      <div className="bg-white rounded-lg border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Active Applications</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {data.metrics.activeApplications}
-            </p>
-          </div>
-          <FileText className="h-8 w-8 text-blue-500" />
-        </div>
-      </div>
-      
-      <div className="bg-white rounded-lg border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Total Investors</p>
-            <p className="text-2xl font-bold text-purple-600">
-              {data.metrics.totalInvestors}
-            </p>
-          </div>
-          <Users className="h-8 w-8 text-purple-500" />
-        </div>
-      </div>
-      
-      <div className="bg-white rounded-lg border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">Runway (months)</p>
-            <p className="text-2xl font-bold text-orange-600">
-              {data.metrics.runway}
-            </p>
-          </div>
-          <Activity className="h-8 w-8 text-orange-500" />
-        </div>
-      </div>
-    </div>
-  )
+  const handleNewApplication = () => {
+    setActiveTab('applications')
+    // This could trigger opening the application tracker
+    // onNewApplication?.()
+  }
+
+  const handleFindOpportunities = () => {
+    setActiveTab('opportunities')
+    // This could trigger the opportunity search
+    // onFindOpportunities?.()
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading project details...</p>
+        </div>
       </div>
     )
   }
 
-  // Button handlers
-  const handleExportReport = () => {
-    // Generate and download project report
-    const reportData = {
-      project: project.name,
-      date: new Date().toISOString().split('T')[0],
-      metrics: data.metrics,
-      applications: data.appliedOpportunities,
-      opportunities: data.savedOpportunities,
-      campaigns: data.campaigns
-    }
-    
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${project.name}-report-${new Date().toISOString().split('T')[0]}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleNewApplication = () => {
-    // Navigate to create new application
-    setActiveTab('applications')
-    // Could trigger modal or form here
-  }
-
-  const handleApplyNow = (opportunityId) => {
-    // Navigate to application creation for specific opportunity
-    console.log('Apply to opportunity:', opportunityId)
-    setActiveTab('applications')
-    // Could integrate with application creation flow
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-emerald-600 shadow-sm border-b">
+      <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
                 onClick={onBack}
-                className="mr-4 p-2 hover:bg-emerald-700 rounded-full transition-colors"
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <ArrowLeft className="h-5 w-5 text-white" />
+                <ArrowLeft className="w-5 h-5 text-slate-600" />
               </button>
-              <div>
-                <h1 className="text-xl font-bold text-white">{project.name}</h1>
-                <p className="text-sm text-emerald-100">{project.project_type?.replace('_', ' ')} Project</p>
+              <div className="ml-4">
+                <h1 className="text-xl font-semibold text-slate-900">
+                  {project.name || project.title}
+                </h1>
+                <p className="text-sm text-slate-600">
+                  {project.project_type?.replace('_', ' ')} project
+                </p>
               </div>
             </div>
-            <div className="flex space-x-2">
-              <button 
-                onClick={handleExportReport}
-                className="px-4 py-2 text-sm font-medium text-emerald-700 bg-white border border-emerald-300 rounded-md hover:bg-emerald-50"
-              >
-                Export Report
-              </button>
-              <button 
-                onClick={handleNewApplication}
-                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                New Application
-              </button>
-            </div>
+            <button
+              onClick={exportData}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Report
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              return (
+      {/* Metrics Overview */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg p-6 border">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DollarSign className="h-8 w-8 text-green-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Funding</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  ${data.metrics.totalFunding?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 border">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <FileText className="h-8 w-8 text-blue-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Applications</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {data.metrics.activeApplications || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 border">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <TrendingUp className="h-8 w-8 text-purple-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Success Rate</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {Math.round(data.metrics.successRate || 0)}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 border">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Users className="h-8 w-8 text-orange-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Campaign Funding</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  ${data.metrics.totalRaised?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-lg border mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+              {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
+                      ? 'border-emerald-500 text-emerald-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <Icon className="w-4 h-4 mr-2" />
+                  <tab.icon className="w-4 h-4 mr-2" />
                   {tab.label}
+                  {tab.id === 'applications' && data.appliedOpportunities.length > 0 && (
+                    <span className="ml-2 bg-gray-100 text-gray-900 rounded-full px-2 py-0.5 text-xs font-medium">
+                      {data.appliedOpportunities.length}
+                    </span>
+                  )}
                 </button>
-              )
-            })}
-          </nav>
-        </div>
-      </div>
+              ))}
+            </nav>
+          </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'overview' && (
-          <div>
-            <MetricsGrid />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <FundingProgressChart />
-              
-              <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center p-3 bg-green-50 rounded-lg">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium">EPA Grant Approved</p>
-                      <p className="text-xs text-gray-500">$25,000 • 2 days ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center p-3 bg-blue-50 rounded-lg">
-                    <Clock className="w-5 h-5 text-blue-500 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium">NSF SBIR Under Review</p>
-                      <p className="text-xs text-gray-500">$50,000 • 5 days ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center p-3 bg-purple-50 rounded-lg">
-                    <DollarSign className="w-5 h-5 text-purple-500 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium">New Investment Received</p>
-                      <p className="text-xs text-gray-500">$40,000 • 1 week ago</p>
+          {/* Tab Content */}
+          <div className="p-6">
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold mb-4">Project Overview</h2>
+                  <div className="bg-slate-50 rounded-lg p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="font-medium text-slate-900 mb-2">Project Details</h3>
+                        <dl className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <dt className="text-slate-600">Type:</dt>
+                            <dd className="text-slate-900">{project.project_type?.replace('_', ' ') || 'Not specified'}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-slate-600">Location:</dt>
+                            <dd className="text-slate-900">{project.location || 'Not specified'}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-slate-600">Funding Needed:</dt>
+                            <dd className="text-slate-900">${project.funding_needed?.toLocaleString() || 'Not specified'}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="text-slate-600">Created:</dt>
+                            <dd className="text-slate-900">{project.created_at ? new Date(project.created_at).toLocaleDateString() : 'Unknown'}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-slate-900 mb-2">Description</h3>
+                        <p className="text-sm text-slate-600">
+                          {project.description || 'No description provided'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'applications' && (
-          <div className="bg-white rounded-lg border">
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Grant Applications</h2>
-                <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
-                  <Plus className="w-4 h-4 mr-1" />
-                  New Application
-                </button>
+                {/* Quick Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={handleNewApplication}
+                    className="p-4 border border-dashed border-gray-300 rounded-lg text-left hover:border-emerald-300 hover:bg-emerald-50 transition-colors"
+                  >
+                    <Plus className="w-5 h-5 text-emerald-600 mb-2" />
+                    <h3 className="font-medium text-slate-900">Start New Application</h3>
+                    <p className="text-sm text-slate-600">Apply to funding opportunities</p>
+                  </button>
+                  <button
+                    onClick={handleFindOpportunities}
+                    className="p-4 border border-dashed border-gray-300 rounded-lg text-left hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <Target className="w-5 h-5 text-blue-600 mb-2" />
+                    <h3 className="font-medium text-slate-900">Find Opportunities</h3>
+                    <p className="text-sm text-slate-600">Discover new funding sources</p>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="divide-y">
-              {data.appliedOpportunities.map((app) => (
-                <div key={app.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900">{app.title}</h3>
-                      <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
-                        <span className="flex items-center">
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          ${app.amount.toLocaleString()}
-                        </span>
-                        <span className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          Deadline: {app.deadline}
-                        </span>
-                        {app.submittedDate && (
-                          <span>Submitted: {app.submittedDate}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="text-right">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
-                          {app.status.replace('_', ' ')}
-                        </span>
-                        <div className="mt-1 text-sm text-gray-500">
-                          {app.progress}% complete
-                        </div>
-                      </div>
-                      <button className="p-2 hover:bg-gray-100 rounded-full">
-                        <ExternalLink className="w-4 h-4 text-gray-400" />
+            )}
+
+            {activeTab === 'applications' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold">Grant Applications</h2>
+                  <button 
+                    onClick={handleNewApplication}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    New Application
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {data.appliedOpportunities.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-slate-900 mb-2">No applications yet</h3>
+                      <p className="text-slate-600 mb-4">Start by creating your first application</p>
+                      <button
+                        onClick={handleNewApplication}
+                        className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Create Application
                       </button>
                     </div>
-                  </div>
-                  <div className="mt-3">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${app.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'opportunities' && (
-          <div className="bg-white rounded-lg border">
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-emerald-800">Saved Opportunities</h2>
-                <div className="text-sm text-gray-500">
-                  {data.savedOpportunities.length} opportunities saved
-                </div>
-              </div>
-            </div>
-            <div className="divide-y">
-              {data.savedOpportunities.length > 0 ? (
-                data.savedOpportunities.map((opp) => (
-                  <div key={opp.id} className="p-6 hover:bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <h3 className="text-lg font-medium text-gray-900">{opp.title}</h3>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                            {opp.fit_score}% match
-                          </span>
-                        </div>
-                        <div className="mt-1 text-sm text-gray-500">
-                          {opp.funder_name}
-                        </div>
-                        <div className="mt-2 flex items-center space-x-4 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <DollarSign className="w-4 h-4 mr-1" />
-                            ${opp.amount_min?.toLocaleString()} - ${opp.amount_max?.toLocaleString()}
+                  ) : (
+                    data.appliedOpportunities.map((app) => (
+                      <div key={app.id} className="bg-white border rounded-lg p-6 hover:shadow-sm transition-shadow">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-medium text-gray-900">{app.opportunity_title || app.title}</h3>
+                            <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                ${app.submitted_amount?.toLocaleString() || 'Amount not specified'}
+                              </span>
+                              <span className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                Submitted: {app.submission_date ? new Date(app.submission_date).toLocaleDateString() : 'Date unknown'}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-1" />
-                            Deadline: {new Date(opp.deadline_date).toLocaleDateString()}
-                          </div>
-                          <div className="flex items-center">
-                            <Bookmark className="w-4 h-4 mr-1" />
-                            Saved: {new Date(opp.saved_date).toLocaleDateString()}
+                          <div className="flex items-center space-x-3">
+                            <div className="text-right">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
+                                {app.status?.replace('_', ' ') || 'Unknown'}
+                              </span>
+                              {app.ai_completion_data?.completionPercentage && (
+                                <div className="mt-1 text-sm text-gray-500">
+                                  {app.ai_completion_data.completionPercentage}% AI completed
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
+                        {app.notes && (
+                          <div className="mt-3 text-sm text-gray-600">
+                            <strong>Notes:</strong> {app.notes}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(opp.status)}`}>
-                          {opp.status}
-                        </span>
-                        <button 
-                          onClick={() => handleApplyNow(opp.id)}
-                          className="px-3 py-1.5 text-sm font-medium text-emerald-600 border border-emerald-600 rounded hover:bg-emerald-50"
-                        >
-                          Apply Now
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-12 text-center">
-                  <Bookmark className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Saved Opportunities</h3>
-                  <p className="text-gray-500">
-                    Save opportunities from the opportunity discovery page to track them here.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Add other tab content here */}
-        {activeTab === 'campaigns' && (
-          <div>
-            <h2 className="text-lg font-semibold mb-4">Funding Campaigns</h2>
-            <div className="grid gap-6">
-              {data.campaigns.map((campaign) => (
-                <div key={campaign.id} className="bg-white rounded-lg border p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-medium">{campaign.name}</h3>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(campaign.status)}`}>
-                        {campaign.type} • {campaign.status}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">
-                        ${campaign.raised.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        of ${campaign.target.toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className="bg-green-500 h-3 rounded-full transition-all duration-300"
-                        style={{ width: `${(campaign.raised / campaign.target) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{campaign.investors || campaign.backers} {campaign.type === 'equity' ? 'investors' : 'backers'}</span>
-                    <span>Ends: {campaign.endDate}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'investments' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg border">
-              <div className="p-6 border-b">
-                <h3 className="text-lg font-semibold">Angel Investments</h3>
-              </div>
-              <div className="divide-y">
-                {data.angelInvestments.map((investment) => (
-                  <div key={investment.id} className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{investment.investor}</h4>
-                        <p className="text-sm text-gray-500">{investment.date}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">${investment.amount.toLocaleString()}</div>
-                        <div className="text-sm text-gray-500">{investment.equity}% equity</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg border">
-              <div className="p-6 border-b">
-                <h3 className="text-lg font-semibold">Direct Donations</h3>
-              </div>
-              <div className="divide-y">
-                {data.directDonations.map((donation) => (
-                  <div key={donation.id} className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{donation.donor}</h4>
-                        <p className="text-sm text-gray-500">{donation.purpose}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">${donation.amount.toLocaleString()}</div>
-                        <div className="text-sm text-gray-500">{donation.date}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'analytics' && (
-          <div>
-            <h2 className="text-lg font-semibold mb-6">Project Analytics</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Funding Sources Breakdown</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Angel Investments</span>
-                    <span className="font-medium">${(65000).toLocaleString()}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: '26%' }}></div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Campaign Funding</span>
-                    <span className="font-medium">${(99500).toLocaleString()}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '40%' }}></div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Grants</span>
-                    <span className="font-medium">${(75000).toLocaleString()}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: '30%' }}></div>
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Monthly Burn Rate</h3>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-red-600 mb-2">
-                    ${data.metrics.monthlyBurn?.toLocaleString()}/month
-                  </div>
-                  <div className="text-sm text-gray-500 mb-4">
-                    Current burn rate
-                  </div>
-                  <div className="bg-orange-100 text-orange-800 px-3 py-2 rounded-lg">
-                    <div className="text-sm font-medium">
-                      {data.metrics.runway} months runway remaining
+            {activeTab === 'opportunities' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold">Saved Opportunities</h2>
+                  <button 
+                    onClick={handleFindOpportunities}
+                    className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
+                  >
+                    <Target className="w-4 h-4 mr-1" />
+                    Find More
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {data.savedOpportunities.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Bookmark className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-slate-900 mb-2">No saved opportunities</h3>
+                      <p className="text-slate-600 mb-4">Save opportunities that match your project</p>
+                      <button
+                        onClick={handleFindOpportunities}
+                        className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
+                      >
+                        <Target className="w-4 h-4 mr-1" />
+                        Discover Opportunities
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    data.savedOpportunities.map((opp) => (
+                      <div key={opp.id} className="bg-white border rounded-lg p-6 hover:shadow-sm transition-shadow">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-medium text-gray-900">{opp.title}</h3>
+                            <p className="text-sm text-gray-600">{opp.funder_name}</p>
+                            <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                ${opp.amount_min?.toLocaleString()} - ${opp.amount_max?.toLocaleString()}
+                              </span>
+                              <span className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                Deadline: {new Date(opp.deadline_date).toLocaleDateString()}
+                              </span>
+                              {opp.fit_score && (
+                                <span className="flex items-center">
+                                  <Target className="w-4 h-4 mr-1" />
+                                  {opp.fit_score}% match
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(opp.status)}`}>
+                              {opp.status?.replace('_', ' ') || 'Unknown'}
+                            </span>
+                            <button className="p-2 hover:bg-gray-100 rounded-full">
+                              <ExternalLink className="w-4 h-4 text-gray-400" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Placeholder tabs for other funding types */}
+            {(activeTab === 'crowdfunding' || activeTab === 'angel-investors' || 
+              activeTab === 'reits' || activeTab === 'direct-donations') && (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  {activeTab === 'crowdfunding' && <Users className="w-6 h-6 text-slate-600" />}
+                  {activeTab === 'angel-investors' && <TrendingUp className="w-6 h-6 text-slate-600" />}
+                  {activeTab === 'reits' && <Building2 className="w-6 h-6 text-slate-600" />}
+                  {activeTab === 'direct-donations' && <DollarSign className="w-6 h-6 text-slate-600" />}
+                </div>
+                <h3 className="text-lg font-medium text-slate-900 mb-2">
+                  {tabs.find(t => t.id === activeTab)?.label} data will appear here
+                </h3>
+                <p className="text-slate-600">
+                  Real data from {tabs.find(t => t.id === activeTab)?.label.toLowerCase()} will be displayed when available
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
