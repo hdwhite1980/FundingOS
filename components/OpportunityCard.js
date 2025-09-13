@@ -1,149 +1,113 @@
-'use client'
-import { motion } from 'framer-motion'
-import { 
-  Calendar, 
-  DollarSign, 
-  Building, 
-  ExternalLink, 
-  Zap, 
-  MapPin, 
-  Award, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
-  Info, 
-  Shield, 
-  Sparkles,
-  Clock
-} from 'lucide-react'
+import React from 'react'
 
-export default function OpportunityCard({ 
+const OpportunityCard = ({ 
   opportunity, 
   selectedProject, 
   userProfile, 
-  onAnalyze, 
+  onAnalyze,
   onShowDetails,
   onRowClick,
-  fitScore, 
+  fitScore,
   deadlineStatus,
   index 
-}) {
-  const formatAmount = (min, max) => {
-    if (!min && !max) return 'Amount varies'
-    if (!min) return `Up to $${max.toLocaleString()}`
-    if (!max) return `From $${min.toLocaleString()}`
-    if (min === max) return `$${min.toLocaleString()}`
-    return `$${min.toLocaleString()} - $${max.toLocaleString()}`
-  }
-
-  const getStatusColor = () => {
-    if (!opportunity.deadline_date) return 'bg-blue-500' // Rolling deadline
-    
-    const now = new Date()
-    const deadline = new Date(opportunity.deadline_date)
-    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24))
-    
-    if (daysLeft < 0) return 'bg-gray-400' // Expired
-    if (daysLeft <= 7) return 'bg-red-500' // Urgent
-    if (daysLeft <= 30) return 'bg-yellow-500' // Soon
-    return 'bg-green-500' // Active/Good timing
-  }
-
-  const getStatusText = () => {
-    if (!opportunity.deadline_date) return 'Rolling'
-    
-    const now = new Date()
-    const deadline = new Date(opportunity.deadline_date)
-    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24))
-    
-    if (daysLeft < 0) return 'Expired'
-    if (daysLeft <= 7) return 'Urgent'
-    if (daysLeft <= 30) return 'Active'
-    return 'Active'
-  }
-
-  const handleRowClick = (e) => {
-    // Don't trigger row click if clicking on action buttons
-    if (e.target.closest('button') || e.target.closest('a')) {
-      return
+}) => {
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'open': return 'bg-green-100 text-green-800'
+      case 'closing soon': return 'bg-yellow-100 text-yellow-800'
+      case 'closed': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-600'
     }
-    if (onRowClick) {
+  }
+
+  const getFitScoreColor = (score) => {
+    if (score >= 90) return 'text-green-600'
+    if (score >= 70) return 'text-blue-600'  
+    if (score >= 50) return 'text-yellow-600'
+    return 'text-red-600'
+  }
+
+  const formatAmount = (amount) => {
+    if (!amount) return 'N/A'
+    if (typeof amount === 'string' && amount.includes('$')) return amount
+    if (typeof amount === 'number') {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(amount)
+    }
+    return amount.toString()
+  }
+
+  const handleRowClick = () => {
+    if (onShowDetails) {
+      onShowDetails(opportunity)
+    } else if (onRowClick) {
       onRowClick(opportunity)
     }
   }
 
   return (
     <div 
-      className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+      className="px-6 py-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
       onClick={handleRowClick}
     >
-      <div className="px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* Status Column */}
-          <div className="flex items-center space-x-3 w-24">
-            <div className={`w-2 h-2 rounded-full ${getStatusColor()}`}></div>
-            <span className="text-sm font-medium text-gray-600">{getStatusText()}</span>
+      <div className="grid grid-cols-12 gap-4 items-center text-sm">
+        {/* Opportunity Title */}
+        <div className="col-span-4">
+          <div className="font-medium text-gray-900 truncate pr-2">
+            {opportunity.title}
           </div>
-          
-          {/* Opportunity/Service Column */}
-          <div className="flex-1 min-w-0 mx-6">
-            <h3 className="text-sm font-semibold text-gray-900 truncate mb-1">
-              {opportunity.title}
-            </h3>
-            <p className="text-xs text-gray-500 truncate">
-              {opportunity.sponsor}
-              {fitScore && (
-                <span className="ml-2 text-xs text-blue-600">
-                  • {fitScore}% match
-                </span>
-              )}
-            </p>
+          <div className="text-gray-500 text-xs mt-1">
+            {opportunity.funder_name || opportunity.sponsor}
           </div>
-          
-          {/* Price Column */}
-          <div className="text-right w-32">
-            <div className="text-sm font-semibold text-gray-900">
-              {formatAmount(opportunity.amount_min, opportunity.amount_max)}
-            </div>
-            {opportunity.deadline_date && (
-              <div className="text-xs text-gray-500">
-                {deadlineStatus.text}
-              </div>
-            )}
-          </div>
-          
-          {/* Actions Column */}
-          <div className="flex items-center space-x-2 ml-4 w-24 justify-end">
-            <button
-              onClick={onAnalyze}
-              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors duration-150"
-              title="AI Strategic Analysis"
-            >
-              <Zap className="w-4 h-4" />
-            </button>
-            
-            {opportunity.source_url && (
-              <a
-                href={opportunity.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors duration-150"
-                title="View Details"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            )}
-            
-            <button 
-              onClick={() => onShowDetails && onShowDetails(opportunity)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors duration-150"
-              title="Show Details"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-          </div>
+        </div>
+
+        {/* Amount */}
+        <div className="col-span-2 text-gray-600">
+          {opportunity.amount_min && opportunity.amount_max 
+            ? `$${opportunity.amount_min.toLocaleString()} - $${opportunity.amount_max.toLocaleString()}`
+            : formatAmount(opportunity.amount)}
+        </div>
+
+        {/* Deadline */}
+        <div className="col-span-2">
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${deadlineStatus?.color || 'bg-gray-100 text-gray-600'}`}>
+            {deadlineStatus?.text || 'No deadline'}
+          </span>
+        </div>
+
+        {/* Fit Score */}
+        <div className="col-span-1 text-center">
+          <span className={`font-bold ${getFitScoreColor(fitScore)}`}>
+            {fitScore}%
+          </span>
+        </div>
+
+        {/* Status */}
+        <div className="col-span-2">
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(opportunity.status)}`}>
+            {opportunity.status || 'Active'}
+          </span>
+        </div>
+
+        {/* Action */}
+        <div className="col-span-1 flex justify-end">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onAnalyze()
+            }}
+            className="text-blue-600 hover:text-blue-800 font-medium text-xs px-3 py-1 border border-blue-600 rounded hover:bg-blue-50 transition-colors"
+          >
+            Analyze
+          </button>
         </div>
       </div>
     </div>
   )
 }
+
+export default OpportunityCard

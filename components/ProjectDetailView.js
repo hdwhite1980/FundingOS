@@ -19,8 +19,10 @@ import {
   AlertCircle,
   ExternalLink,
   Plus,
-  Filter
+  Filter,
+  Bookmark
 } from 'lucide-react'
+import { directUserServices } from '../lib/supabase'
 
 export default function ProjectDetailView({ 
   project, 
@@ -30,6 +32,7 @@ export default function ProjectDetailView({
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState({
     appliedOpportunities: [],
+    savedOpportunities: [],
     campaigns: [],
     angelInvestments: [],
     reits: [],
@@ -73,6 +76,41 @@ export default function ProjectDetailView({
             amount: 25000,
             deadline: '2024-08-01',
             progress: 100
+          }
+        ],
+        savedOpportunities: [
+          {
+            id: 1,
+            title: 'USDA Rural Business Development Grant',
+            funder_name: 'U.S. Department of Agriculture',
+            amount_min: 10000,
+            amount_max: 50000,
+            deadline_date: '2024-11-30',
+            status: 'open',
+            fit_score: 85,
+            saved_date: '2024-09-10'
+          },
+          {
+            id: 2,
+            title: 'NIH Small Business Innovation Research',
+            funder_name: 'National Institutes of Health',
+            amount_min: 50000,
+            amount_max: 300000,
+            deadline_date: '2024-12-15',
+            status: 'open',
+            fit_score: 78,
+            saved_date: '2024-09-08'
+          },
+          {
+            id: 3,
+            title: 'Gates Foundation Innovation Grant',
+            funder_name: 'Bill & Melinda Gates Foundation',
+            amount_min: 100000,
+            amount_max: 500000,
+            deadline_date: '2025-01-31',
+            status: 'open',
+            fit_score: 92,
+            saved_date: '2024-09-05'
           }
         ],
         campaigns: [
@@ -164,6 +202,7 @@ export default function ProjectDetailView({
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Target },
     { id: 'applications', label: 'Grant Applications', icon: FileText },
+    { id: 'opportunities', label: 'Saved Opportunities', icon: Award },
     { id: 'campaigns', label: 'Campaigns', icon: TrendingUp },
     { id: 'investments', label: 'Investments', icon: DollarSign },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 }
@@ -277,7 +316,7 @@ export default function ProjectDetailView({
                 <ArrowLeft className="h-5 w-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{project.name}</h1>
+                <h1 className="text-xl font-bold text-emerald-800">{project.name}</h1>
                 <p className="text-sm text-gray-500">{project.project_type?.replace('_', ' ')} Project</p>
               </div>
             </div>
@@ -412,6 +451,70 @@ export default function ProjectDetailView({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'opportunities' && (
+          <div className="bg-white rounded-lg border">
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-emerald-800">Saved Opportunities</h2>
+                <div className="text-sm text-gray-500">
+                  {data.savedOpportunities.length} opportunities saved
+                </div>
+              </div>
+            </div>
+            <div className="divide-y">
+              {data.savedOpportunities.length > 0 ? (
+                data.savedOpportunities.map((opp) => (
+                  <div key={opp.id} className="p-6 hover:bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <h3 className="text-lg font-medium text-gray-900">{opp.title}</h3>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            {opp.fit_score}% match
+                          </span>
+                        </div>
+                        <div className="mt-1 text-sm text-gray-500">
+                          {opp.funder_name}
+                        </div>
+                        <div className="mt-2 flex items-center space-x-4 text-sm text-gray-600">
+                          <div className="flex items-center">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            ${opp.amount_min?.toLocaleString()} - ${opp.amount_max?.toLocaleString()}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            Deadline: {new Date(opp.deadline_date).toLocaleDateString()}
+                          </div>
+                          <div className="flex items-center">
+                            <Bookmark className="w-4 h-4 mr-1" />
+                            Saved: {new Date(opp.saved_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(opp.status)}`}>
+                          {opp.status}
+                        </span>
+                        <button className="px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50">
+                          Apply Now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-12 text-center">
+                  <Bookmark className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Saved Opportunities</h3>
+                  <p className="text-gray-500">
+                    Save opportunities from the opportunity discovery page to track them here.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -985,7 +985,7 @@ export default function OpportunityList({
                   selectedProject={selectedProject}
                   userProfile={userProfile}
                   onAnalyze={() => handleAnalyzeOpportunity(opportunity)}
-                  onShowDetails={handleShowOpportunityDetails}
+                  onShowDetails={() => handleOpportunityRowClick(opportunity)}
                   onRowClick={handleOpportunityRowClick}
                   fitScore={opportunity.fitScore}
                   deadlineStatus={getDeadlineStatus(opportunity.deadline_date)}
@@ -1025,6 +1025,7 @@ export default function OpportunityList({
           }}
           selectedProject={selectedProject}
           fitScore={selectedOpportunity.fitScore}
+          userProfile={userProfile}
         />
       )}
       

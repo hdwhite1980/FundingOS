@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   X, 
@@ -19,15 +20,51 @@ import {
   Share2
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { directUserServices } from '../lib/supabase'
+import toast from 'react-hot-toast'
 
 export default function OpportunityDetailModal({ 
   opportunity, 
   isOpen, 
   onClose, 
   selectedProject,
-  fitScore 
+  fitScore,
+  userProfile
 }) {
+  const [isSaving, setIsSaving] = useState(false)
+  
   if (!isOpen || !opportunity) return null
+
+  const handleSaveForLater = async () => {
+    if (!selectedProject || !userProfile) {
+      toast.error('Please select a project first')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await directUserServices.projectOpportunities.addProjectOpportunity(
+        userProfile.id,
+        selectedProject.id,
+        opportunity.id,
+        {
+          aiScore: fitScore || 0,
+          status: 'saved'
+        }
+      )
+
+      if (result) {
+        toast.success('Opportunity saved to project!')
+      } else {
+        toast.error('Failed to save opportunity')
+      }
+    } catch (error) {
+      console.error('Error saving opportunity:', error)
+      toast.error('Failed to save opportunity')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const formatAmount = (min, max) => {
     if (!min && !max) return 'Amount varies'
@@ -73,7 +110,7 @@ export default function OpportunityDetailModal({
             className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 text-white">
+            <div className="bg-gradient-to-r from-amber-600 to-yellow-600 px-6 py-4 text-white">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h2 className="text-xl font-bold mb-2 pr-8">
@@ -268,8 +305,13 @@ export default function OpportunityDetailModal({
                     Last updated: {opportunity.last_updated ? format(new Date(opportunity.last_updated), 'MMM d, yyyy') : 'Unknown'}
                   </div>
                   <div className="flex space-x-3">
-                    <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      Save for Later
+                    <button 
+                      onClick={handleSaveForLater}
+                      disabled={isSaving}
+                      className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Bookmark className="w-4 h-4 mr-2" />
+                      {isSaving ? 'Saving...' : 'Save for Later'}
                     </button>
                     {opportunity.source_url && (
                       <a

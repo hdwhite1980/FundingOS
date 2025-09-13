@@ -528,6 +528,97 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
     }
   }
 
+  const handleGenerateDocument = async () => {
+    try {
+      setGenerating(true)
+      
+      // Create application data combining analysis with project/opportunity info
+      const applicationData = {
+        opportunity,
+        project,
+        userProfile,
+        analysis,
+        applicationDraft,
+        createdAt: new Date().toISOString()
+      }
+
+      // Generate filled document using AI
+      const response = await fetch(resolveApiUrl('/api/ai/generate-document'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationData,
+          documentType: 'grant-application'
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate document')
+      }
+
+      const result = await response.json()
+      
+      // Save to applications
+      const submittedAmount = opportunity.amount_max || opportunity.amount_min || project.budget || 25000
+      
+      await directUserServices.createSubmission(user.id, {
+        project_id: project.id,
+        opportunity_id: opportunity.id,
+        status: 'draft',
+        submitted_amount: submittedAmount,
+        application_data: applicationData,
+        generated_document: result.document,
+        ai_analysis: analysis
+      })
+
+      // Create and download the document
+      const blob = new Blob([result.document], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = `${project.name}_${opportunity.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_application.docx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+
+      toast.success('Application document generated and saved!')
+      
+    } catch (error) {
+      console.error('Document generation error:', error)
+      toast.error('Failed to generate document: ' + error.message)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleGrantWriterReview = async () => {
+    try {
+      // Save current state to database for grant writer review
+      const reviewData = {
+        project_id: project.id,
+        opportunity_id: opportunity.id,
+        ai_analysis: analysis,
+        application_draft: applicationDraft,
+        status: 'pending_review',
+        requested_at: new Date().toISOString()
+      }
+
+      await directUserServices.createGrantWriterReview(user.id, reviewData)
+      
+      toast.success('Review request submitted! A grant writer will contact you within 24 hours.')
+      
+      // Navigate to grant writer review page (placeholder for now)
+      // window.location.href = '/grant-writer-review'
+      
+    } catch (error) {
+      console.error('Grant writer review error:', error)
+      toast.error('Failed to request review: ' + error.message)
+    }
+  }
+
   const getScoreColor = (score) => {
     if (score >= 80) return 'text-emerald-800 bg-emerald-100 border-emerald-200'
     if (score >= 60) return 'text-emerald-700 bg-emerald-50 border-emerald-200'
@@ -549,7 +640,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
         className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-200"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white">
+        <div className="bg-gradient-to-r from-amber-600 to-yellow-600 p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-2 bg-white/20 rounded-lg mr-4">
@@ -655,6 +746,27 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
             </div>
             
             <div className="flex space-x-3">
+              {analysis && (
+                <>
+                  <button
+                    onClick={handleGenerateDocument}
+                    disabled={generating}
+                    className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    {generating ? 'Generating...' : 'Generate Application'}
+                  </button>
+                  
+                  <button
+                    onClick={handleGrantWriterReview}
+                    className="px-6 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center"
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    Review with Grant Writer
+                  </button>
+                </>
+              )}
+              
               {!projectOpportunity && analysis && (
                 <button
                   onClick={handleAddToProject}
