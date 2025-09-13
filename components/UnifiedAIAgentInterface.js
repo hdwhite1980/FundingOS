@@ -25,6 +25,7 @@ import {
   DollarSign,
   Calendar
 } from 'lucide-react'
+import { resolveApiUrl } from '../lib/apiUrlUtils'
 
 export default function UnifiedAIAgentInterface({ user, userProfile, projects, opportunities }) {
   const [agent, setAgent] = useState(null)
@@ -61,7 +62,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
       setLoading(true)
       console.log(`🤖 Initializing Unified AI Agent for user ${user.id}`)
       
-      const response = await fetch('/api/ai/unified-agent/initialize', {
+      const response = await fetch(resolveApiUrl('/api/ai/unified-agent/initialize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -104,7 +105,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
 
   const saveChatMessageInternal = async (messageType, content, metadata = {}) => {
     try {
-      const response = await fetch('/api/chat/save-message', {
+      const response = await fetch(resolveApiUrl('/api/chat/save-message'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // Include cookies for authentication
@@ -132,7 +133,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
 
   const loadChatSessionInternal = async (agentData) => {
     try {
-      const response = await fetch('/api/chat/load-session', {
+      const response = await fetch(resolveApiUrl('/api/chat/load-session'), {
         credentials: 'include' // Include cookies for authentication
       })
       if (response.ok) {
@@ -181,10 +182,10 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
   const refreshAgentData = async () => {
     try {
       const [statusRes, goalsRes, decisionsRes, metricsRes] = await Promise.allSettled([
-        fetch(`/api/ai/unified-agent/status?userId=${user.id}`),
-        fetch(`/api/ai/unified-agent/goals?userId=${user.id}`),
-        fetch(`/api/ai/unified-agent/decisions?userId=${user.id}&limit=10`),
-        fetch(`/api/ai/unified-agent/metrics?userId=${user.id}`)
+        fetch(resolveApiUrl(`/api/ai/unified-agent/status?userId=${user.id}`)),
+        fetch(resolveApiUrl(`/api/ai/unified-agent/goals?userId=${user.id}`)),
+        fetch(resolveApiUrl(`/api/ai/unified-agent/decisions?userId=${user.id}&limit=10`)),
+        fetch(resolveApiUrl(`/api/ai/unified-agent/metrics?userId=${user.id}`))
       ])
 
       if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
@@ -233,7 +234,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
     }
 
     try {
-      const response = await fetch('/api/ai/unified-agent/chat', {
+      const response = await fetch(resolveApiUrl('/api/ai/unified-agent/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -293,7 +294,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
     const newStatus = agentStatus === 'active' ? 'paused' : 'active'
     
     try {
-      const response = await fetch('/api/ai/unified-agent/toggle', {
+      const response = await fetch(resolveApiUrl('/api/ai/unified-agent/toggle'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, status: newStatus })
@@ -318,7 +319,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
 
   const respondToDecision = async (decisionId, response) => {
     try {
-      await fetch('/api/ai/unified-agent/decision-feedback', {
+      await fetch(resolveApiUrl('/api/ai/unified-agent/decision-feedback'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

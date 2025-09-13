@@ -83,7 +83,7 @@ export default function OpportunityList({
           const scores = {}
           for (const opportunity of opportunities) {
             try {
-              const score = await scoringService.calculateScore(selectedProject, opportunity)
+              const score = await scoringService.calculateScore(selectedProject, opportunity, userProfile)
               scores[opportunity.id] = score
             } catch (error) {
               console.error(`Error calculating score for opportunity ${opportunity.id}:`, error)

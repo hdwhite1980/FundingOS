@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, FileText, Clock, Copy, RotateCcw, Sparkles, TrendingUp } from 'lucide-react'
 import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { resolveApiUrl } from '../lib/apiUrlUtils'
 import toast from 'react-hot-toast'
 
 export default function AIAnalysisModal({ opportunity, project, userProfile, quickMatchScore, onClose }) {
@@ -78,7 +79,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
       })
       
       // Call AI analysis API
-      const response = await fetch('/api/ai/analyze-opportunity', {
+      const response = await fetch(resolveApiUrl('/api/ai/analyze-opportunity'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +217,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
 
       console.log('Generating application for project opportunity:', currentProjectOpportunity.id)
 
-      const response = await fetch('/api/ai/generate-application', {
+      const response = await fetch(resolveApiUrl('/api/ai/generate-application'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
