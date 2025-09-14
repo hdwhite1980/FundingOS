@@ -240,8 +240,14 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
         body: JSON.stringify({ 
           userId: user.id, 
           message: messageContent,
-          projects,
-          opportunities
+          projects: projects || [],
+          opportunities: opportunities || [],
+          submissions: submissions || [],
+          context: {
+            userProfile,
+            complianceData: complianceData || {},
+            originalMessage: messageContent
+          }
         })
       })
 
