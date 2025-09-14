@@ -12,7 +12,7 @@ import DirectDonationsList from './DirectDonationsList'
 import { StatCard } from './ui/StatCard'
 import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
-import CreateProjectModal from './ProjectCreationWithUpload'
+import CreateProjectModal from './EnhancedCreateProjectModal'
 import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
 import { directUserServices } from '../lib/supabase'
 import { 
@@ -1138,11 +1138,11 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         {/* Create/Edit Project Modal */}
         {showCreateModal && (
           <CreateProjectModal
-            isOpen={showCreateModal}
             user={user}
             userProfile={userProfile}
             onClose={handleCloseModal}
-            onSuccess={editingProject ? handleProjectUpdated : handleProjectCreated}
+            onProjectCreated={handleProjectCreated}
+            onProjectUpdated={handleProjectUpdated}
             editProject={editingProject}
           />
         )}

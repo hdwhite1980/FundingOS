@@ -21,9 +21,12 @@ import {
   Plus,
   Filter,
   Bookmark,
-  Download
+  Download,
+  Upload
 } from 'lucide-react'
 import { directUserServices } from '../lib/supabase'
+import EnhancedDocumentUploadModal from './EnhancedDocumentUploadModal'
+import toast from 'react-hot-toast'
 
 export default function ProjectDetailView({ 
   project, 
@@ -31,6 +34,7 @@ export default function ProjectDetailView({
 }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(false)
+  const [showDocumentUpload, setShowDocumentUpload] = useState(false)
   const [data, setData] = useState({
     appliedOpportunities: [],
     savedOpportunities: [],
@@ -130,6 +134,57 @@ export default function ProjectDetailView({
 
     fetchProjectData()
   }, [project?.id, project?.user_id])
+
+  const handleDocumentUpload = async (submissionId, uploadData) => {
+    try {
+      console.log('📁 Adding documents to existing project:', uploadData.files?.length || 0, 'files')
+      
+      // Prepare updated project data
+      const currentDocs = project.uploaded_documents || []
+      const newDocs = uploadData.files || []
+      const allDocs = [...currentDocs, ...newDocs]
+      
+      // Check if any documents have dynamic form structures extracted
+      const dynamicFormStructures = uploadData.dynamicFormStructures || []
+      let updatedFormStructure = project.dynamic_form_structure
+      
+      if (dynamicFormStructures.length > 0) {
+        // Use the first document with a form structure
+        updatedFormStructure = dynamicFormStructures[0].formStructure
+        toast.success(`🎯 Form structure extracted from ${dynamicFormStructures[0].fileName}! This will be used for future applications.`)
+        console.log('📝 Extracted form structure with', Object.keys(updatedFormStructure.formFields || {}).length, 'fields')
+      } else {
+        toast.success(`📁 ${newDocs.length} document(s) uploaded successfully!`)
+      }
+      
+      // Update project in database
+      const updatedProject = await directUserServices.projects.updateProject(
+        project.user_id,
+        project.id,
+        {
+          uploaded_documents: allDocs,
+          dynamic_form_structure: updatedFormStructure
+        }
+      )
+      
+      if (updatedProject) {
+        // Update local project state
+        Object.assign(project, {
+          uploaded_documents: allDocs,
+          dynamic_form_structure: updatedFormStructure
+        })
+        
+        toast.success('✅ Project updated with new documents!')
+      } else {
+        throw new Error('Failed to update project')
+      }
+      
+      setShowDocumentUpload(false)
+    } catch (error) {
+      console.error('Document upload error:', error)
+      toast.error('Failed to add documents to project: ' + error.message)
+    }
+  }
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Target },
@@ -455,6 +510,75 @@ export default function ProjectDetailView({
                   </div>
                 </div>
 
+                {/* Documents Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold">Application Forms & Documents</h2>
+                    <button
+                      onClick={() => setShowDocumentUpload(true)}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Documents
+                    </button>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-lg p-6">
+                    {project.uploaded_documents && project.uploaded_documents.length > 0 ? (
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-medium text-slate-900 mb-3">Uploaded Documents:</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {project.uploaded_documents.map((doc, index) => (
+                              <div key={index} className="flex items-center p-3 bg-white rounded-md border">
+                                <FileText className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-slate-900 truncate">
+                                    {doc.fileName || doc.name || `Document ${index + 1}`}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {doc.documentType || 'Unknown type'} • {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : 'Unknown date'}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {project.dynamic_form_structure && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div className="flex items-start">
+                              <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                              <div>
+                                <h4 className="font-medium text-green-800">Dynamic Form Template Available</h4>
+                                <p className="text-sm text-green-600 mt-1">
+                                  Extracted {Object.keys(project.dynamic_form_structure.formFields || {}).length} form fields from uploaded documents. 
+                                  This will enable accurate, template-driven application generation.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 mb-2">No Documents Uploaded</h3>
+                        <p className="text-slate-600 mb-4">
+                          Upload grant application forms or templates to enable dynamic form generation
+                        </p>
+                        <button
+                          onClick={() => setShowDocumentUpload(true)}
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Your First Document
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
@@ -632,6 +756,18 @@ export default function ProjectDetailView({
           </div>
         </div>
       </div>
+      
+      {/* Document Upload Modal */}
+      {showDocumentUpload && (
+        <EnhancedDocumentUploadModal
+          submission={{ id: project.id }}
+          onClose={() => setShowDocumentUpload(false)}
+          onUpload={handleDocumentUpload}
+          userProfile={{ organization_name: 'Organization' }} // You may want to get real user profile
+          projectData={project}
+          enableAIAnalysis={true}
+        />
+      )}
     </div>
   )
 }

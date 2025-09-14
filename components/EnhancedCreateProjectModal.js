@@ -16,10 +16,12 @@ import {
   CheckCircle,
   ArrowLeft,
   ArrowRight,
-  Lightbulb
+  Lightbulb,
+  Upload
 } from 'lucide-react'
 import { directUserServices } from '../lib/supabase'
 import toast from 'react-hot-toast'
+import EnhancedDocumentUploadModal from './EnhancedDocumentUploadModal'
 import {
   ProjectBasics,
   ScopeImpact,
@@ -97,7 +99,8 @@ const steps = [
   { id: 4, title: 'Project Readiness', icon: CheckCircle, description: 'Status and personnel' },
   { id: 5, title: 'Outcomes & Evaluation', icon: TrendingUp, description: 'Goals and measurement' },
   { id: 6, title: 'Funding Strategy', icon: Award, description: 'Preferences and timeline' },
-  { id: 7, title: 'Innovation & Review', icon: Lightbulb, description: 'Uniqueness and final review' }
+  { id: 7, title: 'Innovation & Review', icon: Lightbulb, description: 'Uniqueness and final review' },
+  { id: 8, title: 'Application Forms', icon: Upload, description: 'Upload form templates (optional)' }
 ]
 
 export default function CreateProjectModal({ 
@@ -164,8 +167,17 @@ export default function CreateProjectModal({
     // Innovation & Differentiation
     unique_innovation: editProject?.unique_innovation || '',
     evidence_base: editProject?.evidence_base || '',
-    strategic_fit: editProject?.strategic_fit || ''
+    strategic_fit: editProject?.strategic_fit || '',
+    
+    // Document Upload
+    uploaded_documents: editProject?.uploaded_documents || [],
+    dynamic_form_structure: editProject?.dynamic_form_structure || null
   })
+
+  // Document upload state
+  const [showDocumentUpload, setShowDocumentUpload] = useState(false)
+  const [uploadedDocuments, setUploadedDocuments] = useState(editProject?.uploaded_documents || [])
+  const [extractedFormStructure, setExtractedFormStructure] = useState(editProject?.dynamic_form_structure || null)
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -195,6 +207,47 @@ export default function CreateProjectModal({
     const current = [...formData.primary_goals]
     current[index] = value
     handleArrayChange('primary_goals', current)
+  }
+
+  const handleDocumentUpload = async (submissionId, uploadData) => {
+    try {
+      console.log('📁 Processing uploaded documents:', uploadData.files?.length || 0, 'files')
+      
+      // Store uploaded documents
+      setUploadedDocuments(uploadData.files || [])
+      
+      // Check if any documents have dynamic form structures extracted
+      const dynamicFormStructures = uploadData.dynamicFormStructures || []
+      
+      if (dynamicFormStructures.length > 0) {
+        // Use the first document with a form structure
+        const formStructure = dynamicFormStructures[0].formStructure
+        setExtractedFormStructure(formStructure)
+        
+        // Update form data to include the extracted structure
+        setFormData(prev => ({
+          ...prev,
+          uploaded_documents: uploadData.files || [],
+          dynamic_form_structure: formStructure
+        }))
+        
+        toast.success(`🎯 Form structure extracted from ${dynamicFormStructures[0].fileName}! This will be used for future applications.`)
+        console.log('📝 Extracted form structure with', Object.keys(formStructure.formFields || {}).length, 'fields')
+      } else {
+        // Still store the documents even if no form structure extracted
+        setFormData(prev => ({
+          ...prev,
+          uploaded_documents: uploadData.files || []
+        }))
+        
+        toast.success(`📁 ${uploadData.files?.length || 0} document(s) uploaded successfully!`)
+      }
+      
+      setShowDocumentUpload(false)
+    } catch (error) {
+      console.error('Document upload error:', error)
+      toast.error('Failed to process uploaded documents: ' + error.message)
+    }
   }
 
   const handleNext = () => {
@@ -266,6 +319,53 @@ export default function CreateProjectModal({
         return <FundingStrategy formData={formData} onChange={handleInputChange} onFundingTypesChange={handleFundingTypesChange} />
       case 7:
         return <InnovationReview formData={formData} onChange={handleInputChange} />
+      case 8:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <Upload className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Upload Application Forms</h3>
+              <p className="text-gray-600 mb-6">
+                Upload grant application forms or templates to enable dynamic form generation. 
+                This step is optional but will help create more accurate applications.
+              </p>
+            </div>
+            
+            {uploadedDocuments.length > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-medium text-green-800 mb-2">Uploaded Documents:</h4>
+                <ul className="text-sm text-green-700">
+                  {uploadedDocuments.map((doc, index) => (
+                    <li key={index} className="flex items-center">
+                      <FileText className="w-4 h-4 mr-2" />
+                      {doc.name || `Document ${index + 1}`}
+                    </li>
+                  ))}
+                </ul>
+                {extractedFormStructure && (
+                  <p className="text-sm text-green-600 mt-2">
+                    ✅ Form structure extracted with {Object.keys(extractedFormStructure.formFields || {}).length} fields
+                  </p>
+                )}
+              </div>
+            )}
+            
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setShowDocumentUpload(true)}
+                className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                {uploadedDocuments.length > 0 ? 'Upload More Documents' : 'Upload Application Forms'}
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-500 text-center">
+              Supported formats: PDF, Word, Excel, Text. Max file size: 10MB each.
+            </p>
+          </div>
+        )
       default:
         return null
     }
@@ -388,6 +488,18 @@ export default function CreateProjectModal({
           )}
         </div>
       </motion.div>
+      
+      {/* Document Upload Modal */}
+      {showDocumentUpload && (
+        <EnhancedDocumentUploadModal
+          submission={{ id: 'temp-project-creation' }}
+          onClose={() => setShowDocumentUpload(false)}
+          onUpload={handleDocumentUpload}
+          userProfile={userProfile}
+          projectData={formData}
+          enableAIAnalysis={true}
+        />
+      )}
     </div>
   )
 }
