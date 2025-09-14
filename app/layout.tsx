@@ -4,6 +4,7 @@ import { SessionContextProvider } from '@supabase/auth-helpers-react'
 import { AuthProvider } from '../contexts/AuthContext'
 import { useState } from 'react'
 import { Toaster } from 'react-hot-toast'
+import EnhancedUnifiedAIAgentInterface from '../components/EnhancedUnifiedAIAgentInterface'
 import './globals.css'
 
 interface RootLayoutProps {
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <SessionContextProvider supabaseClient={supabaseClient}>
           <AuthProvider>
             {children}
+            <EnhancedUnifiedAIAgentInterface />
             <Toaster 
               position="top-right"
               toastOptions={{
