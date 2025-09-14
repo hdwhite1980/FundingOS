@@ -103,3 +103,63 @@ Preferred communication style: Simple, everyday language.
 - **Grant Sync**: Daily pulls from Grants.gov for new opportunities
 - **SAM.gov Integration**: Regular updates for contracting opportunities
 - **AI Agent Tasks**: Periodic analysis and opportunity matching
+
+# Replit Environment Setup (September 14, 2025)
+
+## Files Created for Replit Compatibility
+
+### `next.config.js`
+- Configured standalone output for reliable deployment
+- Added proper headers (X-Frame-Options: SAMEORIGIN)
+- Enabled development polling for hot reload in Replit environment
+- Removed unsupported allowedDevOrigins to prevent config errors
+
+### `app/ClientProviders.tsx`
+- Extracted client-side providers (Supabase, Auth, Toaster) from layout
+- Prevents SSR/CSR hydration mismatches
+- Ensures single Supabase client instance across the application
+
+## Files Modified for Replit Compatibility
+
+### `app/layout.tsx`
+- Converted to server component with proper metadata export
+- Uses Next.js 14 font optimization (Inter from Google Fonts)
+- Delegates all client-side logic to ClientProviders component
+- Fixes hydration errors that were preventing app startup
+
+### `contexts/AuthContext.js`
+- **CRITICAL FIX**: Removed direct import from `lib/supabase.js`
+- Now uses `useSessionContext()` and `useSupabaseClient()` from auth helpers
+- Eliminates "Multiple GoTrueClient instances detected" warning
+- Ensures single source of truth for Supabase client on frontend
+
+### `package.json`
+- Updated start script: `"start": "next start -H 0.0.0.0 -p ${PORT:-5000}"`
+- Ensures proper host binding and port configuration for Replit deployment
+- Defaults to port 5000 if PORT environment variable not set
+
+## Required Environment Variables
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous/public key  
+- `OPENAI_API_KEY` - OpenAI API key for GPT models
+- `ANTHROPIC_API_KEY` - Anthropic API key for Claude models
+
+## Deployment Configuration
+- **Target**: Autoscale (stateless website)
+- **Build**: `npm run build`
+- **Run**: `npm start`
+- **Port**: 5000 (configured in workflow and start script)
+
+## Key Architectural Fixes
+1. **Single Supabase Client**: Eliminated duplicate client instances causing auth issues
+2. **SSR/CSR Separation**: Fixed hydration errors by proper component boundaries
+3. **Replit Host Configuration**: Proper binding for proxy environment
+4. **Production Deployment**: Standalone output and proper start scripts
+
+## Status
+✅ Application successfully running on port 5000
+✅ No hydration errors or client instance warnings
+✅ Authentication system working properly
+✅ Ready for production deployment
+
+**Last Updated**: September 14, 2025
