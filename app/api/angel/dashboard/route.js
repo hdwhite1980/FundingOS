@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
 async function getSupabaseClient() {
   const { createClient } = await import('@supabase/supabase-js')
   
