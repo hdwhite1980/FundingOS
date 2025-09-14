@@ -1138,11 +1138,11 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         {/* Create/Edit Project Modal */}
         {showCreateModal && (
           <CreateProjectModal
+            isOpen={showCreateModal}
             user={user}
             userProfile={userProfile}
             onClose={handleCloseModal}
-            onProjectCreated={handleProjectCreated}
-            onProjectUpdated={handleProjectUpdated}
+            onSuccess={editingProject ? handleProjectUpdated : handleProjectCreated}
             editProject={editingProject}
           />
         )}
