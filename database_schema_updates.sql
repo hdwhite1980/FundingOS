@@ -34,7 +34,22 @@ ALTER COLUMN user_id SET NOT NULL,
 ALTER COLUMN project_id SET NOT NULL,
 ALTER COLUMN opportunity_id SET NOT NULL;
 
--- 3. Create grant_writer_reviews table (if it doesn't exist)
+-- 3. Fix submissions table schema
+-- Add missing columns if they don't exist
+ALTER TABLE submissions
+ADD COLUMN IF NOT EXISTS ai_analysis JSONB,
+ADD COLUMN IF NOT EXISTS submitted_date TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS reviewed_date TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS reviewer_notes TEXT,
+ADD COLUMN IF NOT EXISTS application_draft TEXT;
+
+-- Ensure proper constraints
+ALTER TABLE submissions
+ALTER COLUMN user_id SET NOT NULL,
+ALTER COLUMN project_id SET NOT NULL,
+ALTER COLUMN opportunity_id SET NOT NULL;
+
+-- 4. Create grant_writer_reviews table (if it doesn't exist)
 CREATE TABLE IF NOT EXISTS grant_writer_reviews (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -58,11 +73,16 @@ CREATE INDEX IF NOT EXISTS idx_project_opportunities_project_id ON project_oppor
 CREATE INDEX IF NOT EXISTS idx_project_opportunities_status ON project_opportunities(status);
 CREATE INDEX IF NOT EXISTS idx_grant_writer_reviews_user_id ON grant_writer_reviews(user_id);
 CREATE INDEX IF NOT EXISTS idx_grant_writer_reviews_status ON grant_writer_reviews(status);
+CREATE INDEX IF NOT EXISTS idx_submissions_user_id ON submissions(user_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_project_id ON submissions(project_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_opportunity_id ON submissions(opportunity_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
 
 -- 5. Enable Row Level Security (RLS) policies
 ALTER TABLE investors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_opportunities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grant_writer_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create RLS policies for investors table
 DROP POLICY IF EXISTS "Users can view their own investors" ON investors;
@@ -111,6 +131,23 @@ DROP POLICY IF EXISTS "Users can update their own grant writer reviews" ON grant
 CREATE POLICY "Users can update their own grant writer reviews" ON grant_writer_reviews
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- 9. Create RLS policies for submissions table
+DROP POLICY IF EXISTS "Users can view their own submissions" ON submissions;
+CREATE POLICY "Users can view their own submissions" ON submissions
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own submissions" ON submissions;
+CREATE POLICY "Users can insert their own submissions" ON submissions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own submissions" ON submissions;
+CREATE POLICY "Users can update their own submissions" ON submissions
+  FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own submissions" ON submissions;
+CREATE POLICY "Users can delete their own submissions" ON submissions
+  FOR DELETE USING (auth.uid() = user_id);
+
 -- 9. Create updated_at trigger function (if it doesn't exist)
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -136,6 +173,11 @@ CREATE TRIGGER update_grant_writer_reviews_updated_at
   BEFORE UPDATE ON grant_writer_reviews
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_submissions_updated_at ON submissions;
+CREATE TRIGGER update_submissions_updated_at
+  BEFORE UPDATE ON submissions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- 11. Verify the schema updates
 -- You can run these queries to check if the tables are properly set up:
 
@@ -156,3 +198,29 @@ CREATE TRIGGER update_grant_writer_reviews_updated_at
 -- FROM information_schema.columns
 -- WHERE table_name = 'grant_writer_reviews'
 -- ORDER BY ordinal_position;
+
+-- Check submissions table structure:
+-- SELECT column_name, data_type, is_nullable
+-- FROM information_schema.columns
+-- WHERE table_name = 'submissions'
+-- ORDER BY ordinal_position;
+
+-- ======================================================================
+-- COMPLETION MESSAGE
+-- ======================================================================
+
+DO $$
+BEGIN
+  RAISE NOTICE '=======================================================';
+  RAISE NOTICE 'FundingOS Database Update Complete!';
+  RAISE NOTICE '=======================================================';
+  RAISE NOTICE 'New tables created:';
+  RAISE NOTICE '- grant_writer_reviews';
+  RAISE NOTICE '';
+  RAISE NOTICE 'Enhanced existing tables with new columns:';
+  RAISE NOTICE '- investors, project_opportunities, submissions';
+  RAISE NOTICE '';
+  RAISE NOTICE 'All indexes, triggers, and RLS policies have been created.';
+  RAISE NOTICE 'Your database schema is now up to date!';
+  RAISE NOTICE '=======================================================';
+END $$;

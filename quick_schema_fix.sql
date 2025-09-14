@@ -7,7 +7,11 @@ ADD COLUMN IF NOT EXISTS type TEXT,
 ADD COLUMN IF NOT EXISTS focus_areas TEXT,
 ADD COLUMN IF NOT EXISTS website TEXT,
 ADD COLUMN IF NOT EXISTS linkedin TEXT,
-ADD COLUMN IF NOT EXISTS phone TEXT;
+ADD COLUMN IF NOT EXISTS phone TEXT,
+ADD COLUMN IF NOT EXISTS address_line1 TEXT,
+ADD COLUMN IF NOT EXISTS city TEXT,
+ADD COLUMN IF NOT EXISTS state TEXT,
+ADD COLUMN IF NOT EXISTS zip_code TEXT;
 
 -- 2. Add missing columns to project_opportunities table
 ALTER TABLE project_opportunities
@@ -15,7 +19,15 @@ ADD COLUMN IF NOT EXISTS fit_score DECIMAL(5,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS ai_analysis JSONB,
 ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'saved';
 
--- 3. Create grant_writer_reviews table
+-- 3. Add missing columns to submissions table (CRITICAL FIX)
+ALTER TABLE submissions
+ADD COLUMN IF NOT EXISTS ai_analysis JSONB,
+ADD COLUMN IF NOT EXISTS submitted_date TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS reviewed_date TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS reviewer_notes TEXT,
+ADD COLUMN IF NOT EXISTS application_draft TEXT;
+
+-- 4. Create grant_writer_reviews table
 CREATE TABLE IF NOT EXISTS grant_writer_reviews (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -29,10 +41,10 @@ CREATE TABLE IF NOT EXISTS grant_writer_reviews (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Enable RLS on the new table
+-- 5. Enable RLS on the new table
 ALTER TABLE grant_writer_reviews ENABLE ROW LEVEL SECURITY;
 
--- 5. Create basic RLS policies for grant_writer_reviews
+-- 6. Create basic RLS policies for grant_writer_reviews
 CREATE POLICY "Users can view their own grant writer reviews" ON grant_writer_reviews
   FOR SELECT USING (auth.uid() = user_id);
 
