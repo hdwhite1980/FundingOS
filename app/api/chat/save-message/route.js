@@ -11,16 +11,23 @@ export async function POST(request) {
   try {
     console.log(`[${requestId}] ${timestamp} - Chat save-message request received`)
     
-    const { userId, messageType, content, metadata = {} } = await request.json()
-
-    if (!userId) {
-      console.log(`[${requestId}] No user ID provided`)
+    // Create Supabase client with auth context
+    const supabase = createRouteHandlerClient({ cookies })
+    
+    // Verify user is authenticated
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session?.user) {
+      console.log(`[${requestId}] No authenticated user found`)
       return NextResponse.json({ 
-        error: 'User ID required', 
-        code: 'BAD_REQUEST',
-        message: 'Please provide userId in request body'
-      }, { status: 400 })
+        error: 'Authentication required', 
+        code: 'UNAUTHORIZED',
+        message: 'Please log in to save chat messages'
+      }, { status: 401 })
     }
+    
+    const { messageType, content, metadata = {} } = await request.json()
+    const userId = session.user.id
 
     if (!messageType || !content) {
       console.log(`[${requestId}] Missing required fields:`, { messageType: !!messageType, content: !!content })
@@ -33,8 +40,9 @@ export async function POST(request) {
     }
 
     console.log(`[${requestId}] Attempting to save message for user ${userId}`)
-    // Save the message
-    const message = await chatSessionService.saveMessage(userId, messageType, content, metadata)
+    
+    // Use the authenticated Supabase client to save the message
+    const message = await chatSessionService.saveMessageWithAuth(supabase, userId, messageType, content, metadata)
 
     console.log(`[${requestId}] Message saved successfully:`, message.id)
     return NextResponse.json({ success: true, message })

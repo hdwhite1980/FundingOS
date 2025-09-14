@@ -181,14 +181,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         directUserServices.donors.getFinancialInsights(user.id)
       ])
 
-      // Calculate project stats
-      const totalProjects = userProjects.length
-      const activeOpportunities = allOpportunities.filter(opp => 
-        !opp.deadline_date || new Date(opp.deadline_date) > new Date()
+      // Calculate project stats - filter out null/undefined projects
+      const validProjects = (userProjects || []).filter(project => project && typeof project === 'object')
+      const totalProjects = validProjects.length
+      const activeOpportunities = (allOpportunities || []).filter(opp => 
+        opp && (!opp.deadline_date || new Date(opp.deadline_date) > new Date())
       ).length
       
-      const totalFunding = userProjects.reduce((sum, project) => 
-        sum + (project.funding_needed || 0), 0
+      const totalFunding = validProjects.reduce((sum, project) => 
+        sum + (project.funding_needed || project.total_project_budget || project.funding_request_amount || 0), 0
       )
 
       setStats({

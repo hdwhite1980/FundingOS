@@ -354,9 +354,10 @@ async function generateEnhancedAgentResponse(message, context) {
   const { userContext, projects, opportunities, opportunityDetails } = context
   const { profile, fundingStats, summary } = userContext
   
-  // Format projects clearly
-  const projectSummary = projects.length > 0 ? 
-    projects.map(p => `• "${p.name}" - ${p.project_type?.replace('_', ' ')} project needing $${p.funding_needed?.toLocaleString() || 'TBD'} in ${p.location || 'location TBD'}`).join('\n') : 
+  // Format projects clearly - filter out null/invalid projects
+  const validProjects = (projects || []).filter(p => p && typeof p === 'object' && p.name)
+  const projectSummary = validProjects.length > 0 ? 
+    validProjects.map(p => `• "${p.name}" - ${p.project_type?.replace('_', ' ') || 'project type TBD'} project needing $${(p.funding_needed || p.total_project_budget || p.funding_request_amount || 0).toLocaleString()} in ${p.location || 'location TBD'}`).join('\n') : 
     'No active projects'
   
   // Format opportunities with REAL data
@@ -516,9 +517,10 @@ async function generateAgentResponse(message, context) {
   const { userContext, projects, opportunities } = context
   const { profile, fundingStats, summary, donations, campaigns, applications } = userContext
   
-  // Build comprehensive context string
-  const projectContext = projects.length > 0 ? 
-    `Active Projects: ${projects.map(p => `"${p.name}" (${p.project_type}, ${p.funding_needed?.toLocaleString()} needed)`).join(', ')}` : 
+  // Build comprehensive context string with null checks
+  const validProjects = (projects || []).filter(p => p && typeof p === 'object' && p.name)
+  const projectContext = validProjects.length > 0 ? 
+    `Active Projects: ${validProjects.map(p => `"${p.name}" (${p.project_type || 'type TBD'}, ${(p.funding_needed || p.total_project_budget || p.funding_request_amount || 0).toLocaleString()} needed)`).join(', ')}` : 
     'No active projects'
   
   const opportunityContext = opportunities.length > 0 ? 
@@ -1159,11 +1161,11 @@ async function getUserContext(userId) {
       recentDonations: donations.slice(0, 5),
       recentApplications: applications.slice(0, 5),
       
-      // Funding gap analysis
-      totalProjectNeeds: projects.reduce((sum, p) => sum + (p.funding_needed || 0), 0),
-      totalSecured: donations.reduce((sum, d) => sum + (d.amount || 0), 0) + 
-                   campaigns.reduce((sum, c) => sum + (c.raised_amount || 0), 0) +
-                   applications.filter(a => a.status === 'approved').reduce((sum, a) => sum + (a.award_amount || 0), 0),
+      // Funding gap analysis - with null checks
+      totalProjectNeeds: (projects || []).filter(p => p && typeof p === 'object').reduce((sum, p) => sum + (p.funding_needed || p.total_project_budget || p.funding_request_amount || 0), 0),
+      totalSecured: (donations || []).reduce((sum, d) => sum + (d.amount || 0), 0) + 
+                   (campaigns || []).reduce((sum, c) => sum + (c.raised_amount || 0), 0) +
+                   (applications || []).filter(a => a.status === 'approved').reduce((sum, a) => sum + (a.award_amount || 0), 0),
     }
 
     // Calculate remaining funding gap
