@@ -281,6 +281,27 @@ export default function EnhancedApplicationTracker({
         eligibility_requirements: filledForm.requirements || 'Standard requirements apply'
       }
 
+      // Prepare form template from document analysis
+      let formTemplate = null
+      if (documentAnalysis && documentAnalysis.length > 0) {
+        // Combine all form fields from analyzed documents
+        const combinedFormFields = {}
+        documentAnalysis.forEach(({ analysis, fileName }) => {
+          if (analysis.formFields) {
+            Object.assign(combinedFormFields, analysis.formFields)
+          }
+        })
+        
+        if (Object.keys(combinedFormFields).length > 0) {
+          formTemplate = {
+            formFields: combinedFormFields,
+            fileName: documentAnalysis[0]?.fileName || 'Analyzed_Document',
+            source: 'document_analysis'
+          }
+          console.log('📝 Using form template from document analysis:', formTemplate.fileName)
+        }
+      }
+
       const applicationData = {
         opportunity: mockOpportunity,
         project: project,
@@ -294,6 +315,7 @@ export default function EnhancedApplicationTracker({
           confidence: formCompletion?.confidence || 0.8,
           reasoning: formCompletion?.reasoning || 'AI-generated application'
         },
+        formTemplate: formTemplate, // Add the form template here
         applicationDraft: '',
         createdAt: new Date().toISOString()
       }

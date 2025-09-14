@@ -13,70 +13,131 @@ export async function POST(request) {
 
     const { opportunity, project, userProfile, analysis, applicationDraft, formTemplate } = applicationData
 
-    // Check if we have a form template (from uploaded and analyzed documents)
+    // Enhanced form template detection - works with any dynamically extracted form structure
     let useFormTemplate = false
     let templateFields: any[] = []
+    let formMetadata: any = {}
 
-    if (formTemplate && formTemplate.formFields && Object.keys(formTemplate.formFields).length > 0) {
-      useFormTemplate = true
-      // Convert the form fields object to array format
-      templateFields = Object.entries(formTemplate.formFields).map(([key, fieldInfo]: [string, any]) => ({
+    // Helper function to convert form fields to standardized template format
+    const convertToTemplateFields = (formFieldsObject: any, source: string) => {
+      const fields = Object.entries(formFieldsObject).map(([key, fieldInfo]: [string, any]) => ({
         label: fieldInfo?.label || key.replace(/([A-Z])/g, ' $1').trim(),
         fieldName: key,
         type: fieldInfo?.type || 'text',
         required: fieldInfo?.required || false,
-        placeholder: fieldInfo?.placeholder || fieldInfo?.description || ''
+        placeholder: fieldInfo?.placeholder || fieldInfo?.description || '',
+        section: fieldInfo?.section || 'General',
+        validation: fieldInfo?.validation || {},
+        options: fieldInfo?.options || [],
+        dependencies: fieldInfo?.dependencies || []
       }))
       
-      console.log('🔧 Using uploaded form template with', templateFields.length, 'fields')
+      console.log(`📝 Using ${source} with ${fields.length} fields`)
+      return fields
     }
 
-    // Create comprehensive prompt for document generation
+    // Priority 1: Check for dynamic form analysis structure (new system)
+    if (applicationData.dynamicFormStructure?.formFields) {
+      useFormTemplate = true
+      templateFields = convertToTemplateFields(applicationData.dynamicFormStructure.formFields, 'dynamic form analysis')
+      formMetadata = applicationData.dynamicFormStructure.formMetadata || {}
+    }
+    // Priority 2: Check for direct formTemplate in applicationData (from Enhanced Application Tracker)
+    else if (applicationData.formTemplate?.formFields) {
+      useFormTemplate = true
+      templateFields = convertToTemplateFields(applicationData.formTemplate.formFields, 'direct form template')
+      formMetadata = applicationData.formTemplate.formMetadata || {}
+    }
+    // Priority 3: Check for uploaded form template (original flow)
+    else if (formTemplate?.formFields && Object.keys(formTemplate.formFields).length > 0) {
+      useFormTemplate = true
+      templateFields = convertToTemplateFields(formTemplate.formFields, 'uploaded form template')
+      formMetadata = formTemplate.formMetadata || {}
+    }
+    // Priority 4: Check for combined form fields from document analysis (legacy)
+    else if (applicationData.combinedFormFields && Object.keys(applicationData.combinedFormFields).length > 0) {
+      useFormTemplate = true
+      templateFields = convertToTemplateFields(applicationData.combinedFormFields, 'combined form fields')
+    }
+
+    // Create comprehensive prompt for document generation with enhanced dynamic form support
     const systemMessage = {
       role: 'system',
       content: useFormTemplate ? 
-        `You are an expert grant application writer specializing in completing official grant application forms exactly as they appear in the original template.
+        `You are an expert grant application writer specializing in completing ANY type of application form based on dynamically extracted form structures.
 
 CRITICAL REQUIREMENTS:
-1. You MUST fill out the EXACT form fields from the uploaded template - do not add or skip any fields
-2. Field names and labels must match the template exactly
-3. Write professional responses as if typed by an experienced grant writer
-4. Maintain the original form structure and organization
-5. Fill every required field with appropriate, substantive content
+1. You MUST fill out the EXACT form fields provided - do not add, skip, or modify any fields
+2. Field names and labels must match the extracted structure exactly
+3. Write professional responses appropriate for each field type and context
+4. Consider field validation rules, dependencies, and constraints
+5. Maintain the original form organization by sections
+6. Fill all required fields with substantive content, optionally fill others where appropriate
+
+FORM TYPE DETECTED: ${formMetadata.documentType || 'Unknown'}
+FORM TITLE: ${formMetadata.title || 'Application Form'}
+ORGANIZATION: ${formMetadata.organization || 'N/A'}
+
+FIELD TYPES TO HANDLE:
+- TEXT: Short responses (names, titles, single-line info)
+- TEXTAREA: Long responses (descriptions, narratives, explanations) 
+- EMAIL: Valid email addresses
+- PHONE: Properly formatted phone numbers
+- DATE: Formatted dates (MM/DD/YYYY or as specified)
+- CURRENCY: Dollar amounts with proper formatting
+- NUMBER: Numeric values (quantities, percentages)
+- SELECT/RADIO: Choose from provided options
+- CHECKBOX: Select relevant options or Yes/No
+- FILE: Indicate what would be attached
 
 RESPONSE FORMAT - Return ONLY valid JSON:
 {
   "formFields": [
     {
-      "fieldName": "exact_field_name_from_template",
-      "label": "Exact Field Label from Template",
-      "value": "Professional, detailed response written as if by experienced grant writer",
+      "fieldName": "exact_field_name_from_structure",
+      "label": "Exact Field Label",
+      "value": "Professional response tailored to field type and purpose",
       "type": "field_type",
       "section": "section_name"
     }
   ],
   "metadata": {
-    "title": "Form title from template",
+    "title": "${formMetadata.title || 'Application Form'}",
     "applicant": "Organization name",
     "date": "Current date",
     "templateUsed": true,
-    "originalTemplate": "template_name"
+    "formType": "${formMetadata.documentType || 'unknown'}",
+    "totalFields": ${templateFields.length},
+    "requiredFields": ${templateFields.filter(f => f.required).length}
   }
 }
 
-FORM TEMPLATE TO FILL OUT:
-${templateFields.map(field => 
-  `• ${field.label} (${field.fieldName}) - Type: ${field.type} ${field.required ? '[REQUIRED]' : '[OPTIONAL]'}`
-).join('\n')}
+FORM STRUCTURE TO COMPLETE:
+${templateFields.map(field => {
+  let fieldDesc = `• ${field.label} (${field.fieldName}) - Type: ${field.type}`
+  if (field.required) fieldDesc += ' [REQUIRED]'
+  if (field.validation?.maxLength) fieldDesc += ` (Max: ${field.validation.maxLength} chars)`
+  if (field.options?.length) fieldDesc += ` Options: ${field.options.join(', ')}`
+  if (field.placeholder) fieldDesc += ` - ${field.placeholder}`
+  return fieldDesc
+}).join('\n')}
+
+SECTIONS ORGANIZATION:
+${templateFields.reduce((sections: any, field) => {
+  if (!sections[field.section]) sections[field.section] = []
+  sections[field.section].push(field.fieldName)
+  return sections
+}, {})}
 
 IMPORTANT: Each field value should be:
-- Professional and compelling
+- Professional and appropriate for the detected form type
 - Specific to the provided project and opportunity
-- Written in the voice of an experienced grant writer
-- Appropriate for the field type and context
-- Complete and substantive (no placeholder text)`
+- Written by an experienced professional in the relevant domain
+- Appropriate for the field type, length constraints, and context
+- Complete and substantive (no placeholder text or "TBD")
+- Compliant with any validation rules or format requirements`
         :
-        `You are an expert grant application writer. Generate a complete, professional grant application document.
+        `You are an expert application writer. Generate a complete, professional application document.
 
 RESPONSE FORMAT - Return ONLY valid JSON:
 {
@@ -90,19 +151,20 @@ RESPONSE FORMAT - Return ONLY valid JSON:
     }
   ],
   "metadata": {
-    "title": "Grant Application",
+    "title": "Application Document",
     "applicant": "Organization Name",
     "date": "Current Date",
     "templateUsed": false
   }
 }
 
-Generate comprehensive form fields covering:
-1. Project Title, Summary, Description
-2. Statement of Need, Goals, Objectives  
-3. Methodology, Timeline, Budget
-4. Organizational Capacity, Evaluation Plan
-5. Impact Statement, Sustainability Plan
+Generate comprehensive form fields covering all aspects of a professional application:
+1. Basic Information (organization, contact, project details)
+2. Project Description (goals, objectives, methodology)  
+3. Need Statement and Impact
+4. Timeline, Budget, and Resources
+5. Organizational Capacity and Experience
+6. Evaluation and Sustainability Plans
 
 Each response should be professional, detailed, and tailored to the specific project and opportunity.`
     }
@@ -166,7 +228,7 @@ ${useFormTemplate ?
       'document-analysis',
       [systemMessage, userMessage],
       {
-        maxTokens: 8000,
+        maxTokens: 4000, // Reduced to work with Claude Haiku's 4096 limit
         temperature: 0.3
       }
     )
