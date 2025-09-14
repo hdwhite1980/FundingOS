@@ -19,6 +19,7 @@
     "@supabase/supabase-js": "^2.38.0",
     "autoprefixer": "^10.4.16",
     "date-fns": "^2.30.0",
+    "dotenv": "^17.2.2",
     "form-data": "^4.0.4",
     "framer-motion": "^10.16.0",
     "html2canvas": "^1.4.1",
