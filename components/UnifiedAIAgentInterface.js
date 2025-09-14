@@ -27,7 +27,7 @@ import {
 } from 'lucide-react'
 import { resolveApiUrl } from '../lib/apiUrlUtils'
 
-export default function UnifiedAIAgentInterface({ user, userProfile, projects, opportunities }) {
+export default function UnifiedAIAgentInterface({ user, userProfile, projects, opportunities, submissions, complianceData }) {
   const [agent, setAgent] = useState(null)
   const [agentStatus, setAgentStatus] = useState('initializing')
   const [currentStrategy, setCurrentStrategy] = useState(null)
@@ -69,7 +69,9 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
           userId: user.id, 
           userProfile,
           projects,
-          opportunities 
+          opportunities,
+          submissions: submissions || [],
+          complianceData: complianceData || {}
         })
       })
       

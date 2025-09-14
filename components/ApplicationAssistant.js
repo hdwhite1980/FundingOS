@@ -37,7 +37,14 @@ export default function ApplicationAssistant({
   applicationForm,
   documentAnalyses = [],
   onFormUpdate,
-  onSuggestionApply
+  onSuggestionApply,
+  // NEW: Comprehensive data access for proactive assistance
+  allProjects = [],
+  opportunities = [],
+  submissions = [],
+  complianceData = {},
+  isProactiveMode = false,
+  triggerContext = {}
 }) {
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
@@ -73,10 +80,13 @@ export default function ApplicationAssistant({
   const initializeAssistant = async () => {
     setIsProcessing(true)
     
+    // Determine if this is proactive mode (Clippy-style) or manual mode
     const welcomeMessage = {
       id: Date.now(),
       type: 'assistant',
-      content: `Hello! I'm your AI application assistant. I'll help you complete this funding application by analyzing the requirements, identifying missing information, and guiding you through each step.
+      content: isProactiveMode ? 
+        generateProactiveWelcome() : 
+        `Hello! I'm your AI application assistant. I'll help you complete this funding application by analyzing the requirements, identifying missing information, and guiding you through each step.
 
 Let me start by analyzing what you have so far...`,
       timestamp: new Date(),
@@ -86,14 +96,276 @@ Let me start by analyzing what you have so far...`,
     setMessages([welcomeMessage])
     
     try {
-      // Analyze the current state
-      await analyzeCurrentState()
+      // Analyze based on mode and context
+      if (isProactiveMode) {
+        await analyzeProactiveContext()
+      } else {
+        await analyzeCurrentState()
+      }
     } catch (error) {
       console.error('Failed to initialize assistant:', error)
       addMessage('assistant', 'I encountered an error during initialization. Let me know how I can help you!', 'error')
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // NEW: Generate proactive welcome based on trigger context
+  const generateProactiveWelcome = () => {
+    const { trigger, context } = triggerContext
+    
+    switch (trigger) {
+      case 'deadline_approaching':
+        return `📅 **Deadline Alert!** Hi ${userProfile?.full_name || 'there'}! I noticed you have an application deadline approaching in ${context?.daysLeft} days. I'm here to help ensure everything is ready for submission.`
+      
+      case 'incomplete_application':
+        return `📝 **Application Assistance** Hello! I see you're working on an application that's ${context?.completionPercentage}% complete. Let me help you identify what's missing and guide you through completion.`
+      
+      case 'compliance_issue':
+        return `⚠️ **Compliance Alert** Hi! I've identified some compliance requirements that need attention for your ${context?.projectName} project. Let me help you address these to keep your applications on track.`
+      
+      case 'new_opportunity':
+        return `🎯 **New Funding Match!** Great news! I found ${context?.matchCount} new funding opportunities that are ${context?.fitScore}% match for your projects. Want me to help you prioritize and apply?`
+      
+      case 'grant_writing_assistance':
+        return `✍️ **Grant Writing Support** Hi there! I'm here to help you craft compelling narratives for your funding applications. I've reviewed your project details and have some strategic suggestions.`
+      
+      default:
+        return `👋 **Your Funding Assistant** Hello ${userProfile?.full_name || 'there'}! I'm your personal administrative assistant for funding, compliance, and grant writing. How can I help optimize your funding strategy today?`
+    }
+  }
+
+  // NEW: Analyze proactive context with comprehensive data
+  const analyzeProactiveContext = async () => {
+    setCurrentStep('analysis')
+    
+    try {
+      // Comprehensive analysis using all available data
+      const comprehensiveAnalysis = await analyzeComprehensiveContext()
+      
+      // Generate contextual insights and recommendations
+      const insights = generateContextualInsights(comprehensiveAnalysis)
+      
+      // Create strategic recommendations
+      const recommendations = generateStrategicRecommendations(comprehensiveAnalysis)
+      
+      // Display analysis results
+      const analysisMessage = formatProactiveAnalysis(insights, recommendations)
+      addMessage('assistant', analysisMessage, 'analysis')
+      
+      // Set next steps based on trigger context
+      setCurrentStep('recommendations')
+      
+    } catch (error) {
+      console.error('Proactive analysis failed:', error)
+      addMessage('assistant', 'I encountered an issue during analysis, but I can still help you with your funding strategy. What would you like to focus on?', 'error')
+    }
+  }
+
+  // NEW: Comprehensive context analysis
+  const analyzeComprehensiveContext = async () => {
+    const analysis = {
+      // User and organization context
+      userContext: {
+        profile: userProfile,
+        totalProjects: allProjects?.length || 0,
+        activeProjects: allProjects?.filter(p => p.status === 'active')?.length || 0,
+        organizationType: userProfile?.organization_type,
+        experience: userProfile?.years_of_experience
+      },
+      
+      // Project portfolio analysis
+      projectPortfolio: {
+        projects: allProjects || [],
+        totalValue: allProjects?.reduce((sum, p) => sum + (p.budget || 0), 0) || 0,
+        fundingTypes: [...new Set(allProjects?.flatMap(p => p.preferred_funding_types || []) || [])],
+        completionRates: allProjects?.map(p => p.completion_percentage || 0) || []
+      },
+      
+      // Opportunity landscape
+      opportunityLandscape: {
+        totalOpportunities: opportunities?.length || 0,
+        matchedOpportunities: opportunities?.filter(o => o.fit_score > 70)?.length || 0,
+        upcomingDeadlines: opportunities?.filter(o => {
+          const deadline = new Date(o.deadline || o.application_deadline);
+          const now = new Date();
+          const diffDays = (deadline - now) / (1000 * 60 * 60 * 24);
+          return diffDays <= 30 && diffDays > 0;
+        }) || []
+      },
+      
+      // Application status
+      applicationStatus: {
+        totalSubmissions: submissions?.length || 0,
+        pendingSubmissions: submissions?.filter(s => s.status === 'submitted')?.length || 0,
+        successRate: submissions?.length > 0 ? 
+          (submissions.filter(s => s.status === 'approved').length / submissions.length * 100) : 0
+      },
+      
+      // Compliance and requirements
+      compliance: {
+        ...complianceData,
+        missingDocuments: findMissingDocuments(),
+        upcomingRenewals: findUpcomingRenewals()
+      }
+    }
+    
+    return analysis
+  }
+
+  // NEW: Helper functions for comprehensive analysis
+  const findMissingDocuments = () => {
+    // Analyze projects for missing standard documents
+    const standardDocs = ['budget', 'narrative', 'timeline', 'team_info', 'organization_info']
+    const missing = []
+    
+    allProjects?.forEach(project => {
+      standardDocs.forEach(doc => {
+        if (!project[doc] || project[doc] === '') {
+          missing.push({ project: project.name, document: doc })
+        }
+      })
+    })
+    
+    return missing
+  }
+
+  const findUpcomingRenewals = () => {
+    // Check for certifications, licenses, or registrations that need renewal
+    const renewals = []
+    const now = new Date()
+    
+    // Check organization certifications
+    if (userProfile?.certifications) {
+      userProfile.certifications.forEach(cert => {
+        if (cert.expiry_date) {
+          const expiryDate = new Date(cert.expiry_date)
+          const daysUntilExpiry = (expiryDate - now) / (1000 * 60 * 60 * 24)
+          
+          if (daysUntilExpiry <= 90 && daysUntilExpiry > 0) {
+            renewals.push({ type: 'certification', name: cert.name, expiryDate, daysUntilExpiry })
+          }
+        }
+      })
+    }
+    
+    return renewals
+  }
+
+  const generateContextualInsights = (analysis) => {
+    const insights = []
+    
+    // Portfolio insights
+    if (analysis.userContext.totalProjects > 0) {
+      const avgCompletion = analysis.projectPortfolio.completionRates.reduce((a, b) => a + b, 0) / 
+                           analysis.projectPortfolio.completionRates.length
+      
+      if (avgCompletion < 70) {
+        insights.push({
+          type: 'completion_rate',
+          severity: 'medium',
+          message: `Your average project completion rate is ${Math.round(avgCompletion)}%. Let me help improve this.`,
+          actions: ['Focus on one project at a time', 'Set smaller milestones', 'Use project templates']
+        })
+      }
+    }
+    
+    // Opportunity insights
+    if (analysis.opportunityLandscape.upcomingDeadlines.length > 0) {
+      insights.push({
+        type: 'deadlines',
+        severity: 'high',
+        message: `You have ${analysis.opportunityLandscape.upcomingDeadlines.length} application deadlines in the next 30 days.`,
+        actions: ['Prioritize applications', 'Set up deadline reminders', 'Prepare standard documents']
+      })
+    }
+    
+    // Success rate insights
+    if (analysis.applicationStatus.successRate < 50 && analysis.applicationStatus.totalSubmissions >= 3) {
+      insights.push({
+        type: 'success_rate',
+        severity: 'medium',
+        message: `Your application success rate is ${Math.round(analysis.applicationStatus.successRate)}%. Let's improve this strategy.`,
+        actions: ['Better opportunity matching', 'Strengthen project narratives', 'Improve compliance documentation']
+      })
+    }
+    
+    return insights
+  }
+
+  const generateStrategicRecommendations = (analysis) => {
+    const recommendations = []
+    
+    // Portfolio diversification
+    if (analysis.projectPortfolio.fundingTypes.length < 3) {
+      recommendations.push({
+        category: 'diversification',
+        priority: 'medium',
+        title: 'Diversify Funding Sources',
+        description: 'Consider exploring different funding types to reduce risk and increase opportunities.',
+        benefits: ['Reduced dependency', 'More opportunities', 'Better risk management'],
+        nextSteps: ['Research grant programs', 'Explore angel investment', 'Consider crowdfunding']
+      })
+    }
+    
+    // Opportunity optimization
+    if (analysis.opportunityLandscape.matchedOpportunities > 0) {
+      recommendations.push({
+        category: 'optimization',
+        priority: 'high',
+        title: 'Focus on High-Match Opportunities',
+        description: `You have ${analysis.opportunityLandscape.matchedOpportunities} opportunities with 70%+ match score.`,
+        benefits: ['Higher success probability', 'Better resource allocation', 'Faster results'],
+        nextSteps: ['Review top matches', 'Prepare targeted applications', 'Set application priorities']
+      })
+    }
+    
+    // Compliance improvement
+    if (analysis.compliance.missingDocuments.length > 0) {
+      recommendations.push({
+        category: 'compliance',
+        priority: 'high',
+        title: 'Complete Missing Documentation',
+        description: `${analysis.compliance.missingDocuments.length} documents are missing across your projects.`,
+        benefits: ['Faster applications', 'Better compliance', 'Reduced rejection risk'],
+        nextSteps: ['Create document checklist', 'Set up document templates', 'Schedule completion tasks']
+      })
+    }
+    
+    return recommendations
+  }
+
+  const formatProactiveAnalysis = (insights, recommendations) => {
+    let message = `📊 **Comprehensive Analysis Complete**\n\n`
+    
+    // Add insights
+    if (insights.length > 0) {
+      message += `**🔍 Key Insights:**\n`
+      insights.forEach((insight, i) => {
+        const emoji = insight.severity === 'high' ? '🚨' : insight.severity === 'medium' ? '⚠️' : 'ℹ️'
+        message += `${i + 1}. ${emoji} ${insight.message}\n`
+      })
+      message += `\n`
+    }
+    
+    // Add recommendations
+    if (recommendations.length > 0) {
+      message += `**🎯 Strategic Recommendations:**\n`
+      recommendations.forEach((rec, i) => {
+        const emoji = rec.priority === 'high' ? '🔥' : rec.priority === 'medium' ? '📈' : '💡'
+        message += `${i + 1}. ${emoji} **${rec.title}**\n   ${rec.description}\n`
+      })
+      message += `\n`
+    }
+    
+    message += `**🤝 How I Can Help:**\n`
+    message += `• Complete missing applications and documents\n`
+    message += `• Improve project narratives and compliance\n`
+    message += `• Set up deadline monitoring and reminders\n`
+    message += `• Optimize your funding strategy\n\n`
+    message += `What would you like to focus on first?`
+    
+    return message
   }
 
   const analyzeCurrentState = async () => {

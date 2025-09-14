@@ -14,6 +14,7 @@ import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './EnhancedCreateProjectModal'
 import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
+import ProactiveAssistantManager from './ProactiveAssistantManager'
 import { directUserServices } from '../lib/supabase'
 import { 
   Plus, 
@@ -55,6 +56,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [projects, setProjects] = useState([])
   const [opportunities, setOpportunities] = useState([])
   const [projectOpportunities, setProjectOpportunities] = useState([])
+  const [submissions, setSubmissions] = useState([])
   const [selectedProject, setSelectedProject] = useState(null)
   const [viewMode, setViewMode] = useState('dashboard') // 'dashboard' or 'project-detail'
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -136,15 +138,17 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       }
 
       // Load core data
-      const [userProjects, allOpportunities] = await Promise.all([
+      const [userProjects, allOpportunities, userSubmissions] = await Promise.all([
         directUserServices.projects.getProjects(user.id),
         directUserServices.opportunities.getOpportunities({
           organizationType: userProfile?.organization_type || 'nonprofit'
-        })
+        }),
+        directUserServices.applications.getSubmissions(user.id, {})
       ])
       
       setProjects(userProjects)
       setOpportunities(allOpportunities)
+      setSubmissions(userSubmissions)
 
       // Set default selected project
       if (userProjects.length > 0 && !selectedProject) {
@@ -1115,6 +1119,21 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             userProfile={userProfile}
             projects={projects}
             opportunities={opportunities}
+            submissions={submissions}
+            complianceData={{
+              organizationCompliance: userProfile?.compliance_status || {},
+              projectCompliance: projects?.map(p => ({
+                projectId: p.id,
+                completionPercentage: p.completion_percentage || 0,
+                missingDocuments: p.missing_documents || [],
+                complianceStatus: p.compliance_status || 'pending'
+              })) || [],
+              upcomingDeadlines: opportunities?.filter(opp => 
+                opp.deadline_date && 
+                new Date(opp.deadline_date) > new Date() &&
+                new Date(opp.deadline_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              ) || []
+            }}
           />
         )}
 
@@ -1146,6 +1165,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             editProject={editingProject}
           />
         )}
+
+        {/* Proactive MS Clippy-style Assistant - Appears contextually when needed */}
+        <ProactiveAssistantManager
+          user={user}
+          userProfile={userProfile}
+          projects={projects}
+          opportunities={opportunities}
+          submissions={submissions}
+        />
       </main>
     </div>
   )
