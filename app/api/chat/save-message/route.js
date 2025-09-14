@@ -11,36 +11,16 @@ export async function POST(request) {
   try {
     console.log(`[${requestId}] ${timestamp} - Chat save-message request received`)
     
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    console.log(`[${requestId}] Attempting to get user from Supabase`)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError) {
-      console.error(`[${requestId}] Supabase auth error:`, authError)
-      // For AuthSessionMissingError, return a more user-friendly response
-      if (authError.__isAuthError && authError.message?.includes('Auth session missing')) {
-        return NextResponse.json({ 
-          error: 'Please log in to save chat messages', 
-          code: 'UNAUTHENTICATED',
-          message: 'Authentication required for chat functionality'
-        }, { status: 401 })
-      }
-      return NextResponse.json({ error: 'Authentication error', details: authError.message }, { status: 401 })
-    }
+    const { userId, messageType, content, metadata = {} } = await request.json()
 
-    if (!user) {
-      console.log(`[${requestId}] No user found - unauthorized`)
+    if (!userId) {
+      console.log(`[${requestId}] No user ID provided`)
       return NextResponse.json({ 
-        error: 'Please log in to save chat messages', 
-        code: 'UNAUTHENTICATED',
-        message: 'User session not found - please log in'
-      }, { status: 401 })
+        error: 'User ID required', 
+        code: 'BAD_REQUEST',
+        message: 'Please provide userId in request body'
+      }, { status: 400 })
     }
-
-    console.log(`[${requestId}] User authenticated: ${user.id}`)
-
-    const { messageType, content, metadata = {} } = await request.json()
 
     if (!messageType || !content) {
       console.log(`[${requestId}] Missing required fields:`, { messageType: !!messageType, content: !!content })
@@ -52,9 +32,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid message type' }, { status: 400 })
     }
 
-    console.log(`[${requestId}] Attempting to save message for user ${user.id}`)
+    console.log(`[${requestId}] Attempting to save message for user ${userId}`)
     // Save the message
-    const message = await chatSessionService.saveMessage(user.id, messageType, content, metadata)
+    const message = await chatSessionService.saveMessage(userId, messageType, content, metadata)
 
     console.log(`[${requestId}] Message saved successfully:`, message.id)
     return NextResponse.json({ success: true, message })

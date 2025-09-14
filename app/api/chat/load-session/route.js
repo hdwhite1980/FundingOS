@@ -11,38 +11,24 @@ export async function GET(request) {
   try {
     console.log(`[${requestId}] ${timestamp} - Chat load-session request received`)
     
-    const supabase = createRouteHandlerClient({ cookies })
+    // Get user ID from URL params or headers (passed from authenticated frontend)
+    const url = new URL(request.url)
+    const userId = url.searchParams.get('userId')
     
-    console.log(`[${requestId}] Attempting to get user from Supabase`)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError) {
-      console.error(`[${requestId}] Supabase auth error:`, authError)
-      // For AuthSessionMissingError, return a more user-friendly response
-      if (authError.__isAuthError && authError.message?.includes('Auth session missing')) {
-        return NextResponse.json({ 
-          error: 'Please log in to load chat history', 
-          code: 'UNAUTHENTICATED',
-          message: 'Authentication required for chat functionality'
-        }, { status: 401 })
-      }
-      return NextResponse.json({ error: 'Authentication error', details: authError.message }, { status: 401 })
-    }
-
-    if (!user) {
-      console.log(`[${requestId}] No user found - unauthorized`)
+    if (!userId) {
+      console.log(`[${requestId}] No user ID provided`)
       return NextResponse.json({ 
-        error: 'Please log in to load chat history', 
-        code: 'UNAUTHENTICATED',
-        message: 'User session not found - please log in'
-      }, { status: 401 })
+        error: 'User ID required', 
+        code: 'BAD_REQUEST',
+        message: 'Please provide userId parameter'
+      }, { status: 400 })
     }
 
-    console.log(`[${requestId}] User authenticated: ${user.id}`)
+    console.log(`[${requestId}] Loading session for user: ${userId}`)
 
-    console.log(`[${requestId}] Attempting to load session messages for user ${user.id}`)
+    console.log(`[${requestId}] Attempting to load session messages for user ${userId}`)
     // Load messages from active session
-    const messages = await chatSessionService.loadSessionMessages(user.id)
+    const messages = await chatSessionService.loadSessionMessages(userId)
 
     console.log(`[${requestId}] Messages loaded successfully: ${messages.length} messages`)
     return NextResponse.json({ success: true, messages })

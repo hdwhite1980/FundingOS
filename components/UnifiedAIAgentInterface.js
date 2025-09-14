@@ -108,8 +108,8 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
       const response = await fetch(resolveApiUrl('/api/chat/save-message'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({
+          userId: user.id, // Pass user ID directly
           messageType,
           content,
           metadata
@@ -133,9 +133,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
 
   const loadChatSessionInternal = async (agentData) => {
     try {
-      const response = await fetch(resolveApiUrl('/api/chat/load-session'), {
-        credentials: 'include' // Include cookies for authentication
-      })
+      const response = await fetch(resolveApiUrl(`/api/chat/load-session?userId=${user.id}`))
       if (response.ok) {
         const data = await response.json()
         if (data.messages && data.messages.length > 0) {
