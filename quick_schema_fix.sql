@@ -17,7 +17,8 @@ ADD COLUMN IF NOT EXISTS zip_code TEXT;
 ALTER TABLE project_opportunities
 ADD COLUMN IF NOT EXISTS fit_score DECIMAL(5,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS ai_analysis JSONB,
-ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'saved';
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'saved',
+ADD COLUMN IF NOT EXISTS score_calculated_at TIMESTAMP WITH TIME ZONE;
 
 -- 3. Add missing columns to submissions table (CRITICAL FIX)
 ALTER TABLE submissions
@@ -45,8 +46,10 @@ CREATE TABLE IF NOT EXISTS grant_writer_reviews (
 ALTER TABLE grant_writer_reviews ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create basic RLS policies for grant_writer_reviews
+DROP POLICY IF EXISTS "Users can view their own grant writer reviews" ON grant_writer_reviews;
 CREATE POLICY "Users can view their own grant writer reviews" ON grant_writer_reviews
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own grant writer reviews" ON grant_writer_reviews;
 CREATE POLICY "Users can insert their own grant writer reviews" ON grant_writer_reviews
   FOR INSERT WITH CHECK (auth.uid() = user_id);
