@@ -366,35 +366,73 @@ function calculateKeywordMatch(opportunity: any, keywords: any) {
   const weaknesses: string[] = []
   const matchedKeywords: string[] = []
 
-  // Check primary keywords (worth more)
+  // Check primary keywords (worth more) - with partial matching
   keywords.primary.forEach((keyword: string) => {
-    if (oppText.includes(keyword.toLowerCase())) {
+    const keywordLower = keyword.toLowerCase()
+    if (oppText.includes(keywordLower)) {
       score += 4
       matchedKeywords.push(keyword)
+    } else {
+      // Try partial matching for longer keywords
+      const words = keywordLower.split(/\s+/)
+      if (words.length > 1) {
+        const partialMatches = words.filter(word => oppText.includes(word))
+        if (partialMatches.length > 0) {
+          score += 2
+          matchedKeywords.push(`${keyword} (partial)`)
+        }
+      }
     }
   })
 
-  // Check secondary keywords
+  // Check secondary keywords - with partial matching
   keywords.secondary.forEach((keyword: string) => {
-    if (oppText.includes(keyword.toLowerCase())) {
+    const keywordLower = keyword.toLowerCase()
+    if (oppText.includes(keywordLower)) {
       score += 2
       matchedKeywords.push(keyword)
+    } else {
+      // Try partial matching for longer keywords
+      const words = keywordLower.split(/\s+/)
+      if (words.length > 1) {
+        const partialMatches = words.filter(word => oppText.includes(word))
+        if (partialMatches.length > 0) {
+          score += 1
+          matchedKeywords.push(`${keyword} (partial)`)
+        }
+      }
     }
   })
 
-  // Check focus areas (high value)
+  // Check focus areas (high value) - with flexible matching
   keywords.focus_areas.forEach((area: string) => {
-    if (oppText.includes(area.toLowerCase())) {
+    const areaLower = area.toLowerCase()
+    if (oppText.includes(areaLower)) {
       score += 6
       matchedKeywords.push(area)
+    } else {
+      // Try partial matching
+      const words = areaLower.split(/\s+/)
+      if (words.some(word => oppText.includes(word))) {
+        score += 3
+        matchedKeywords.push(`${area} (partial)`)
+      }
     }
   })
 
-  // Check populations (medium value)
+  // Check populations (medium value) - with flexible matching
   keywords.populations.forEach((pop: string) => {
-    if (oppText.includes(pop.toLowerCase())) {
+    const popLower = pop.toLowerCase()
+    if (oppText.includes(popLower)) {
       score += 3
       matchedKeywords.push(pop)
+    } else {
+      // Try partial matching
+      const words = popLower.split(/\s+/)
+      if (words.some(word => oppText.includes(word))) {
+        score += 2
+        matchedKeywords.push(`${pop} (partial)`)
+      }
     }
   })
 
@@ -427,7 +465,7 @@ function checkFundingAlignment(opportunity: any, project: any) {
   const weaknesses: string[] = []
 
   if (!requestAmount || (!opportunity.amount_min && !opportunity.amount_max)) {
-    return { score: 12, strengths: ['Funding information available'], weaknesses: [], details: {} }
+    return { score: 10, strengths: ['Funding information available'], weaknesses: [], details: {} }
   }
 
   const min = opportunity.amount_min || 0
@@ -499,7 +537,7 @@ function checkDeadlineTiming(opportunity: any) {
   const weaknesses: string[] = []
 
   if (!opportunity.deadline_date) {
-    return { score: 5, strengths: ['No immediate deadline pressure'], weaknesses: [], details: {} }
+    return { score: 8, strengths: ['No immediate deadline pressure'], weaknesses: [], details: {} }
   }
 
   const daysLeft = Math.ceil((new Date(opportunity.deadline_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
@@ -542,7 +580,7 @@ function checkGeographicEligibility(opportunity: any, userProfile: any) {
 
   // Basic geographic checking - can be enhanced based on actual data structure
   if (!opportunity.geographic_restrictions) {
-    score = 5
+    score = 3
     strengths.push('No geographic restrictions')
   } else if (userProfile.state && opportunity.geographic_restrictions.includes(userProfile.state)) {
     score = 5
