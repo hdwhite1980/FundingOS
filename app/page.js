@@ -41,25 +41,39 @@ export default function HomePage() {
   const checkUserProfile = async () => {
     try {
       console.log('HomePage: Checking user profile for', user.id)
-      // Use the user context data directly since we have session
-      if (!user || !user.id) {
-        throw new Error('No user session')
+      
+      // Make direct API call to get real profile from database
+      const response = await fetch(`/api/user/profile/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${user.access_token || ''}`
+        }
+      })
+      
+      let profile = null
+      
+      if (response.ok) {
+        const result = await response.json()
+        profile = result.profile
       }
-
-      // Simple client-side profile check using the session context
-      // We'll create a profile if it doesn't exist
-      const profile = {
-        id: user.id,
-        email: user.email,
-        user_role: user.user_metadata?.user_role || 'company',
-        setup_completed: false // This will trigger onboarding
+      
+      // If no profile found, we'll let onboarding create it
+      if (!profile) {
+        console.log('HomePage: No profile found, creating temporary profile for onboarding')
+        profile = {
+          id: user.id,
+          email: user.email,
+          user_role: user.user_metadata?.user_role || 'company',
+          setup_completed: false
+        }
+        setNeedsOnboarding(true)
+      } else if (!profile.setup_completed) {
+        setNeedsOnboarding(true)
+      } else {
+        setNeedsOnboarding(false)
       }
       
       console.log('HomePage: Profile result', profile)
-      
-      // For now, always go to onboarding to properly set up the profile
       setUserProfile(profile)
-      setNeedsOnboarding(true)
     } catch (error) {
       console.error('HomePage: Error checking user profile:', error)
       setNeedsOnboarding(true)
