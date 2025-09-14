@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Allow all hosts for Replit environment
+  // Enable standalone output for simplified deployment
+  output: 'standalone',
+  // Allow all hosts for Replit environment  
   async headers() {
     return [
       {
