@@ -8,7 +8,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import ApplicationAssistant from './ApplicationAssistant'
+import ClippyAssistant from './ClippyAssistant'
 import { useProactiveAssistantTriggers, shouldShowProactiveAssistant } from './ProactiveAssistantTriggers'
 
 export default function ProactiveAssistantManager({ 
@@ -141,40 +141,18 @@ export default function ProactiveAssistantManager({
   }
 
   return (
-    <AnimatePresence>
-      {isAssistantOpen && (
-        <ApplicationAssistant
-          isOpen={isAssistantOpen}
-          onClose={handleCloseAssistant}
-          userProfile={userProfile}
-          projectData={currentTriggerContext?.context?.project || null}
-          applicationForm={null}
-          documentAnalyses={[]}
-          onFormUpdate={handleFormUpdate}
-          onSuggestionApply={handleSuggestionApply}
-          // Enhanced props for proactive mode
-          allProjects={projects || []}
-          opportunities={opportunities || []}
-          submissions={submissions || []}
-          complianceData={{
-            organizationCompliance: userProfile?.compliance_status || {},
-            projectCompliance: projects?.map(p => ({
-              projectId: p.id,
-              completionPercentage: p.completion_percentage || 0,
-              missingDocuments: p.missing_documents || [],
-              complianceStatus: p.compliance_status || 'pending'
-            })) || [],
-            upcomingDeadlines: opportunities?.filter(opp => 
-              opp.deadline_date && 
-              new Date(opp.deadline_date) > new Date() &&
-              new Date(opp.deadline_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            ) || []
-          }}
-          isProactiveMode={true}
-          triggerContext={currentTriggerContext || {}}
-        />
-      )}
-    </AnimatePresence>
+    <ClippyAssistant
+      isVisible={isAssistantOpen}
+      onClose={handleCloseAssistant}
+      userProfile={userProfile}
+      allProjects={projects || []}
+      opportunities={opportunities || []}
+      submissions={submissions || []}
+      isProactiveMode={true}
+      triggerContext={currentTriggerContext || {}}
+      onFormUpdate={handleFormUpdate}
+      onSuggestionApply={handleSuggestionApply}
+    />
   )
 }
 
@@ -204,21 +182,33 @@ export const useManualAssistantTrigger = () => {
 }
 
 /**
- * Floating trigger button for manual assistant access
+ * Floating trigger button for manual assistant access (Clippy-style)
  */
 export const FloatingAssistantButton = ({ onClick, disabled = false }) => {
   return (
     <motion.button
       onClick={onClick}
       disabled={disabled}
-      className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white rounded-full shadow-lg transition-all duration-200 flex items-center justify-center"
-      whileHover={{ scale: 1.1 }}
+      className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-full shadow-lg transition-all duration-200 flex items-center justify-center"
+      whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      title="Open Funding Assistant"
+      title="Open Your Funding Assistant"
     >
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
+      {/* Clippy-like character */}
+      <div className="relative">
+        <div className="w-8 h-10 bg-white rounded-lg relative">
+          {/* Eyes */}
+          <div className="absolute top-2 left-1 right-1 flex justify-between">
+            <div className="w-2 h-2 bg-gray-800 rounded-full" />
+            <div className="w-2 h-2 bg-gray-800 rounded-full" />
+          </div>
+          {/* Mouth */}
+          <div className="absolute top-5 left-2 right-2 h-1 bg-gray-800 rounded-full" />
+          {/* Arms */}
+          <div className="absolute top-4 -left-1 w-2 h-1 bg-white rounded rotate-45"></div>
+          <div className="absolute top-4 -right-1 w-2 h-1 bg-white rounded -rotate-45"></div>
+        </div>
+      </div>
     </motion.button>
   )
 }
