@@ -17,7 +17,7 @@ import {
   Award,
   HelpCircle
 } from 'lucide-react'
-import { userProfileService } from '../lib/supabase'
+import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import toast from 'react-hot-toast'
 import {
   OrganizationalCapacity,
@@ -41,6 +41,7 @@ const steps = [
 ]
 
 export default function OnboardingFlow({ user, existingProfile, onComplete }) {
+  const supabase = useSupabaseClient()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -147,9 +148,24 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
 
       let profile
       if (existingProfile) {
-        profile = await userProfileService.updateProfile(user.id, profileData)
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('user_profiles')
+          .update(profileData)
+          .eq('id', user.id)
+          .select()
+          .single()
+        
+        if (updateError) throw updateError
+        profile = updatedProfile
       } else {
-        profile = await userProfileService.createProfile(profileData)
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert([profileData])
+          .select()
+          .single()
+        
+        if (createError) throw createError
+        profile = newProfile
       }
 
       toast.success('Profile setup completed!')
