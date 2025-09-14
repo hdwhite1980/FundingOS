@@ -680,7 +680,51 @@ What would you like to do?`)
 
   const generateContextualResponse = async (query) => {
     try {
-      // Use the smart form completion service to generate contextual responses
+      // Check if this is a general funding/opportunity query that should go to UnifiedAgent
+      const lowerQuery = query.toLowerCase()
+      const isFundingQuery = lowerQuery.includes('grant') || 
+                           lowerQuery.includes('funding') || 
+                           lowerQuery.includes('opportunity') || 
+                           lowerQuery.includes('available') ||
+                           lowerQuery.includes('recent') ||
+                           lowerQuery.includes('new') ||
+                           lowerQuery.includes('show me') ||
+                           lowerQuery.includes('tell me about')
+
+      if (isFundingQuery) {
+        // Forward to UnifiedAgent API for real opportunity data
+        console.log(`🔄 Forwarding funding query to UnifiedAgent: "${query}"`)
+        try {
+          const response = await fetch('/api/ai/unified-agent/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: userProfile?.id || userProfile?.user_id,
+              message: query,
+              projects: allProjects || [],
+              opportunities: opportunities || [],
+              submissions: submissions || [],
+              context: {
+                userProfile,
+                complianceData: complianceData || {},
+                originalMessage: query
+              }
+            })
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            console.log(`✅ UnifiedAgent response received for: "${query}"`)
+            return data.message || `I found information about your query. Here's what I can tell you about funding opportunities.`
+          } else {
+            console.error('UnifiedAgent API error:', response.status)
+          }
+        } catch (error) {
+          console.error('Error forwarding to UnifiedAgent:', error)
+        }
+      }
+
+      // For application-specific queries, use the form completion context
       const context = {
         userProfile,
         projectData,
@@ -689,10 +733,16 @@ What would you like to do?`)
         conversationHistory: messages
       }
 
-      // This would be a specialized prompt for conversational assistance
-      return `I understand you're asking about "${query}". Based on your application context, let me help you with that...
+      // Application-specific assistance
+      return `I can help you with application completion and form guidance. For funding opportunity discovery and general questions, please use the AI Assistant tab in the main dashboard.
 
-Is there a specific aspect of your application you'd like me to focus on?`
+For this application, I can help with:
+• Form completion and requirements analysis  
+• Document preparation guidance
+• Compliance checking
+• Application optimization
+
+What specific application assistance do you need?`
 
     } catch (error) {
       return 'I want to help but I need a bit more information. Could you be more specific about what you need assistance with?'
