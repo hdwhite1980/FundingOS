@@ -107,11 +107,43 @@ export default function EnhancedDocumentUploadModal({
             { userProfile, projectData }
           )
 
+          // For application forms, also try dynamic form analysis
+          let dynamicFormStructure = null
+          if (documentType === 'application' && content && content.length > 100) {
+            try {
+              const formAnalysisResponse = await fetch('/api/ai/dynamic-form-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  documentContent: content,
+                  documentType: 'grant_application',
+                  extractionMode: 'comprehensive',
+                  context: {
+                    fileName: file.name,
+                    userProfile,
+                    projectData
+                  }
+                })
+              })
+              
+              if (formAnalysisResponse.ok) {
+                const formResult = await formAnalysisResponse.json()
+                if (formResult.success && formResult.data?.formStructure) {
+                  dynamicFormStructure = formResult.data.formStructure
+                  console.log(`📝 Extracted dynamic form structure from ${file.name} with ${Object.keys(formResult.data.formStructure.formFields || {}).length} fields`)
+                }
+              }
+            } catch (formError) {
+              console.warn('Dynamic form analysis failed for', file.name, formError)
+            }
+          }
+
           newResults[file.name] = {
             ...analysis,
             fileName: file.name,
             fileSize: file.size,
-            status: 'analyzed'
+            status: 'analyzed',
+            dynamicFormStructure // Include extracted form structure
           }
         } catch (error) {
           console.error(`Failed to analyze ${file.name}:`, error)
@@ -175,13 +207,33 @@ export default function EnhancedDocumentUploadModal({
 
     setUploading(true)
     try {
-      // Include analysis results with upload
+      // Extract dynamic form structures from analysis results
+      const dynamicFormStructures = []
+      Object.values(analysisResults).forEach(result => {
+        if (result.dynamicFormStructure && result.status === 'analyzed') {
+          dynamicFormStructures.push({
+            fileName: result.fileName,
+            formStructure: result.dynamicFormStructure,
+            documentType,
+            analysisMetadata: {
+              confidence: result.metadata?.confidence,
+              analyzedAt: new Date().toISOString(),
+              extractedFields: Object.keys(result.dynamicFormStructure.formFields || {}).length
+            }
+          })
+        }
+      })
+
+      // Include analysis results with upload, including dynamic form structures
       const uploadData = {
         files,
         documentType,
         analysisResults: analysisResults,
-        consolidatedInsights: aiInsights
+        consolidatedInsights: aiInsights,
+        dynamicFormStructures // Include extracted form structures for easy access
       }
+      
+      console.log(`📤 Uploading ${files.length} files with ${dynamicFormStructures.length} dynamic form structures`)
       
       await onUpload(submission.id, uploadData)
       onClose()

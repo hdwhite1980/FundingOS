@@ -545,8 +545,19 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
       }
 
       // Check if we have form template data from uploaded documents
-      // This could come from the opportunity's uploaded forms or from a document upload modal
-      if (opportunity.uploadedForms && opportunity.uploadedForms.length > 0) {
+      // Priority 1: Check for dynamic form structure from recent document analysis
+      if (opportunity.dynamicFormStructure?.formFields) {
+        applicationData.dynamicFormStructure = opportunity.dynamicFormStructure
+        console.log('📝 Using dynamic form structure with', Object.keys(opportunity.dynamicFormStructure.formFields).length, 'fields')
+      }
+      // Priority 2: Check for uploaded documents with dynamic form structures
+      else if (opportunity.uploadedDocuments?.dynamicFormStructures?.length > 0) {
+        const latestFormStructure = opportunity.uploadedDocuments.dynamicFormStructures[0]
+        applicationData.dynamicFormStructure = latestFormStructure.formStructure
+        console.log('📝 Using uploaded dynamic form structure from', latestFormStructure.fileName, 'with', Object.keys(latestFormStructure.formStructure.formFields || {}).length, 'fields')
+      }
+      // Priority 3: Check for uploaded forms with analysis results (legacy)
+      else if (opportunity.uploadedForms && opportunity.uploadedForms.length > 0) {
         // Use the first application form found
         const applicationForm = opportunity.uploadedForms.find(form => 
           form.documentType === 'application' || form.analysisResults?.formFields
@@ -560,6 +571,11 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
           }
           console.log('📝 Using uploaded form template:', applicationForm.fileName)
         }
+      }
+      // Priority 4: Check if project has stored dynamic form templates
+      else if (project.dynamicFormStructure?.formFields) {
+        applicationData.dynamicFormStructure = project.dynamicFormStructure
+        console.log('📝 Using project dynamic form structure with', Object.keys(project.dynamicFormStructure.formFields).length, 'fields')
       }
 
       // Generate filled document using AI
