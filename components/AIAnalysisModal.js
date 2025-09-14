@@ -6,6 +6,7 @@ import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveApiUrl } from '../lib/apiUrlUtils'
 import toast from 'react-hot-toast'
+import jsPDF from 'jspdf'
 
 // Helper function to normalize analysis results and handle different data structures
 function normalizeAnalysisResult(result) {
@@ -539,7 +540,26 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
         userProfile,
         analysis,
         applicationDraft,
+        formTemplate: null, // Will be populated if we have uploaded form data
         createdAt: new Date().toISOString()
+      }
+
+      // Check if we have form template data from uploaded documents
+      // This could come from the opportunity's uploaded forms or from a document upload modal
+      if (opportunity.uploadedForms && opportunity.uploadedForms.length > 0) {
+        // Use the first application form found
+        const applicationForm = opportunity.uploadedForms.find(form => 
+          form.documentType === 'application' || form.analysisResults?.formFields
+        )
+        
+        if (applicationForm && applicationForm.analysisResults?.formFields) {
+          applicationData.formTemplate = {
+            formFields: applicationForm.analysisResults.formFields,
+            fileName: applicationForm.fileName,
+            source: 'uploaded_form'
+          }
+          console.log('📝 Using uploaded form template:', applicationForm.fileName)
+        }
       }
 
       // Generate filled document using AI
@@ -569,22 +589,102 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
         status: 'draft',
         submitted_amount: submittedAmount,
         application_data: applicationData,
-        generated_document: result.document,
+        generated_document: result.formFields,
         ai_analysis: analysis
       })
 
-      // Create and download the document
-      const blob = new Blob([result.document], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-      const url = window.URL.createObjectURL(blob)
+      // Generate PDF with professional form layout using the exact template structure
+      const pdf = new jsPDF()
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 20
+      const lineHeight = 8
+      let yPosition = margin
+
+      // Header
+      pdf.setFontSize(16)
+      pdf.setFont('helvetica', 'bold')
+      const formTitle = applicationData.formTemplate ? 
+        `${applicationData.formTemplate.fileName?.replace(/\.[^/.]+$/, "").toUpperCase()} - COMPLETED` :
+        'GRANT APPLICATION'
+      pdf.text(formTitle, pageWidth / 2, yPosition, { align: 'center' })
+      yPosition += lineHeight * 2
+
+      // Metadata section
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      const metadata = result.metadata || {}
+      pdf.text(`Applicant: ${metadata.applicant || userProfile?.full_name || 'Applicant Name'}`, margin, yPosition)
+      yPosition += lineHeight
+      pdf.text(`Date: ${metadata.date || new Date().toLocaleDateString()}`, margin, yPosition)
+      yPosition += lineHeight
+      pdf.text(`Opportunity: ${opportunity.title}`, margin, yPosition)
+      yPosition += lineHeight
+      
+      if (applicationData.formTemplate) {
+        pdf.text(`Form Template: ${applicationData.formTemplate.fileName}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      yPosition += lineHeight
+
+      // Form fields
+      pdf.setFontSize(12)
+      const formFields = result.formFields || []
+      
+      for (const field of formFields) {
+        // Check if we need a new page
+        if (yPosition > pageHeight - 40) {
+          pdf.addPage()
+          yPosition = margin
+        }
+
+        // Field label (bold)
+        pdf.setFont('helvetica', 'bold')
+        pdf.text(`${field.label}:`, margin, yPosition)
+        yPosition += lineHeight + 2
+
+        // Field value (normal, wrapped)
+        pdf.setFont('helvetica', 'normal')
+        
+        // Split long text into lines that fit the page width
+        const textWidth = pageWidth - (margin * 2)
+        const lines = pdf.splitTextToSize(field.value || '', textWidth)
+        
+        for (const line of lines) {
+          if (yPosition > pageHeight - 20) {
+            pdf.addPage()
+            yPosition = margin
+          }
+          pdf.text(line, margin, yPosition)
+          yPosition += lineHeight
+        }
+        
+        yPosition += lineHeight // Extra space between fields
+      }
+
+      // Create and download the PDF
+      const pdfBlob = pdf.output('blob')
+      const url = window.URL.createObjectURL(pdfBlob)
       const a = document.createElement('a')
       a.style.display = 'none'
       a.href = url
-      a.download = `${project.name}_${opportunity.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_application.docx`
+      
+      // Create a proper filename with project and opportunity names
+      const projectName = (project.name || project.title || 'Project').replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
+      const opportunityName = opportunity.title.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
+      const templateSuffix = applicationData.formTemplate ? '_completed_form' : '_grant_application'
+      a.download = `${projectName}_${opportunityName}${templateSuffix}.pdf`
+      
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
 
-      toast.success('Application document generated and saved!')
+      const successMessage = applicationData.formTemplate ? 
+        `Completed form template "${applicationData.formTemplate.fileName}" downloaded as PDF! Ready for submission.` :
+        'Professional grant application PDF generated and downloaded! Ready for submission.'
+      
+      toast.success(successMessage)
       
     } catch (error) {
       console.error('Document generation error:', error)
@@ -754,7 +854,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
                     className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center"
                   >
                     <FileText className="w-4 h-4 mr-2" />
-                    {generating ? 'Generating...' : 'Generate Application'}
+                    {generating ? 'Generating...' : 'Download Application Draft'}
                   </button>
                   
                   <button

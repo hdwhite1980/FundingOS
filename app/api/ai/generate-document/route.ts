@@ -11,39 +11,101 @@ export async function POST(request) {
       )
     }
 
-    const { opportunity, project, userProfile, analysis, applicationDraft } = applicationData
+    const { opportunity, project, userProfile, analysis, applicationDraft, formTemplate } = applicationData
+
+    // Check if we have a form template (from uploaded and analyzed documents)
+    let useFormTemplate = false
+    let templateFields: any[] = []
+
+    if (formTemplate && formTemplate.formFields && Object.keys(formTemplate.formFields).length > 0) {
+      useFormTemplate = true
+      // Convert the form fields object to array format
+      templateFields = Object.entries(formTemplate.formFields).map(([key, fieldInfo]: [string, any]) => ({
+        label: fieldInfo?.label || key.replace(/([A-Z])/g, ' $1').trim(),
+        fieldName: key,
+        type: fieldInfo?.type || 'text',
+        required: fieldInfo?.required || false,
+        placeholder: fieldInfo?.placeholder || fieldInfo?.description || ''
+      }))
+      
+      console.log('🔧 Using uploaded form template with', templateFields.length, 'fields')
+    }
 
     // Create comprehensive prompt for document generation
     const systemMessage = {
       role: 'system',
-      content: `You are an expert grant application writer. Generate a complete, professional grant application document based on the provided data. The document should be in a format ready for submission.
+      content: useFormTemplate ? 
+        `You are an expert grant application writer. Fill out the EXACT form template that was uploaded and analyzed.
 
-CRITICAL: You MUST respond with valid JSON only containing the document content. The JSON should have this exact structure:
+CRITICAL: You MUST respond with valid JSON only containing the specific form fields from the uploaded template. The JSON should have this exact structure:
 {
-  "document": "FULL_DOCUMENT_CONTENT_HERE",
-  "sections": {
-    "executive_summary": "...",
-    "project_description": "...",
-    "budget": "...",
-    "timeline": "...",
-    "evaluation": "..."
+  "formFields": [
+    {
+      "label": "EXACT_FIELD_LABEL_FROM_TEMPLATE",
+      "value": "Professional response written as if typed by experienced grant writer",
+      "type": "text/textarea",
+      "fieldName": "original_field_name"
+    }
+  ],
+  "metadata": {
+    "title": "Grant Application",
+    "applicant": "Applicant Name",
+    "date": "Current Date",
+    "templateUsed": true
   }
 }
 
-Create a professional, compelling grant application that:
-1. Uses formal grant application language and structure
-2. Incorporates all AI analysis insights and recommendations
-3. Addresses potential concerns identified in the analysis
-4. Highlights project strengths and alignment with funding goals
-5. Includes specific, actionable project details
-6. Is formatted for easy reading and submission
+FORM TEMPLATE FIELDS TO FILL:
+${templateFields.map(field => `- ${field.label} (${field.type}) ${field.required ? '[REQUIRED]' : '[OPTIONAL]'}`).join('\n')}
 
-Make the document comprehensive, professional, and submission-ready.`
+Each field value should be written as professional, formal responses that sound like they were typed by an experienced grant writer. Make responses specific to the provided project and opportunity data. DO NOT add any fields that are not in the template above.`
+        :
+        `You are an expert grant application writer. Generate a complete, professional grant application with structured form-like data.
+
+CRITICAL: You MUST respond with valid JSON only containing structured form fields. The JSON should have this exact structure:
+{
+  "formFields": [
+    {
+      "label": "Project Title",
+      "value": "Generated project title response",
+      "type": "text"
+    },
+    {
+      "label": "Executive Summary",
+      "value": "2-3 paragraph executive summary written as if typed by applicant",
+      "type": "textarea"
+    }
+  ],
+  "metadata": {
+    "title": "Grant Application",
+    "applicant": "Applicant Name",
+    "date": "Current Date",
+    "templateUsed": false
+  }
+}
+
+Generate form fields for a complete grant application including:
+1. Project Title - Clear, compelling title
+2. Executive Summary - 2-3 paragraphs overview
+3. Project Description - Detailed description (3-4 paragraphs)
+4. Statement of Need - Problem statement and justification
+5. Project Goals and Objectives - Specific, measurable goals
+6. Methodology/Approach - How the project will be executed
+7. Timeline - Project phases and milestones
+8. Budget Justification - Funding breakdown and rationale
+9. Evaluation Plan - How success will be measured
+10. Organizational Capacity - Qualifications and experience
+11. Impact Statement - Expected outcomes and broader impact
+12. Sustainability Plan - How project will continue beyond funding
+
+Each field value should be written as professional, formal responses that sound like they were typed by an experienced grant writer. Make responses specific to the provided project and opportunity data.`
     }
 
     const userMessage = {
       role: 'user',
-      content: `Generate a complete grant application document with the following information:
+      content: `${useFormTemplate ? 
+        'Fill out the uploaded form template with the following information:' : 
+        'Generate a complete grant application document with the following information:'}
 
 OPPORTUNITY DETAILS:
 - Title: ${opportunity.title}
@@ -74,12 +136,22 @@ AI ANALYSIS INSIGHTS:
 - Next Steps: ${analysis.nextSteps?.join(', ') || 'Proceed with application'}
 - AI Reasoning: ${analysis.reasoning || 'Good match for funding'}
 
+${useFormTemplate ? 
+  `\nFORM TEMPLATE STRUCTURE:\n${templateFields.map(field => 
+    `${field.label} (${field.type}${field.required ? ', Required' : ', Optional'})${field.placeholder ? ' - ' + field.placeholder : ''}`
+  ).join('\n')}\n\nPlease fill out each field from the template above with appropriate content based on the project and opportunity information provided.` 
+  : ''
+}
+
 ${applicationDraft ? `EXISTING DRAFT CONTENT:
 ${applicationDraft}
 
 Please enhance and complete this draft with the above information.` : ''}
 
-Create a complete, professional grant application document that addresses all requirements and incorporates the AI analysis insights.`
+${useFormTemplate ? 
+  'Fill out the form template exactly as provided, ensuring all required fields are completed with professional, compelling content.' :
+  'Create a complete, professional grant application document that addresses all requirements and incorporates the AI analysis insights.'
+}`
     }
 
     console.log('🤖 Generating grant application document...')
@@ -102,21 +174,25 @@ Create a complete, professional grant application document that addresses all re
     // Parse the JSON response
     const documentData = aiProviderService.safeParseJSON(result.content)
     
-    if (!documentData.document) {
-      throw new Error('Generated response missing document content')
+    if (!documentData.formFields || !Array.isArray(documentData.formFields)) {
+      throw new Error('Generated response missing form fields data')
     }
 
-    console.log('✅ Grant application document generated successfully')
+    console.log('✅ Grant application form data generated successfully')
 
     return Response.json({
       success: true,
-      document: documentData.document,
-      sections: documentData.sections || {},
-      metadata: {
-        generatedAt: new Date().toISOString(),
+      formFields: documentData.formFields,
+      metadata: documentData.metadata || {
+        title: 'Grant Application',
+        applicant: userProfile?.full_name || 'Applicant',
+        date: new Date().toLocaleDateString()
+      },
+      applicationInfo: {
         opportunityTitle: opportunity.title,
         projectName: project.name,
-        fitScore: analysis.fitScore
+        fitScore: analysis.fitScore,
+        generatedAt: new Date().toISOString()
       }
     })
 
