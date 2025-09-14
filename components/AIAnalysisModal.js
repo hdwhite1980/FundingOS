@@ -563,7 +563,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
       // Save to applications
       const submittedAmount = opportunity.amount_max || opportunity.amount_min || project.budget || 25000
       
-      await directUserServices.createSubmission(user.id, {
+      await directUserServices.applications.createApplication(user.id, {
         project_id: project.id,
         opportunity_id: opportunity.id,
         status: 'draft',
