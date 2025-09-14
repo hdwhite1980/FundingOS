@@ -310,7 +310,8 @@ function extractImportantWords(text: string): string[] {
   const stopWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those']
   
   return text.toLowerCase()
-    .split(/[^a-z0-9]+/)
+    .replace(/[^\w\s]/g, ' ') // Replace punctuation with spaces
+    .split(/\s+/) // Split on whitespace
     .filter(word => word.length > 3 && !stopWords.includes(word))
     .slice(0, 15) // Limit to prevent too many keywords
 }
