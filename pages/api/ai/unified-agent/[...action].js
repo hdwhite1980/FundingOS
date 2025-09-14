@@ -2,6 +2,7 @@
 // Production-optimized unified AI agent API with comprehensive functionality
 
 import { unifiedAgentManager } from '../../../../lib/ai-agent/UnifiedManager'
+import { supabase } from '../../../../lib/supabase'
 
 export default async function handler(req, res) {
   const { action } = req.query
