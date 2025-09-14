@@ -12,7 +12,7 @@ import DirectDonationsList from './DirectDonationsList'
 import { StatCard } from './ui/StatCard'
 import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
-import CreateProjectModal from './EnhancedCreateProjectModal'
+import CreateProjectModal from './ProjectCreationWithUpload'
 import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
 import { directUserServices } from '../lib/supabase'
 import { 
