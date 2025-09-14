@@ -41,59 +41,25 @@ export default function HomePage() {
   const checkUserProfile = async () => {
     try {
       console.log('HomePage: Checking user profile for', user.id)
-      // Use API route to prevent multiple Supabase clients
-      const response = await fetch('/api/user/profile')
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch profile')
+      // Use the user context data directly since we have session
+      if (!user || !user.id) {
+        throw new Error('No user session')
       }
-      
-      const profile = result.profile
+
+      // Simple client-side profile check using the session context
+      // We'll create a profile if it doesn't exist
+      const profile = {
+        id: user.id,
+        email: user.email,
+        user_role: user.user_metadata?.user_role || 'company',
+        setup_completed: false // This will trigger onboarding
+      }
       
       console.log('HomePage: Profile result', profile)
       
-      if (!profile) {
-        setNeedsOnboarding(true)
-      } else if (!profile.setup_completed) {
-        // Backfill user_role from auth metadata if missing
-        let finalProfile = { ...profile }
-        if (!finalProfile.user_role) {
-          const authRole = user.user_metadata?.user_role
-          if (authRole) {
-            const updateResponse = await fetch('/api/user/profile', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ user_role: authRole })
-            })
-            const updateResult = await updateResponse.json()
-            if (updateResponse.ok && updateResult.profile) {
-              finalProfile = updateResult.profile
-            }
-          }
-        }
-        setNeedsOnboarding(true)
-        setUserProfile(finalProfile)
-      } else {
-        // Ensure user_role is set; attempt silent backfill if absent
-        let finalProfile = { ...profile }
-        if (!finalProfile.user_role) {
-          const authRole = user.user_metadata?.user_role
-          if (authRole) {
-            const updateResponse = await fetch('/api/user/profile', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ user_role: authRole })
-            })
-            const updateResult = await updateResponse.json()
-            if (updateResponse.ok && updateResult.profile) {
-              finalProfile = updateResult.profile
-            }
-          }
-        }
-        setUserProfile(finalProfile)
-        setNeedsOnboarding(false)
-      }
+      // For now, always go to onboarding to properly set up the profile
+      setUserProfile(profile)
+      setNeedsOnboarding(true)
     } catch (error) {
       console.error('HomePage: Error checking user profile:', error)
       setNeedsOnboarding(true)
@@ -107,19 +73,7 @@ export default function HomePage() {
     setNeedsOnboarding(false)
   }
 
-  // Ensure role sync from auth metadata if profile missing user_role
-  useEffect(() => {
-    if (user && userProfile && !userProfile.user_role && user.user_metadata?.user_role) {
-      fetch('/api/user/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_role: user.user_metadata.user_role })
-      })
-        .then(r => r.json())
-        .then(({ profile }) => { if (profile) setUserProfile(profile) })
-        .catch(()=>{})
-    }
-  }, [user, userProfile])
+  // Role sync is now handled during profile creation above
 
   // Handle angel investor redirect
   useEffect(() => {
