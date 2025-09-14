@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
-import { directUserServices } from '../lib/supabase'
+// Removed direct import to prevent multiple Supabase clients
 import AuthPage from '../components/AuthPage'
 import OnboardingFlow from '../components/EnhancedOnboardingFlow'
 import Dashboard from '../components/Dashboard'
@@ -41,11 +41,15 @@ export default function HomePage() {
   const checkUserProfile = async () => {
     try {
       console.log('HomePage: Checking user profile for', user.id)
-      // Use directUserServices instead of mixing auth systems
-      const profile = await directUserServices.profile.getOrCreateProfile(
-        user.id, 
-        user.email
-      )
+      // Use API route to prevent multiple Supabase clients
+      const response = await fetch('/api/user/profile')
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch profile')
+      }
+      
+      const profile = result.profile
       
       console.log('HomePage: Profile result', profile)
       
@@ -57,8 +61,15 @@ export default function HomePage() {
         if (!finalProfile.user_role) {
           const authRole = user.user_metadata?.user_role
           if (authRole) {
-            const updated = await directUserServices.profile.updateProfile(user.id, { user_role: authRole })
-            if (updated) finalProfile = updated
+            const updateResponse = await fetch('/api/user/profile', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_role: authRole })
+            })
+            const updateResult = await updateResponse.json()
+            if (updateResponse.ok && updateResult.profile) {
+              finalProfile = updateResult.profile
+            }
           }
         }
         setNeedsOnboarding(true)
@@ -69,8 +80,15 @@ export default function HomePage() {
         if (!finalProfile.user_role) {
           const authRole = user.user_metadata?.user_role
           if (authRole) {
-            const updated = await directUserServices.profile.updateProfile(user.id, { user_role: authRole })
-            if (updated) finalProfile = updated
+            const updateResponse = await fetch('/api/user/profile', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_role: authRole })
+            })
+            const updateResult = await updateResponse.json()
+            if (updateResponse.ok && updateResult.profile) {
+              finalProfile = updateResult.profile
+            }
           }
         }
         setUserProfile(finalProfile)
@@ -92,8 +110,13 @@ export default function HomePage() {
   // Ensure role sync from auth metadata if profile missing user_role
   useEffect(() => {
     if (user && userProfile && !userProfile.user_role && user.user_metadata?.user_role) {
-      directUserServices.profile.updateProfile(user.id, { user_role: user.user_metadata.user_role })
-        .then(updated => { if (updated) setUserProfile(updated) })
+      fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_role: user.user_metadata.user_role })
+      })
+        .then(r => r.json())
+        .then(({ profile }) => { if (profile) setUserProfile(profile) })
         .catch(()=>{})
     }
   }, [user, userProfile])

@@ -2,11 +2,12 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Building2, ArrowRight, CheckCircle } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import toast from 'react-hot-toast'
 import Logo from './Logo'
 
 export default function AuthPage() {
+  const supabase = useSupabaseClient()
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
