@@ -12,7 +12,7 @@ const EnhancedUnifiedAIAgentInterface = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [agentStatus, setAgentStatus] = useState('stopped');
-  const [position, setPosition] = useState({ x: window?.innerWidth - 320 || 300, y: 100 });
+  const [position, setPosition] = useState({ x: 300, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [notifications, setNotifications] = useState([]);
@@ -29,6 +29,13 @@ const EnhancedUnifiedAIAgentInterface = () => {
       setTimeout(() => setIsVisible(true), 1000);
     }
   }, [user]);
+
+  // Set proper initial position (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPosition({ x: window.innerWidth - 320, y: 100 });
+    }
+  }, []);
 
   // Auto-scroll messages to bottom
   useEffect(() => {
@@ -102,7 +109,7 @@ const EnhancedUnifiedAIAgentInterface = () => {
           userId: user.id,
           message: inputMessage,
           context: { 
-            currentPage: window.location.pathname,
+            currentPage: typeof window !== 'undefined' ? window.location.pathname : '/',
             timestamp: new Date().toISOString()
           }
         })
@@ -155,7 +162,7 @@ const EnhancedUnifiedAIAgentInterface = () => {
   };
 
   const handleMouseMove = (e) => {
-    if (isDragging) {
+    if (isDragging && typeof window !== 'undefined') {
       const newX = Math.max(0, Math.min(window.innerWidth - 320, e.clientX - dragOffset.x));
       const newY = Math.max(0, Math.min(window.innerHeight - 400, e.clientY - dragOffset.y));
       setPosition({ x: newX, y: newY });

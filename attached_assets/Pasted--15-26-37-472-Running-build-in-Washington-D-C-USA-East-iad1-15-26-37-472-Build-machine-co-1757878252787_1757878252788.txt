@@ -1,0 +1,158 @@
+[15:26:37.472] Running build in Washington, D.C., USA (East) – iad1
+[15:26:37.472] Build machine configuration: 4 cores, 8 GB
+[15:26:37.488] Retrieving list of deployment files...
+[15:26:38.010] Downloading 173 deployment files...
+[15:26:38.722] Restored build cache from previous deployment (8WUQ7RNfeDj7cDTwsVEySdXxP9bg)
+[15:26:39.351] Running "vercel build"
+[15:26:39.753] Vercel CLI 47.1.1
+[15:26:40.068] Installing dependencies...
+[15:26:41.047] 
+[15:26:41.048] up to date in 797ms
+[15:26:41.048] 
+[15:26:41.048] 64 packages are looking for funding
+[15:26:41.048]   run `npm fund` for details
+[15:26:41.077] Detected Next.js version: 14.2.32
+[15:26:41.082] Running "npm run build"
+[15:26:41.191] 
+[15:26:41.192] > wali-os@1.0.0 build
+[15:26:41.192] > next build
+[15:26:41.192] 
+[15:26:41.896]   ▲ Next.js 14.2.32
+[15:26:41.896] 
+[15:26:41.914]    Creating an optimized production build ...
+[15:27:04.585]  ✓ Compiled successfully
+[15:27:04.587]    Linting and checking validity of types ...
+[15:27:17.186]    Collecting page data ...
+[15:27:19.694]    Generating static pages (0/25) ...
+[15:27:20.077]    Generating static pages (6/25) 
+[15:27:20.077] Dashboard API error: B [Error]: Dynamic server usage: Route /api/angel/dashboard couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+[15:27:20.078]     at V (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
+[15:27:20.078]     at Object.get (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29465)
+[15:27:20.078]     at d (/vercel/path0/.next/server/app/api/angel/dashboard/route.js:1:1066)
+[15:27:20.078]     at async /vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38411
+[15:27:20.078]     at async e_.execute (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:27880)
+[15:27:20.078]     at async e_.handle (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:39943)
+[15:27:20.078]     at async exportAppRoute (/vercel/path0/node_modules/next/dist/export/routes/app-route.js:77:26)
+[15:27:20.078]     at async exportPageImpl (/vercel/path0/node_modules/next/dist/export/worker.js:175:20)
+[15:27:20.079]     at async Span.traceAsyncFn (/vercel/path0/node_modules/next/dist/trace/trace.js:154:20)
+[15:27:20.079]     at async Object.exportPage (/vercel/path0/node_modules/next/dist/export/worker.js:237:20) {
+[15:27:20.079]   description: "Route /api/angel/dashboard couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+[15:27:20.079]   digest: 'DYNAMIC_SERVER_USAGE'
+[15:27:20.079] }
+[15:27:20.272] [zgxmll] 2025-09-14T19:27:20.221Z - Chat load-session request received
+[15:27:20.272] [zgxmll] Attempting to get user from Supabase
+[15:27:20.272] [zgxmll] Error loading chat session: n [Error]: Dynamic server usage: Route /api/chat/load-session couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+[15:27:20.272]     at l (/vercel/path0/.next/server/chunks/8948.js:1:37220)
+[15:27:20.272]     at Object.p [as cookies] (/vercel/path0/.next/server/chunks/958.js:1:10002)
+[15:27:20.272]     at O.getCookie (/vercel/path0/.next/server/chunks/958.js:1:5640)
+[15:27:20.273]     at O.getItem (/vercel/path0/.next/server/chunks/958.js:1:20567)
+[15:27:20.273]     at e2 (/vercel/path0/.next/server/chunks/5601.js:21:26113)
+[15:27:20.273]     at tC.__loadSession (/vercel/path0/.next/server/chunks/5601.js:21:57622)
+[15:27:20.273]     at tC._useSession (/vercel/path0/.next/server/chunks/5601.js:21:57359)
+[15:27:20.273]     at tC._getUser (/vercel/path0/.next/server/chunks/5601.js:21:59222)
+[15:27:20.273]     at /vercel/path0/.next/server/chunks/5601.js:21:59073
+[15:27:20.273]     at /vercel/path0/.next/server/chunks/5601.js:21:56668 {
+[15:27:20.273]   description: "Route /api/chat/load-session couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+[15:27:20.273]   digest: 'DYNAMIC_SERVER_USAGE'
+[15:27:20.273] }
+[15:27:20.273] [zgxmll] Error stack: Error: Dynamic server usage: Route /api/chat/load-session couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+[15:27:20.273]     at l (/vercel/path0/.next/server/chunks/8948.js:1:37220)
+[15:27:20.273]     at Object.p [as cookies] (/vercel/path0/.next/server/chunks/958.js:1:10002)
+[15:27:20.274]     at O.getCookie (/vercel/path0/.next/server/chunks/958.js:1:5640)
+[15:27:20.274]     at O.getItem (/vercel/path0/.next/server/chunks/958.js:1:20567)
+[15:27:20.274]     at e2 (/vercel/path0/.next/server/chunks/5601.js:21:26113)
+[15:27:20.274]     at tC.__loadSession (/vercel/path0/.next/server/chunks/5601.js:21:57622)
+[15:27:20.274]     at tC._useSession (/vercel/path0/.next/server/chunks/5601.js:21:57359)
+[15:27:20.274]     at tC._getUser (/vercel/path0/.next/server/chunks/5601.js:21:59222)
+[15:27:20.274]     at /vercel/path0/.next/server/chunks/5601.js:21:59073
+[15:27:20.274]     at /vercel/path0/.next/server/chunks/5601.js:21:56668
+[15:27:20.292]    Generating static pages (12/25) 
+[15:27:20.424]    Generating static pages (18/25) 
+[15:27:20.515] ReferenceError: window is not defined
+[15:27:20.515]     at u (/vercel/path0/.next/server/chunks/5854.js:1:756)
+[15:27:20.515]     at nj (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46252)
+[15:27:20.516]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47572)
+[15:27:20.516]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.516]     at nB (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+[15:27:20.516]     at nD (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+[15:27:20.516]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+[15:27:20.517]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61157)
+[15:27:20.517]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.517]     at nI (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011) {
+[15:27:20.517]   digest: '3201957056'
+[15:27:20.517] }
+[15:27:20.560] 
+[15:27:20.560] Error occurred prerendering page "/_not-found". Read more: https://nextjs.org/docs/messages/prerender-error
+[15:27:20.560] 
+[15:27:20.567] ReferenceError: window is not defined
+[15:27:20.567]     at u (/vercel/path0/.next/server/chunks/5854.js:1:756)
+[15:27:20.567]     at nj (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46252)
+[15:27:20.567]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47572)
+[15:27:20.567]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.567]     at nB (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+[15:27:20.567]     at nD (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+[15:27:20.567]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+[15:27:20.567]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61157)
+[15:27:20.567]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.567]     at nI (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011)
+[15:27:20.568] ReferenceError: window is not defined
+[15:27:20.568]     at u (/vercel/path0/.next/server/chunks/5854.js:1:756)
+[15:27:20.568]     at nj (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46252)
+[15:27:20.568]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47572)
+[15:27:20.568]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.569]     at nB (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+[15:27:20.569]     at nD (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+[15:27:20.569]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+[15:27:20.569]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61157)
+[15:27:20.569]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.569]     at nI (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011) {
+[15:27:20.569]   digest: '3201957056'
+[15:27:20.569] }
+[15:27:20.569] 
+[15:27:20.569] Error occurred prerendering page "/angel/dashboard". Read more: https://nextjs.org/docs/messages/prerender-error
+[15:27:20.570] 
+[15:27:20.570] ReferenceError: window is not defined
+[15:27:20.570]     at u (/vercel/path0/.next/server/chunks/5854.js:1:756)
+[15:27:20.570]     at nj (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46252)
+[15:27:20.570]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47572)
+[15:27:20.570]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.570]     at nB (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+[15:27:20.570]     at nD (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+[15:27:20.570]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+[15:27:20.570]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61157)
+[15:27:20.570]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.570]     at nI (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011)
+[15:27:20.661] ReferenceError: window is not defined
+[15:27:20.661]     at u (/vercel/path0/.next/server/chunks/5854.js:1:756)
+[15:27:20.661]     at nj (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46252)
+[15:27:20.661]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47572)
+[15:27:20.662]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.662]     at nB (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+[15:27:20.662]     at nD (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+[15:27:20.662]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+[15:27:20.662]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61157)
+[15:27:20.662]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.662]     at nI (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011) {
+[15:27:20.662]   digest: '3201957056'
+[15:27:20.662] }
+[15:27:20.674] 
+[15:27:20.674] Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+[15:27:20.674] 
+[15:27:20.675] ReferenceError: window is not defined
+[15:27:20.675]     at u (/vercel/path0/.next/server/chunks/5854.js:1:756)
+[15:27:20.675]     at nj (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46252)
+[15:27:20.675]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47572)
+[15:27:20.675]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.675]     at nB (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+[15:27:20.675]     at nD (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+[15:27:20.675]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+[15:27:20.675]     at nM (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61157)
+[15:27:20.675]     at nN (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+[15:27:20.675]     at nI (/vercel/path0/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011)
+[15:27:20.675]  ✓ Generating static pages (25/25)
+[15:27:20.713] 
+[15:27:20.714] > Export encountered errors on following paths:
+[15:27:20.714] 	/_not-found/page: /_not-found
+[15:27:20.714] 	/angel/dashboard/page: /angel/dashboard
+[15:27:20.714] 	/page: /
+[15:27:20.746] Error: Command "npm run build" exited with 1

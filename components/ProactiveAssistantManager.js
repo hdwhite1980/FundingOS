@@ -62,8 +62,10 @@ export default function ProactiveAssistantManager({
         const toast = (await import('react-hot-toast')).default
         toast.success(`Project updated: ${formData.updates.name || 'Changes saved'}`)
         
-        // Refresh local data
-        window.location.reload()
+        // Refresh local data (only in browser)
+        if (typeof window !== 'undefined') {
+          window.location.reload()
+        }
       } else if (formData.submissionId && formData.updates) {
         // Update submission data
         const { directUserServices } = await import('../lib/supabase')
