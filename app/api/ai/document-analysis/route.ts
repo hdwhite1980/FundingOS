@@ -328,84 +328,72 @@ function buildFormAnalysisPrompt(formContent: string, userProfile: any, projectD
   const textContent = typeof formContent === 'string' ? formContent : JSON.stringify(formContent)
   
   return `
-Analyze this application form and provide intelligent completion suggestions:
+CRITICAL: This is a FORM TEMPLATE EXTRACTION task. Extract the exact form structure and fields from this document.
 
-APPLICATION FORM:
-${textContent.substring(0, 10000)}
+APPLICATION FORM CONTENT:
+${textContent.substring(0, 12000)}
 
-USER PROFILE:
-${JSON.stringify(userProfile, null, 2)}
-
-PROJECT DATA:
-${JSON.stringify(projectData, null, 2)}
+TASK: Extract the form template structure from this document so it can be used to generate filled applications.
 
 ANALYSIS REQUIREMENTS:
 
-1. FORM STATUS DETECTION:
-   - Is this a blank/template form or partially completed?
-   - What percentage of fields are already filled?
-   - Identify empty fields that can be auto-filled
+1. FORM FIELD EXTRACTION (MOST IMPORTANT):
+   - Identify ALL form fields, labels, and input areas
+   - Look for patterns like: "Field Name: ___", "Field Name: $_____", checkboxes, text areas
+   - Extract field types: text, textarea, email, phone, date, currency, select, checkbox
+   - Determine which fields are required vs optional
+   - Identify field groupings and sections
 
-2. AUTO-FILL SUGGESTIONS:
-   - For each empty field, provide specific values from user/project data
-   - Include confidence level (0-1) for each suggestion
-   - Mark which fields require user confirmation
+2. FORM STRUCTURE:
+   - Extract section headers and organization
+   - Identify field dependencies and relationships
+   - Note any special formatting or constraints
+   - Extract validation rules or field limits
 
-3. MISSING INFORMATION ANALYSIS:
-   - Categorize missing info by: CRITICAL, IMPORTANT, OPTIONAL
-   - Identify what we can extract from existing documents vs what user must provide
-   - Create specific questions to collect missing information
+3. METADATA:
+   - Form title and version
+   - Instructions or guidelines
+   - Submission requirements
+   - Contact information
 
-4. COMPLETION STRATEGY:
-   - Suggest order of completion (most important fields first)
-   - Identify fields that depend on other fields
-   - Recommend sections that need user review
+USER PROFILE FOR CONTEXT:
+${JSON.stringify(userProfile, null, 2)}
 
-5. INTELLIGENT RECOMMENDATIONS:
-   - Strategic positioning suggestions
-   - Compliance and eligibility considerations
-   - Risk assessment and mitigation
+PROJECT DATA FOR CONTEXT:
+${JSON.stringify(projectData, null, 2)}
 
-Return JSON with these sections:
+REQUIRED JSON RESPONSE FORMAT:
 {
-  "formStatus": {
-    "isBlank": boolean,
-    "completionPercentage": number,
-    "totalFields": number,
-    "filledFields": number,
-    "emptyFields": string[]
-  },
-  "autoFillSuggestions": {
-    "fieldName": {
-      "value": "suggested value",
-      "confidence": 0.95,
-      "source": "user_profile|project_data",
-      "requiresConfirmation": boolean
+  "formFields": {
+    "field_name": {
+      "label": "Exact Label Text",
+      "type": "text|textarea|email|phone|date|currency|select|checkbox",
+      "required": true|false,
+      "section": "Section Name",
+      "placeholder": "hint text if any",
+      "validation": "any constraints",
+      "options": ["for select fields"]
     }
   },
-  "missingInformation": {
-    "critical": [],
-    "important": [],
-    "optional": []
-  },
-  "questionsForUser": [
+  "formSections": [
     {
-      "question": "specific question",
-      "fieldName": "target field",
-      "priority": "critical|important|optional",
-      "suggestedAnswers": ["option1", "option2"]
+      "title": "Section Title",
+      "fields": ["field_name1", "field_name2"],
+      "order": 1
     }
   ],
-  "completionStrategy": {
-    "recommendedOrder": [],
-    "dependencies": {},
-    "reviewSections": []
+  "formMetadata": {
+    "title": "Form Title",
+    "version": "version if specified",
+    "totalFields": number,
+    "requiredFields": number,
+    "documentType": "application|guidelines|requirements"
   },
-  "strategicRecommendations": [],
-  "riskAssessment": []
+  "extractionConfidence": number (0-1),
+  "detectedFormType": "missouri_grant|federal_grant|foundation|corporate|other"
 }
 
-Focus on maximizing auto-fill accuracy while ensuring the user maintains control over critical decisions.
+FOCUS: Extract the actual form structure so it can be used as a template for document generation. This is NOT about filling out the form - it's about understanding the form's structure.
   `
 }
 

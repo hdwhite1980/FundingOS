@@ -257,7 +257,7 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
   })
 
   // Calculate confidence based on data quality
-  const confidence = calculateFastTrackConfidence(opportunity, project, matchDetails)
+  let confidence = calculateFastTrackConfidence(opportunity, project, matchDetails)
 
   console.log('🎯 Final fast scoring result:', {
     finalScore: score,
@@ -279,6 +279,19 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
       }
     } catch (error) {
       console.warn('AI verification failed for high score:', error)
+    }
+  }
+
+  // Final thematic alignment adjustment
+  // If we have very low keyword alignment but passed other checks, reduce confidence
+  if (matchDetails.keywordMatch?.totalMatches <= 1 && score > 30) {
+    console.log(`⚠️ Low thematic alignment detected (${matchDetails.keywordMatch?.totalMatches} matches) with high score (${score}) - applying confidence penalty`)
+    confidence = Math.max(confidence - 0.3, 0.1) // Reduce confidence significantly
+    
+    // Also apply a slight score penalty for poor thematic fit
+    if (matchDetails.keywordMatch?.totalMatches === 0) {
+      score = Math.max(score - 10, 0)
+      console.log(`🔻 Applied no-match penalty, adjusted score to ${score}`)
     }
   }
 
@@ -446,22 +459,33 @@ function extractProjectKeywords(project: any, userProfile: any) {
 function extractImportantWords(text: string): string[] {
   if (!text) return []
   
-  const stopWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'some', 'any', 'all', 'each', 'every', 'other', 'another', 'such', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'now', 'here', 'there', 'where', 'when', 'why', 'how', 'what', 'who', 'which', 'whom', 'whose', 'about', 'above', 'after', 'again', 'against', 'before', 'being', 'below', 'between', 'both', 'during', 'each', 'from', 'further', 'into', 'more', 'most', 'off', 'once', 'over', 'same', 'through', 'under', 'until', 'up', 'while']
+  const stopWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'some', 'any', 'all', 'each', 'every', 'other', 'another', 'such', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'now', 'here', 'there', 'where', 'when', 'why', 'how', 'what', 'who', 'which', 'whom', 'whose', 'about', 'above', 'after', 'again', 'against', 'before', 'being', 'below', 'between', 'both', 'during', 'each', 'from', 'further', 'into', 'more', 'most', 'off', 'once', 'over', 'same', 'through', 'under', 'until', 'up', 'while', 'also', 'many', 'much', 'well', 'good', 'great', 'best', 'better', 'make', 'made', 'making', 'work', 'working', 'works', 'help', 'helping', 'helps', 'provide', 'provides', 'providing', 'support', 'supporting', 'supports', 'include', 'includes', 'including']
+  
+  // High-value domain terms that should always be preserved
+  const domainTerms = ['artificial', 'intelligence', 'machine', 'learning', 'healthcare', 'education', 'environment', 'sustainability', 'renewable', 'energy', 'housing', 'affordable', 'construction', 'building', 'research', 'development', 'innovation', 'technology', 'software', 'digital', 'nonprofit', 'profit', 'commercial', 'business', 'startup', 'entrepreneurship', 'manufacturing', 'agriculture', 'biotechnology', 'pharmaceuticals', 'medical', 'clinical', 'patient', 'therapeutic', 'diagnostic', 'community', 'social', 'economic', 'financial', 'infrastructure', 'transportation', 'logistics', 'supply', 'chain', 'cybersecurity', 'security', 'defense', 'aerospace', 'automotive', 'telecommunications', 'networking', 'database', 'analytics', 'science', 'engineering', 'materials', 'nanotechnology', 'robotics', 'automation', 'manufacturing', 'textiles', 'food', 'beverage', 'retail', 'hospitality', 'tourism', 'entertainment', 'media', 'publishing', 'gaming', 'sports', 'fitness', 'wellness', 'mental', 'health', 'elderly', 'seniors', 'children', 'youth', 'families', 'veterans', 'disabilities', 'minorities', 'women', 'indigenous', 'rural', 'urban', 'suburban', 'disaster', 'emergency', 'response', 'preparedness', 'climate', 'change', 'conservation', 'wildlife', 'forestry', 'marine', 'ocean', 'water', 'pollution', 'waste', 'recycling', 'circular', 'economy']
   
   // Enhanced word extraction with better filtering
-  return text.toLowerCase()
+  const words = text.toLowerCase()
     .replace(/[^\w\s'-]/g, ' ') // Keep apostrophes and hyphens
     .split(/\s+/) // Split on whitespace
     .filter(word => 
-      word.length > 3 && 
+      word.length > 2 && 
       !stopWords.includes(word) &&
       !/^\d+$/.test(word) && // Remove pure numbers
       !/^[a-z]{1,2}$/.test(word) && // Remove short abbreviations
       !word.includes('http') // Remove URL fragments
     )
     .map(word => word.replace(/['-]$/, '')) // Clean trailing punctuation
-    .filter(word => word.length > 3) // Re-filter after cleaning
-    .slice(0, 20) // Limit to prevent too many keywords
+    .filter(word => word.length > 2) // Re-filter after cleaning
+  
+  // Prioritize domain terms - they come first
+  const domainWords = words.filter(word => domainTerms.includes(word))
+  const otherWords = words.filter(word => !domainTerms.includes(word))
+  
+  // Combine with domain terms first, then other important words
+  const result = [...domainWords, ...otherWords.slice(0, 15 - domainWords.length)]
+  
+  return result.slice(0, 20) // Limit to prevent too many keywords
 }
 
 /**
@@ -597,6 +621,58 @@ function calculateKeywordMatch(opportunity: any, keywords: any) {
       matchedKeywords.push(...businessTerms.filter(term => oppText.includes(term)))
       console.log(`✅ Business semantic matches: ${businessMatches}`)
     }
+  }
+
+  // THEMATIC MISMATCH PENALTY: Prevent completely unrelated matches
+  // Check for major thematic mismatches that should heavily penalize the score
+  const applyThematicMismatchPenalty = () => {
+    const projectThemes = keywords.primary.concat(keywords.secondary).map(k => k.toLowerCase())
+    const oppThemes = oppText.toLowerCase()
+    
+    // Define incompatible domain pairs
+    const domainMismatches = [
+      {
+        projectDomains: ['housing', 'construction', 'affordable', 'residential', 'building'],
+        oppDomains: ['humanities', 'research', 'academic', 'artificial intelligence', 'philosophy', 'literature', 'history']
+      },
+      {
+        projectDomains: ['medical', 'health', 'healthcare', 'clinical', 'patient'],
+        oppDomains: ['environmental', 'climate', 'conservation', 'wildlife', 'forestry']
+      },
+      {
+        projectDomains: ['technology', 'software', 'digital', 'app', 'platform'],
+        oppDomains: ['agriculture', 'farming', 'rural', 'livestock', 'crop']
+      }
+    ]
+    
+    for (const mismatch of domainMismatches) {
+      const hasProjectDomain = mismatch.projectDomains.some(domain => 
+        projectThemes.some(theme => theme.includes(domain))
+      )
+      const hasOppDomain = mismatch.oppDomains.some(domain => 
+        oppThemes.includes(domain)
+      )
+      
+      if (hasProjectDomain && hasOppDomain) {
+        console.log(`⚠️ Major thematic mismatch detected: project has ${mismatch.projectDomains.filter(d => projectThemes.some(t => t.includes(d)))} but opportunity focuses on ${mismatch.oppDomains.filter(d => oppThemes.includes(d))}`)
+        return -15 // Heavy penalty for major domain mismatch
+      }
+    }
+    
+    // Check for moderate mismatches (less severe)
+    if (primaryMatches === 0 && secondaryMatches <= 1) {
+      // If we have almost no thematic overlap, apply moderate penalty
+      console.log(`⚠️ Weak thematic alignment: 0 primary matches, ${secondaryMatches} secondary matches`)
+      return -5
+    }
+    
+    return 0
+  }
+  
+  const thematicPenalty = applyThematicMismatchPenalty()
+  score += thematicPenalty
+  if (thematicPenalty < 0) {
+    weaknesses.push('Significant thematic mismatch between project focus and opportunity domain')
   }
 
   // Check for organization type alignment bonus

@@ -35,70 +35,76 @@ export async function POST(request) {
     const systemMessage = {
       role: 'system',
       content: useFormTemplate ? 
-        `You are an expert grant application writer. Fill out the EXACT form template that was uploaded and analyzed.
+        `You are an expert grant application writer specializing in completing official grant application forms exactly as they appear in the original template.
 
-CRITICAL: You MUST respond with valid JSON only containing the specific form fields from the uploaded template. The JSON should have this exact structure:
+CRITICAL REQUIREMENTS:
+1. You MUST fill out the EXACT form fields from the uploaded template - do not add or skip any fields
+2. Field names and labels must match the template exactly
+3. Write professional responses as if typed by an experienced grant writer
+4. Maintain the original form structure and organization
+5. Fill every required field with appropriate, substantive content
+
+RESPONSE FORMAT - Return ONLY valid JSON:
 {
   "formFields": [
     {
-      "label": "EXACT_FIELD_LABEL_FROM_TEMPLATE",
-      "value": "Professional response written as if typed by experienced grant writer",
-      "type": "text/textarea",
-      "fieldName": "original_field_name"
+      "fieldName": "exact_field_name_from_template",
+      "label": "Exact Field Label from Template",
+      "value": "Professional, detailed response written as if by experienced grant writer",
+      "type": "field_type",
+      "section": "section_name"
     }
   ],
   "metadata": {
-    "title": "Grant Application",
-    "applicant": "Applicant Name",
-    "date": "Current Date",
-    "templateUsed": true
+    "title": "Form title from template",
+    "applicant": "Organization name",
+    "date": "Current date",
+    "templateUsed": true,
+    "originalTemplate": "template_name"
   }
 }
 
-FORM TEMPLATE FIELDS TO FILL:
-${templateFields.map(field => `- ${field.label} (${field.type}) ${field.required ? '[REQUIRED]' : '[OPTIONAL]'}`).join('\n')}
+FORM TEMPLATE TO FILL OUT:
+${templateFields.map(field => 
+  `• ${field.label} (${field.fieldName}) - Type: ${field.type} ${field.required ? '[REQUIRED]' : '[OPTIONAL]'}`
+).join('\n')}
 
-Each field value should be written as professional, formal responses that sound like they were typed by an experienced grant writer. Make responses specific to the provided project and opportunity data. DO NOT add any fields that are not in the template above.`
+IMPORTANT: Each field value should be:
+- Professional and compelling
+- Specific to the provided project and opportunity
+- Written in the voice of an experienced grant writer
+- Appropriate for the field type and context
+- Complete and substantive (no placeholder text)`
         :
-        `You are an expert grant application writer. Generate a complete, professional grant application with structured form-like data.
+        `You are an expert grant application writer. Generate a complete, professional grant application document.
 
-CRITICAL: You MUST respond with valid JSON only containing structured form fields. The JSON should have this exact structure:
+RESPONSE FORMAT - Return ONLY valid JSON:
 {
   "formFields": [
     {
-      "label": "Project Title",
-      "value": "Generated project title response",
-      "type": "text"
-    },
-    {
-      "label": "Executive Summary",
-      "value": "2-3 paragraph executive summary written as if typed by applicant",
-      "type": "textarea"
+      "fieldName": "field_identifier",
+      "label": "Field Display Name",
+      "value": "Professional response content",
+      "type": "text|textarea",
+      "section": "section_name"
     }
   ],
   "metadata": {
     "title": "Grant Application",
-    "applicant": "Applicant Name",
+    "applicant": "Organization Name",
     "date": "Current Date",
     "templateUsed": false
   }
 }
 
-Generate form fields for a complete grant application including:
-1. Project Title - Clear, compelling title
-2. Executive Summary - 2-3 paragraphs overview
-3. Project Description - Detailed description (3-4 paragraphs)
-4. Statement of Need - Problem statement and justification
-5. Project Goals and Objectives - Specific, measurable goals
-6. Methodology/Approach - How the project will be executed
-7. Timeline - Project phases and milestones
-8. Budget Justification - Funding breakdown and rationale
-9. Evaluation Plan - How success will be measured
-10. Organizational Capacity - Qualifications and experience
-11. Impact Statement - Expected outcomes and broader impact
-12. Sustainability Plan - How project will continue beyond funding
+Generate comprehensive form fields covering:
+1. Project Title, Summary, Description
+2. Statement of Need, Goals, Objectives  
+3. Methodology, Timeline, Budget
+4. Organizational Capacity, Evaluation Plan
+5. Impact Statement, Sustainability Plan
 
-Each field value should be written as professional, formal responses that sound like they were typed by an experienced grant writer. Make responses specific to the provided project and opportunity data.`
+Each response should be professional, detailed, and tailored to the specific project and opportunity.`
     }
 
     const userMessage = {
