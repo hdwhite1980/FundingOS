@@ -156,9 +156,17 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
   const startTime = Date.now()
   
   try {
+    console.log('🚀 Fast scoring started for:', {
+      opportunityTitle: opportunity.title,
+      projectTitle: project.title || project.name,
+      userOrgType: userProfile.organization_type
+    })
+
     // Generate keywords from project information
     const projectKeywords = extractProjectKeywords(project, userProfile)
     
+    console.log('🔑 Extracted keywords:', projectKeywords)
+
     let score = 0
     const strengths: string[] = []
     const weaknesses: string[] = []
@@ -167,6 +175,7 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
     // 1. HARD STOPS (return 0 immediately)
     const hardStops = checkHardStops(opportunity, project, userProfile)
     if (!hardStops.eligible) {
+      console.log('❌ Hard stop triggered:', hardStops.reasons)
       return {
         overallScore: 0,
         eligible: false,
@@ -185,12 +194,26 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
     strengths.push(...keywordMatch.strengths)
     if (keywordMatch.weaknesses.length > 0) weaknesses.push(...keywordMatch.weaknesses)
 
+    console.log('📝 Keyword match result:', {
+      score: keywordMatch.score,
+      totalScore: score,
+      matches: keywordMatch.details.totalMatches
+    })
+
   // 3. FUNDING AMOUNT ALIGNMENT (0-25 points)
   const fundingMatch = checkFundingAlignment(opportunity, project)
   score += fundingMatch.score
   matchDetails.fundingAlignment = fundingMatch.details
   strengths.push(...fundingMatch.strengths)
   if (fundingMatch.weaknesses.length > 0) weaknesses.push(...fundingMatch.weaknesses)
+
+  console.log('💰 Funding alignment result:', {
+    score: fundingMatch.score,
+    totalScore: score,
+    requestAmount: fundingMatch.details?.requestAmount,
+    oppMin: fundingMatch.details?.opportunityMin,
+    oppMax: fundingMatch.details?.opportunityMax
+  })
 
   // 4. ORGANIZATION TYPE MATCH (0-20 points)
   const orgMatch = checkOrganizationType(opportunity, userProfile)
@@ -199,12 +222,25 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
   strengths.push(...orgMatch.strengths)
   if (orgMatch.weaknesses.length > 0) weaknesses.push(...orgMatch.weaknesses)
 
+  console.log('🏢 Organization type result:', {
+    score: orgMatch.score,
+    totalScore: score,
+    userType: orgMatch.details?.userOrgType,
+    eligibleTypes: orgMatch.details?.eligibleTypes
+  })
+
   // 5. DEADLINE URGENCY (0-10 points)
   const deadlineMatch = checkDeadlineTiming(opportunity)
   score += deadlineMatch.score
   matchDetails.deadline = deadlineMatch.details
   strengths.push(...deadlineMatch.strengths)
   if (deadlineMatch.weaknesses.length > 0) weaknesses.push(...deadlineMatch.weaknesses)
+
+  console.log('⏰ Deadline timing result:', {
+    score: deadlineMatch.score,
+    totalScore: score,
+    daysLeft: deadlineMatch.details?.daysLeft
+  })
 
   // 6. GEOGRAPHIC ELIGIBILITY (0-5 points)
   const geoMatch = checkGeographicEligibility(opportunity, userProfile)
@@ -213,8 +249,22 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
   strengths.push(...geoMatch.strengths)
   if (geoMatch.weaknesses.length > 0) weaknesses.push(...geoMatch.weaknesses)
 
+  console.log('🌍 Geographic eligibility result:', {
+    score: geoMatch.score,
+    totalScore: score,
+    userLocation: geoMatch.details?.userLocation,
+    restrictions: geoMatch.details?.restrictions
+  })
+
   // Calculate confidence based on data quality
   const confidence = calculateFastTrackConfidence(opportunity, project, matchDetails)
+
+  console.log('🎯 Final fast scoring result:', {
+    finalScore: score,
+    confidence,
+    eligible: score > 20,
+    processingTime: Date.now() - startTime
+  })
 
   // AI VERIFICATION for high scores (70%+)
   let aiVerification: any = null
@@ -223,7 +273,9 @@ async function fastScoreOnly(opportunity: any, project: any, userProfile: any) {
       aiVerification = await performQuickAIVerification(opportunity, project, userProfile, score, matchDetails)
       // Adjust score based on AI verification if it disagrees significantly
       if (aiVerification && aiVerification.adjustedScore && Math.abs(aiVerification.adjustedScore - score) > 15) {
+        const originalScore = score
         score = Math.round((score + aiVerification.adjustedScore) / 2) // Average the scores
+        console.log(`🤖 AI verification adjusted score from ${originalScore} to ${score}`)
       }
     } catch (error) {
       console.warn('AI verification failed for high score:', error)
@@ -267,36 +319,123 @@ function extractProjectKeywords(project: any, userProfile: any) {
     populations: [] as string[] // Target populations
   }
 
+  console.log('🔍 Extracting keywords from:', {
+    projectTitle: project.title || project.name,
+    projectCategory: project.project_category || project.category,
+    orgType: userProfile.organization_type,
+    focusAreas: userProfile.primary_focus_areas
+  })
+
   // Project-specific keywords
-  if (project.title) {
-    keywords.primary.push(...extractImportantWords(project.title))
+  if (project.title || project.name) {
+    const title = project.title || project.name
+    keywords.primary.push(...extractImportantWords(title))
+    console.log('📝 Title keywords:', extractImportantWords(title))
   }
+  
   if (project.description) {
-    keywords.primary.push(...extractImportantWords(project.description))
+    const descWords = extractImportantWords(project.description)
+    keywords.primary.push(...descWords.slice(0, 8)) // Limit to most important
+    keywords.secondary.push(...descWords.slice(8, 15))
+    console.log('📄 Description keywords (primary):', descWords.slice(0, 8))
+    console.log('📄 Description keywords (secondary):', descWords.slice(8, 15))
   }
-  if (project.project_category) {
-    keywords.primary.push(project.project_category.toLowerCase())
+  
+  if (project.project_category || project.category) {
+    const category = (project.project_category || project.category).toLowerCase()
+    keywords.primary.push(category)
+    console.log('📂 Category keyword:', category)
+    
+    // Add related terms based on category
+    const categoryMappings: { [key: string]: string[] } = {
+      'technology': ['innovation', 'digital', 'software', 'tech', 'automation', 'ai', 'data', 'computer'],
+      'healthcare': ['medical', 'health', 'patient', 'clinical', 'therapeutic', 'wellness'],
+      'education': ['learning', 'academic', 'student', 'teaching', 'curriculum', 'school'],
+      'environment': ['green', 'sustainable', 'climate', 'conservation', 'renewable', 'eco'],
+      'business': ['commercial', 'enterprise', 'startup', 'entrepreneurship', 'economic', 'market'],
+      'research': ['scientific', 'study', 'analysis', 'investigation', 'development'],
+      'community': ['social', 'public', 'civic', 'local', 'neighborhood', 'outreach'],
+      'arts': ['creative', 'cultural', 'artistic', 'music', 'visual', 'performance']
+    }
+    
+    const relatedTerms = categoryMappings[category] || []
+    keywords.secondary.push(...relatedTerms)
+    console.log('🔗 Related terms for', category, ':', relatedTerms)
   }
-  if (project.primary_goals) {
+  
+  if (project.primary_goals && Array.isArray(project.primary_goals)) {
     project.primary_goals.forEach((goal: string) => {
       keywords.secondary.push(...extractImportantWords(goal))
     })
+    console.log('🎯 Goal keywords:', project.primary_goals.flatMap((g: string) => extractImportantWords(g)))
   }
+
+  // Enhanced project field extraction
+  const projectFields = [
+    'target_population', 'target_population_description',
+    'unique_innovation', 'innovation_description',
+    'outcome_measures', 'expected_outcomes',
+    'methodology', 'approach'
+  ]
+  
+  projectFields.forEach(field => {
+    if (project[field]) {
+      const fieldWords = extractImportantWords(project[field])
+      keywords.secondary.push(...fieldWords.slice(0, 3)) // Limit per field
+      console.log(`📊 ${field} keywords:`, fieldWords.slice(0, 3))
+    }
+  })
 
   // User profile keywords
-  if (userProfile.primary_focus_areas) {
-    keywords.focus_areas = Array.from(userProfile.primary_focus_areas)
+  if (userProfile.primary_focus_areas && Array.isArray(userProfile.primary_focus_areas)) {
+    keywords.focus_areas = [...userProfile.primary_focus_areas]
+    console.log('🎯 User focus areas:', keywords.focus_areas)
   }
-  if (userProfile.populations_served) {
-    keywords.populations = Array.from(userProfile.populations_served)
+  
+  if (userProfile.populations_served && Array.isArray(userProfile.populations_served)) {
+    keywords.populations = [...userProfile.populations_served]
+    console.log('👥 User populations served:', keywords.populations)
   }
+  
   if (userProfile.organization_type) {
     keywords.secondary.push(userProfile.organization_type.toLowerCase())
+    console.log('🏢 Organization type:', userProfile.organization_type.toLowerCase())
+    
+    // Add organization-specific terms
+    const orgMappings: { [key: string]: string[] } = {
+      'nonprofit': ['community', 'social', 'charitable', 'public', 'service'],
+      'for_profit': ['business', 'commercial', 'enterprise', 'market', 'revenue'],
+      'government': ['public', 'municipal', 'federal', 'state', 'agency'],
+      'academic': ['research', 'university', 'educational', 'scholarly', 'academic']
+    }
+    
+    const orgTerms = orgMappings[userProfile.organization_type] || []
+    keywords.secondary.push(...orgTerms)
+    console.log('🏢 Organization-related terms:', orgTerms)
   }
 
-  // Clean and deduplicate
-  keywords.primary = Array.from(new Set(keywords.primary.filter(k => k.length > 3)))
-  keywords.secondary = Array.from(new Set(keywords.secondary.filter(k => k.length > 3)))
+  // Add industry/sector keywords if available
+  if (userProfile.industry || userProfile.sector) {
+    const industry = (userProfile.industry || userProfile.sector).toLowerCase()
+    keywords.secondary.push(industry)
+    keywords.secondary.push(...extractImportantWords(industry))
+    console.log('🏭 Industry keywords:', industry)
+  }
+
+  // Clean and deduplicate all keywords
+  keywords.primary = Array.from(new Set(keywords.primary.filter(k => k && k.length > 3)))
+  keywords.secondary = Array.from(new Set(keywords.secondary.filter(k => k && k.length > 3)))
+  keywords.focus_areas = Array.from(new Set(keywords.focus_areas.filter(k => k && k.length > 2)))
+  keywords.populations = Array.from(new Set(keywords.populations.filter(k => k && k.length > 2)))
+  
+  console.log('✅ Final keyword extraction results:', {
+    primaryCount: keywords.primary.length,
+    secondaryCount: keywords.secondary.length,
+    focusAreaCount: keywords.focus_areas.length,
+    populationCount: keywords.populations.length,
+    primarySample: keywords.primary.slice(0, 5),
+    secondarySample: keywords.secondary.slice(0, 8)
+  })
   
   return keywords
 }
@@ -307,13 +446,22 @@ function extractProjectKeywords(project: any, userProfile: any) {
 function extractImportantWords(text: string): string[] {
   if (!text) return []
   
-  const stopWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those']
+  const stopWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'some', 'any', 'all', 'each', 'every', 'other', 'another', 'such', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'now', 'here', 'there', 'where', 'when', 'why', 'how', 'what', 'who', 'which', 'whom', 'whose', 'about', 'above', 'after', 'again', 'against', 'before', 'being', 'below', 'between', 'both', 'during', 'each', 'from', 'further', 'into', 'more', 'most', 'off', 'once', 'over', 'same', 'through', 'under', 'until', 'up', 'while']
   
+  // Enhanced word extraction with better filtering
   return text.toLowerCase()
-    .replace(/[^\w\s]/g, ' ') // Replace punctuation with spaces
+    .replace(/[^\w\s'-]/g, ' ') // Keep apostrophes and hyphens
     .split(/\s+/) // Split on whitespace
-    .filter(word => word.length > 3 && !stopWords.includes(word))
-    .slice(0, 15) // Limit to prevent too many keywords
+    .filter(word => 
+      word.length > 3 && 
+      !stopWords.includes(word) &&
+      !/^\d+$/.test(word) && // Remove pure numbers
+      !/^[a-z]{1,2}$/.test(word) && // Remove short abbreviations
+      !word.includes('http') // Remove URL fragments
+    )
+    .map(word => word.replace(/['-]$/, '')) // Clean trailing punctuation
+    .filter(word => word.length > 3) // Re-filter after cleaning
+    .slice(0, 20) // Limit to prevent too many keywords
 }
 
 /**
@@ -361,7 +509,12 @@ function calculateKeywordMatch(opportunity: any, keywords: any) {
     (opportunity.target_populations || []).join(' '),
     (opportunity.eligibility_criteria || []).join(' '), // ADD ELIGIBILITY CRITERIA
     opportunity.application_process || '', // ADD APPLICATION PROCESS
-    (opportunity.required_documents || []).join(' ') // ADD REQUIRED DOCUMENTS
+    (opportunity.required_documents || []).join(' '), // ADD REQUIRED DOCUMENTS
+    opportunity.sponsor || '', // ADD SPONSOR INFO
+    (opportunity.organization_types || []).join(' '), // ADD ORG TYPES
+    (opportunity.project_types || []).join(' '), // ADD PROJECT TYPES
+    opportunity.cfda_number || '', // ADD CFDA NUMBER
+    opportunity.source || '' // ADD SOURCE
   ].join(' ').toLowerCase()
 
   let score = 0
@@ -369,40 +522,104 @@ function calculateKeywordMatch(opportunity: any, keywords: any) {
   const weaknesses: string[] = []
   const matchedKeywords: string[] = []
 
+  console.log('🔍 Keyword matching debug:', {
+    opportunityTitle: opportunity.title,
+    oppTextLength: oppText.length,
+    oppTextPreview: oppText.substring(0, 200) + '...',
+    primaryKeywords: keywords.primary,
+    secondaryKeywords: keywords.secondary,
+    focusAreas: keywords.focus_areas,
+    populations: keywords.populations
+  })
+
   // Check primary keywords (worth more)
+  let primaryMatches = 0
   keywords.primary.forEach((keyword: string) => {
     if (oppText.includes(keyword.toLowerCase())) {
       score += 4
       matchedKeywords.push(keyword)
+      primaryMatches++
+      console.log(`✅ Primary keyword match: "${keyword}"`)
     }
   })
 
   // Check secondary keywords
+  let secondaryMatches = 0
   keywords.secondary.forEach((keyword: string) => {
     if (oppText.includes(keyword.toLowerCase())) {
       score += 2
       matchedKeywords.push(keyword)
+      secondaryMatches++
+      console.log(`✅ Secondary keyword match: "${keyword}"`)
     }
   })
 
   // Check focus areas (high value)
+  let focusMatches = 0
   keywords.focus_areas.forEach((area: string) => {
     if (oppText.includes(area.toLowerCase())) {
       score += 6
       matchedKeywords.push(area)
+      focusMatches++
+      console.log(`✅ Focus area match: "${area}"`)
     }
   })
 
   // Check populations (medium value)
+  let popMatches = 0
   keywords.populations.forEach((pop: string) => {
     if (oppText.includes(pop.toLowerCase())) {
       score += 3
       matchedKeywords.push(pop)
+      popMatches++
+      console.log(`✅ Population match: "${pop}"`)
     }
   })
 
+  // ENHANCED MATCHING: Check for semantic matches and partial matches
+  // Check for technology-related terms if it's a tech project
+  if (keywords.primary.some(k => ['technology', 'software', 'digital', 'ai', 'data'].includes(k.toLowerCase()))) {
+    const techTerms = ['innovation', 'research', 'development', 'tech', 'stem', 'computer', 'automation', 'engineering']
+    const techMatches = techTerms.filter(term => oppText.includes(term)).length
+    if (techMatches > 0) {
+      score += techMatches * 2
+      matchedKeywords.push(...techTerms.filter(term => oppText.includes(term)))
+      console.log(`✅ Tech semantic matches: ${techMatches}`)
+    }
+  }
+
+  // Check for business development terms
+  if (keywords.primary.some(k => ['business', 'commercial', 'startup', 'entrepreneur'].includes(k.toLowerCase()))) {
+    const businessTerms = ['economic', 'growth', 'development', 'innovation', 'commercialization', 'market']
+    const businessMatches = businessTerms.filter(term => oppText.includes(term)).length
+    if (businessMatches > 0) {
+      score += businessMatches * 2
+      matchedKeywords.push(...businessTerms.filter(term => oppText.includes(term)))
+      console.log(`✅ Business semantic matches: ${businessMatches}`)
+    }
+  }
+
+  // Check for organization type alignment bonus
+  const orgType = opportunity.organization_types || []
+  const userOrgHints = keywords.secondary.filter(k => ['nonprofit', 'profit', 'business', 'government'].includes(k))
+  if (userOrgHints.length > 0 && orgType.some(type => 
+    userOrgHints.some(hint => type.toLowerCase().includes(hint) || hint.includes(type.toLowerCase()))
+  )) {
+    score += 5
+    console.log(`✅ Organization type alignment bonus`)
+  }
+
   // Cap at 40 points
   score = Math.min(score, 40)
+
+  console.log('📊 Keyword matching results:', {
+    totalScore: score,
+    primaryMatches,
+    secondaryMatches,
+    focusMatches,
+    popMatches,
+    totalMatches: matchedKeywords.length
+  })
 
   if (score >= 20) strengths.push(`Strong keyword alignment (${matchedKeywords.length} matches)`)
   else if (score >= 10) strengths.push(`Moderate keyword alignment (${matchedKeywords.length} matches)`)
@@ -413,9 +630,14 @@ function calculateKeywordMatch(opportunity: any, keywords: any) {
     strengths,
     weaknesses,
     details: {
-      matchedKeywords: matchedKeywords.slice(0, 10),
+      matchedKeywords: Array.from(new Set(matchedKeywords)).slice(0, 15), // Remove duplicates and limit
       totalMatches: matchedKeywords.length,
-      scoreBreakdown: { primary: keywords.primary.length, secondary: keywords.secondary.length }
+      scoreBreakdown: { 
+        primary: primaryMatches, 
+        secondary: secondaryMatches,
+        focus: focusMatches,
+        population: popMatches
+      }
     }
   }
 }

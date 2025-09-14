@@ -9,6 +9,7 @@ import {
   ExternalLink, 
   MapPin, 
   Award, 
+  AlertTriangle, 
   Clock, 
   FileText,
   Users,
@@ -231,18 +232,113 @@ export default function OpportunityDetailModal({
                     Eligibility Requirements
                   </h3>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    {opportunity.eligibility_requirements ? (
-                      <ul className="space-y-2">
-                        {opportunity.eligibility_requirements.split('\n').filter(req => req.trim()).map((req, index) => (
-                          <li key={index} className="flex items-start">
-                            <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-gray-700">{req.trim()}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-gray-500 text-sm">No specific eligibility requirements listed. Check the full opportunity details.</p>
-                    )}
+                    {(() => {
+                      // Check multiple possible eligibility fields
+                      const eligibilityRequirements = opportunity.eligibility_requirements || 
+                                                     opportunity.eligibility_criteria ||
+                                                     opportunity.requirements ||
+                                                     opportunity.eligibility?.requirements
+
+                      // If we have eligibility analysis from the eligibility service
+                      if (opportunity.eligibility?.requirements && opportunity.eligibility.requirements.length > 0) {
+                        return (
+                          <ul className="space-y-2">
+                            {opportunity.eligibility.requirements.map((req, index) => (
+                              <li key={index} className="flex items-start">
+                                <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm text-gray-700">{req}</span>
+                              </li>
+                            ))}
+                            {opportunity.eligibility.warnings && opportunity.eligibility.warnings.length > 0 && (
+                              <>
+                                <li className="pt-2 border-t border-gray-200">
+                                  <span className="text-xs font-medium text-orange-700 uppercase">Warnings:</span>
+                                </li>
+                                {opportunity.eligibility.warnings.map((warning, index) => (
+                                  <li key={`warning-${index}`} className="flex items-start">
+                                    <AlertTriangle className="w-4 h-4 text-orange-500 mr-2 mt-0.5 flex-shrink-0" />
+                                    <span className="text-sm text-orange-700">{warning}</span>
+                                  </li>
+                                ))}
+                              </>
+                            )}
+                          </ul>
+                        )
+                      }
+
+                      // Check raw text eligibility requirements
+                      if (eligibilityRequirements && typeof eligibilityRequirements === 'string') {
+                        return (
+                          <ul className="space-y-2">
+                            {eligibilityRequirements.split('\n').filter(req => req.trim()).map((req, index) => (
+                              <li key={index} className="flex items-start">
+                                <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm text-gray-700">{req.trim()}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      }
+
+                      // Check if eligibility requirements are an array
+                      if (Array.isArray(eligibilityRequirements)) {
+                        return (
+                          <ul className="space-y-2">
+                            {eligibilityRequirements.map((req, index) => (
+                              <li key={index} className="flex items-start">
+                                <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm text-gray-700">{typeof req === 'string' ? req : JSON.stringify(req)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      }
+
+                      // Fallback based on organization types and other opportunity data
+                      const inferredRequirements = []
+                      if (opportunity.organization_types) {
+                        inferredRequirements.push(`Must be one of: ${opportunity.organization_types.join(', ')}`)
+                      }
+                      if (opportunity.small_business_only) {
+                        inferredRequirements.push('Must be a small business')
+                      }
+                      if (opportunity.minority_business) {
+                        inferredRequirements.push('Minority-owned businesses eligible')
+                      }
+                      if (opportunity.woman_owned_business) {
+                        inferredRequirements.push('Women-owned businesses eligible')
+                      }
+                      if (opportunity.veteran_owned_business) {
+                        inferredRequirements.push('Veteran-owned businesses eligible')
+                      }
+                      if (opportunity.geography && opportunity.geography.length > 0) {
+                        inferredRequirements.push(`Geographic eligibility: ${opportunity.geography.join(', ')}`)
+                      }
+                      if (opportunity.source === 'grants_gov' || opportunity.cfda_number) {
+                        inferredRequirements.push('SAM.gov registration required')
+                        inferredRequirements.push('DUNS/UEI number required')
+                      }
+
+                      if (inferredRequirements.length > 0) {
+                        return (
+                          <ul className="space-y-2">
+                            {inferredRequirements.map((req, index) => (
+                              <li key={index} className="flex items-start">
+                                <CheckCircle className="w-4 h-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm text-gray-700">{req}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      }
+
+                      return (
+                        <div className="text-gray-500 text-sm">
+                          <p>No specific eligibility requirements found in the opportunity data.</p>
+                          <p className="mt-2 text-xs">Run AI Analysis to get detailed eligibility requirements based on opportunity type and source.</p>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
 

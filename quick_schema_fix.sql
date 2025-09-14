@@ -26,7 +26,9 @@ ADD COLUMN IF NOT EXISTS ai_analysis JSONB,
 ADD COLUMN IF NOT EXISTS submitted_date TIMESTAMP WITH TIME ZONE,
 ADD COLUMN IF NOT EXISTS reviewed_date TIMESTAMP WITH TIME ZONE,
 ADD COLUMN IF NOT EXISTS reviewer_notes TEXT,
-ADD COLUMN IF NOT EXISTS application_draft TEXT;
+ADD COLUMN IF NOT EXISTS application_draft TEXT,
+ADD COLUMN IF NOT EXISTS application_data JSONB,
+ADD COLUMN IF NOT EXISTS generated_document TEXT;
 
 -- 4. Create grant_writer_reviews table
 CREATE TABLE IF NOT EXISTS grant_writer_reviews (
