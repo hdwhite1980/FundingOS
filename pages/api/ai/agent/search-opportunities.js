@@ -33,20 +33,11 @@ export default async function handler(req, res) {
     // Initialize the enhanced discovery system
     const discoverySystem = new AIEnhancedOpportunityDiscovery(supabase)
     
-    // Call the enhanced search with comprehensive coverage
+    // Call the enhanced search with correct parameters
     const results = await discoverySystem.performIntelligentWebSearch(
-      searchQuery, 
-      {
-        userId,
-        projectType,
-        organizationType,
-        location,
-        fundingAmount,
-        searchDepth: 'comprehensive', // Always use comprehensive for best results
-        includeGeneralWebSearch: true, // Enable general web searches
-        includeSiteSpecificSearch: true, // Enable site-specific searches
-        maxResults: 50 // Allow more results for comprehensive search
-      }
+      searchQuery,
+      projectType,
+      organizationType
     )
 
     console.log(`✅ LEGACY API WRAPPER: Enhanced discovery found ${results?.opportunities?.length || 0} opportunities`)
