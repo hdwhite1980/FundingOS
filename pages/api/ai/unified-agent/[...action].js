@@ -251,38 +251,41 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Search query is required' })
           }
 
-          console.log(`🔍 Performing web search for user ${userId}: "${searchQuery}"`)
+          console.log(`🚀 UNIFIED-AGENT SEARCH: Enhanced discovery for user ${userId}: "${searchQuery}"`)
 
-          // For now, return a mock response - in production, this would use actual search APIs
-          const mockSearchResults = {
-            opportunitiesFound: Math.floor(Math.random() * 10) + 5,
-            opportunities: [
-              {
-                title: `Foundation Grant for ${projectType || 'Community Projects'}`,
-                sponsor: 'Mock Foundation',
-                amount_max: fundingAmount || 50000,
-                deadline_date: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-                description: `Mock opportunity matching your search for: ${searchQuery}`,
-                source_url: 'https://mockfoundation.org/grants'
-              }
-            ],
-            searchPerformed: true,
-            query: searchQuery
-          }
+          // Import and use the enhanced discovery system
+          const { AIEnhancedOpportunityDiscovery } = await import('../../../../lib/ai-enhanced-opportunity-discovery')
+          const discoverySystem = new AIEnhancedOpportunityDiscovery(supabase)
+
+          // Call the enhanced search with correct parameters
+          const results = await discoverySystem.performIntelligentWebSearch(
+            searchQuery,
+            projectType || 'Technology', 
+            organizationType || 'Technology Company'
+          )
+
+          console.log(`✅ UNIFIED-AGENT SEARCH: Enhanced discovery found ${results?.opportunities?.length || 0} opportunities`)
 
           // Log search activity
           await supabase.from('agent_search_log').insert([{
             user_id: userId,
             search_query: searchQuery,
-            search_type: 'web_opportunities',
-            results_count: mockSearchResults.opportunitiesFound,
+            search_type: 'enhanced_web_discovery',
+            results_count: results?.opportunities?.length || 0,
             created_at: new Date().toISOString()
           }])
 
-          res.json(mockSearchResults)
+          // Return in expected format
+          res.json({
+            opportunitiesFound: results?.opportunities?.length || 0,
+            opportunities: results?.opportunities || [],
+            searchPerformed: true,
+            query: searchQuery,
+            metadata: results?.metadata || {}
+          })
         } catch (error) {
           console.error('Search opportunities error:', error)
-          res.status(500).json({ error: 'Failed to search opportunities' })
+          res.status(500).json({ error: 'Failed to search opportunities: ' + error.message })
         }
         break
 
