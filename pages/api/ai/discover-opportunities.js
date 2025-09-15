@@ -1,7 +1,7 @@
 // pages/api/ai/discover-opportunities.js
 // AI-Powered Opportunity Discovery API Endpoint
 
-import { AIEnhancedOpportunityDiscovery } from '../../../lib/ai-enhanced-opportunity-discovery.js'
+import AIEnhancedOpportunityDiscovery from '../../../lib/ai-enhanced-opportunity-discovery'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

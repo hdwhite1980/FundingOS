@@ -1,7 +1,7 @@
 // pages/api/ai/agent/search-opportunities.js
 // UPDATED: Now uses enhanced AI-powered discovery system with 65+ sources and general web searches
 import { createClient } from '@supabase/supabase-js'
-import { AIEnhancedOpportunityDiscovery } from '../../../lib/ai-enhanced-opportunity-discovery.js'
+import AIEnhancedOpportunityDiscovery from '../../../../lib/ai-enhanced-opportunity-discovery'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
