@@ -147,27 +147,14 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
         largest_grant: formData.largest_grant ? parseFloat(formData.largest_grant) : null
       }
 
-      let profile
-      if (existingProfile) {
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from('user_profiles')
-          .update(profileData)
-          .eq('id', user.id)
-          .select()
-          .single()
-        
-        if (updateError) throw updateError
-        profile = updatedProfile
-      } else {
-        const { data: newProfile, error: createError } = await supabase
-          .from('user_profiles')
-          .insert([profileData])
-          .select()
-          .single()
-        
-        if (createError) throw createError
-        profile = newProfile
-      }
+      // Use upsert to handle both create and update paths robustly
+      const { data: profile, error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert(profileData, { onConflict: 'id' })
+        .select()
+        .single()
+
+      if (upsertError) throw upsertError
 
       toast.success('Profile setup completed!')
       onComplete(profile)

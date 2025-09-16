@@ -36,9 +36,12 @@ export async function POST(request) {
       .from('angel_investors')
       .select('*')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
-    if (investorError) {
+    if (investorError && investorError.code !== 'PGRST116') {
+      return NextResponse.json({ error: 'Investor not found' }, { status: 404 })
+    }
+    if (!investor) {
       return NextResponse.json({ error: 'Investor not found' }, { status: 404 })
     }
 
@@ -47,9 +50,12 @@ export async function POST(request) {
       .from('projects')
       .select('*, companies(*)')
       .eq('id', projectId)
-      .single()
+      .maybeSingle()
 
-    if (projectError) {
+    if (projectError && projectError.code !== 'PGRST116') {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    }
+    if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
@@ -74,7 +80,7 @@ export async function POST(request) {
       .select('id')
       .eq('investor_id', userId)
       .eq('project_id', projectId)
-      .single()
+      .maybeSingle()
 
     if (existingInvestment) {
       return NextResponse.json({ 

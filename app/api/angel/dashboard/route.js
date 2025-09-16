@@ -31,9 +31,9 @@ export async function GET(request) {
       .from('angel_investors')
       .select('*')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
-    if (investorError && investorError.code === 'PGRST116') {
+    if (!investor && investorError && investorError.code === 'PGRST116') {
       const { data: userMeta } = await supabase.auth.admin.getUserById(userId)
       const { data: created, error: createErr } = await supabase
         .from('angel_investors')
@@ -46,7 +46,7 @@ export async function GET(request) {
         .single()
       if (createErr) return NextResponse.json({ error: createErr.message }, { status: 400 })
       investor = created
-    } else if (investorError) {
+    } else if (investorError && investorError.code !== 'PGRST116') {
       return NextResponse.json({ error: investorError.message }, { status: 400 })
     }
 

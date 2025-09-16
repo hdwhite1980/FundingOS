@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       .from('user_profiles')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
     if (error && error.code !== 'PGRST116') throw error
     return NextResponse.json({ profile: data || null })
   } catch (e: any) {

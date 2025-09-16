@@ -214,7 +214,7 @@ export default async function handler(req, res) {
             .eq('experience_type', 'thinking_cycle')
             .order('created_at', { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
 
           if (error && error.code !== 'PGRST116') throw error
           
@@ -274,7 +274,7 @@ export default async function handler(req, res) {
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
           
           if (error && error.code !== 'PGRST116') {
             throw error
@@ -1078,7 +1078,7 @@ async function initializeAgentInDatabase(userId) {
       .select('*')
       .eq('user_id', userId)
       .eq('activity_type', 'initialized')
-      .single()
+      .maybeSingle()
     
     if (existingAgent) {
       await supabase
@@ -1115,7 +1115,7 @@ async function getUserContext(userId) {
       campaignsResult,
       applicationsResult
     ] = await Promise.allSettled([
-      supabase.from('user_profiles').select('*').eq('id', userId).single(),
+      supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle(),
       supabase.from('projects').select('*').eq('user_id', userId),
       supabase.from('donors').select('*').eq('user_id', userId).limit(10),
       supabase.from('donations').select(`

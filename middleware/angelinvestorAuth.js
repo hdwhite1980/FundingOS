@@ -20,7 +20,7 @@ export async function verifyAngelInvestor(userId) {
     .from('angel_investors')
     .select('*')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (error || !investor) {
     throw new Error('Angel investor profile not found')
@@ -101,7 +101,7 @@ export async function createOrUpdateInvestorProfile(userId, profileData) {
     .from('angel_investors')
     .select('id')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (existingInvestor) {
     // Update existing profile

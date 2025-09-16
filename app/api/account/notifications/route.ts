@@ -21,7 +21,7 @@ export async function PUT(req: NextRequest) {
       .from('user_profiles')
       .select('notification_preferences')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
     if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
 
     const merged = { ...(existing?.notification_preferences || {}), ...preferences }

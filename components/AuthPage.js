@@ -71,7 +71,7 @@ export default function AuthPage() {
               .from('angel_investors')
               .select('id')
               .eq('user_id', userId)
-              .single()
+              .maybeSingle()
 
             if (!existingAngel) {
               await supabase.from('angel_investors').insert([{

@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
       .from('user_profiles')
       .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
       console.error('Database error:', error)

@@ -638,25 +638,21 @@ function CompleteSetup({ formData }) {
       
       {/* What happens next */}
       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-        <h4 className="font-medium text-emerald-800 mb-3 text-lg">🚀 What happens next?</h4>
+        <h4 className="font-medium text-emerald-800 mb-3 text-lg">What happens next?</h4>
         <div className="grid md:grid-cols-2 gap-4 text-left">
           <ul className="text-sm text-emerald-700 space-y-2">
             <li className="flex items-start">
-              <span className="mr-2">✨</span>
               <span>AI analyzes your profile for funding opportunities</span>
             </li>
             <li className="flex items-start">
-              <span className="mr-2">🎯</span>
               <span>Get personalized matches with eligibility scores</span>
             </li>
           </ul>
           <ul className="text-sm text-emerald-700 space-y-2">
             <li className="flex items-start">
-              <span className="mr-2">🤖</span>
               <span>AI-powered application assistance</span>
             </li>
             <li className="flex items-start">
-              <span className="mr-2">📊</span>
               <span>Track progress and deadlines</span>
             </li>
           </ul>

@@ -21,7 +21,7 @@ export async function POST(request) {
       .from('user_profiles')
       .select('full_name, email')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     const userEmail = profile?.email || user.email
     const userName = profile?.full_name || 'User'

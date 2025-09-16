@@ -642,7 +642,7 @@ export async function GET(request: Request) {
       .from('sam_gov_usage')
       .select('request_count')
       .eq('date', todayDate)
-      .single()
+      .maybeSingle()
       
     if (usageError && usageError.code !== 'PGRST116') {
       console.error('Error checking SAM.gov usage:', usageError)
@@ -895,7 +895,7 @@ export async function GET(request: Request) {
       .from('sam_gov_usage')
       .select('request_count')
       .eq('date', todayDate)
-      .single()
+      .maybeSingle()
 
     return NextResponse.json({
       success: true,
