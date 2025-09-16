@@ -49,6 +49,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
     full_name: existingProfile?.full_name || user.user_metadata?.full_name || '',
     organization_name: existingProfile?.organization_name || user.user_metadata?.organization_name || '',
     organization_type: existingProfile?.organization_type || '',
+    organization_types: existingProfile?.organization_types || (existingProfile?.organization_type ? [existingProfile.organization_type] : []),
     organization_type_other: existingProfile?.organization_type_other || '',
     
     // Legal Foundation
@@ -180,7 +181,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <LegalFoundation formData={formData} onChange={handleInputChange} />
+        return <LegalFoundation formData={formData} onChange={handleInputChange} onArrayChange={handleArrayChange} />
       case 2:
         return <LocationContact formData={formData} onChange={handleInputChange} onArrayChange={handleArrayChange} />
       case 3:
@@ -315,7 +316,22 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
 }
 
 // Step 1: Legal Foundation & Compliance
-function LegalFoundation({ formData, onChange }) {
+function LegalFoundation({ formData, onChange, onArrayChange }) {
+  const toggleOrgType = (value) => {
+    const current = formData.organization_types || []
+    let updated
+    if (current.includes(value)) {
+      updated = current.filter(v => v !== value)
+    } else {
+      updated = [...current, value]
+    }
+    onArrayChange('organization_types', updated)
+    const primary = updated[0] || ''
+    if (primary !== formData.organization_type) {
+      onChange({ target: { name: 'organization_type', value: primary, type: 'text' } })
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -360,24 +376,25 @@ function LegalFoundation({ formData, onChange }) {
 
       {/* Organization Type */}
       <div className="bg-blue-50 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-4">Organization Type *</h4>
+        <h4 className="font-semibold text-gray-900 mb-2">Organization Type (Select all that apply) *</h4>
+        <p className="text-sm text-gray-600 mb-4">Your primary type will be set as the first selection.</p>
         <div className="grid md:grid-cols-2 gap-3">
           {ORGANIZATION_TYPES.map((type) => (
             <label key={type.value} className="flex items-center p-3 border rounded-lg hover:bg-white cursor-pointer">
               <input
-                type="radio"
-                name="organization_type"
+                type="checkbox"
+                name="organization_types"
                 value={type.value}
-                checked={formData.organization_type === type.value}
-                onChange={onChange}
+                checked={formData.organization_types?.includes(type.value) || false}
+                onChange={() => toggleOrgType(type.value)}
                 className="mr-3"
               />
               <span className="text-sm font-medium">{type.label}</span>
             </label>
           ))}
         </div>
-        
-        {formData.organization_type === 'other' && (
+
+        {formData.organization_types?.includes('other') && (
           <div className="mt-4">
             <label className="form-label">Please specify:</label>
             <input

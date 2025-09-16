@@ -1,5 +1,5 @@
 // Remaining step components for EnhancedOnboardingFlow.js
-import { Users, Target } from 'lucide-react'
+import { Users, Target, DollarSign, Award, HelpCircle, CheckCircle } from 'lucide-react'
 
 // Step 3: Organizational Capacity
 function OrganizationalCapacity({ formData, onChange }) {
@@ -545,9 +545,24 @@ function CompleteSetup({ formData }) {
                 <span>Organization:</span>
                 <span className="font-medium text-right max-w-[200px] truncate">{formData.organization_name}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Type:</span>
-                <span className="font-medium text-right max-w-[200px]">{getOrganizationTypeLabel(formData.organization_type)}</span>
+              <div className="flex justify-between items-start">
+                <span className="mt-1">Type:</span>
+                <span className="font-medium text-right max-w-[260px]">
+                  {Array.isArray(formData.organization_types) && formData.organization_types.length > 0 ? (
+                    <span className="flex flex-wrap gap-2 justify-end">
+                      {formData.organization_types.slice(0,4).map((t, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs">
+                          {getOrganizationTypeLabel(t)}
+                        </span>
+                      ))}
+                      {formData.organization_types.length > 4 && (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">+{formData.organization_types.length - 4} more</span>
+                      )}
+                    </span>
+                  ) : (
+                    getOrganizationTypeLabel(formData.organization_type)
+                  )}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Location:</span>
