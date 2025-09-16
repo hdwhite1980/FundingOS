@@ -3,6 +3,74 @@
 -- Run this in your Supabase SQL Editor
 
 -- =============================================
+-- SCHEMA COMPATIBILITY FIXES
+-- =============================================
+
+-- First, fix any existing fields that might have wrong data types
+DO $$
+DECLARE
+  idx_record RECORD;
+BEGIN
+  RAISE NOTICE 'Starting schema compatibility fixes...';
+  
+  -- Check and fix eligibility_criteria if it's an array type
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name='opportunities' 
+             AND column_name='eligibility_criteria' 
+             AND data_type LIKE '%ARRAY%') THEN
+    RAISE NOTICE 'Converting eligibility_criteria from ARRAY to TEXT';
+    
+    -- Drop ALL indexes on eligibility_criteria column to avoid GIN operator class conflicts
+    FOR idx_record IN 
+      SELECT indexname, indexdef
+      FROM pg_indexes 
+      WHERE tablename = 'opportunities' 
+      AND (indexdef LIKE '%eligibility_criteria%' OR indexname LIKE '%eligibility%')
+    LOOP
+      RAISE NOTICE 'Dropping conflicting index: %', idx_record.indexname;
+      EXECUTE 'DROP INDEX IF EXISTS ' || idx_record.indexname || ' CASCADE';
+    END LOOP;
+    
+    -- Convert the column type with safe array handling
+    ALTER TABLE opportunities ALTER COLUMN eligibility_criteria TYPE TEXT 
+    USING CASE 
+      WHEN eligibility_criteria IS NULL THEN NULL
+      WHEN array_length(eligibility_criteria, 1) IS NULL THEN ''
+      ELSE array_to_string(eligibility_criteria, '; ')
+    END;
+    
+    -- Create a new text-compatible index
+    CREATE INDEX IF NOT EXISTS idx_opportunities_eligibility_text 
+    ON opportunities USING btree(eligibility_criteria) 
+    WHERE eligibility_criteria IS NOT NULL AND eligibility_criteria != '';
+    
+    RAISE NOTICE 'Successfully converted eligibility_criteria to TEXT';
+  END IF;
+  
+  -- Check and fix project_types if it's wrong type 
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name='opportunities' 
+             AND column_name='project_types' 
+             AND data_type != 'jsonb') THEN
+    RAISE NOTICE 'Converting project_types to JSONB';
+    
+    -- Drop any conflicting indexes
+    DROP INDEX IF EXISTS idx_opportunities_project_types;
+    
+    -- Simple conversion - clean data should be handled by cleanup script
+    ALTER TABLE opportunities ALTER COLUMN project_types TYPE JSONB USING 
+      CASE 
+        WHEN project_types IS NULL THEN '[]'::jsonb
+        WHEN length(trim(project_types)) = 0 THEN '[]'::jsonb
+        WHEN project_types = 'null' THEN '[]'::jsonb
+        ELSE '[]'::jsonb  -- Default to empty array for safety
+      END;
+      
+    RAISE NOTICE 'Successfully converted project_types to JSONB';
+  END IF;
+END $$;
+
+-- =============================================
 -- OPPORTUNITIES TABLE ENHANCEMENTS
 -- =============================================
 
@@ -134,6 +202,12 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='opportunities' AND column_name='eligibility_criteria') THEN
     ALTER TABLE opportunities ADD COLUMN eligibility_criteria TEXT;
+  ELSE
+    -- Check if the existing eligibility_criteria is an array type and convert it to TEXT
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='opportunities' AND column_name='eligibility_criteria' AND data_type LIKE '%ARRAY%') THEN
+      -- Convert array column to TEXT
+      ALTER TABLE opportunities ALTER COLUMN eligibility_criteria TYPE TEXT USING array_to_string(eligibility_criteria, '; ');
+    END IF;
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='opportunities' AND column_name='application_requirements') THEN
@@ -190,6 +264,10 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_matching_projects_gin ON opportunit
 CREATE INDEX IF NOT EXISTS idx_opportunities_competitive_analysis_gin ON opportunities USING GIN(competitive_analysis);
 CREATE INDEX IF NOT EXISTS idx_opportunities_recommended_actions_gin ON opportunities USING GIN(recommended_actions);
 CREATE INDEX IF NOT EXISTS idx_opportunities_project_types_gin ON opportunities USING GIN(project_types);
+
+-- Text search indexes (for TEXT fields)
+CREATE INDEX IF NOT EXISTS idx_opportunities_eligibility_text ON opportunities USING btree(eligibility_criteria) WHERE eligibility_criteria IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_opportunities_description_text ON opportunities USING btree(description) WHERE description IS NOT NULL;
 
 -- Funding and deadline indexes
 CREATE INDEX IF NOT EXISTS idx_opportunities_estimated_funding ON opportunities(estimated_funding DESC);
