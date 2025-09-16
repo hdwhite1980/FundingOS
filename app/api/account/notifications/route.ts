@@ -26,10 +26,10 @@ export async function PUT(req: NextRequest) {
 
     const merged = { ...(existing?.notification_preferences || {}), ...preferences }
 
+    const payload = { id: userId, notification_preferences: merged, updated_at: new Date().toISOString() }
     const { data, error } = await supabase
       .from('user_profiles')
-      .update({ notification_preferences: merged, updated_at: new Date().toISOString() })
-      .eq('id', userId)
+      .upsert(payload, { onConflict: 'id' })
       .select()
       .single()
     if (error) throw error
