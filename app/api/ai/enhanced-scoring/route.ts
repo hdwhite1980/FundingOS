@@ -4,6 +4,31 @@
 import { NextResponse } from 'next/server'
 import aiProviderService from '../../../../lib/aiProviderService'
 
+// Helper function to handle array or text fields safely
+function safeJoinField(field: any): string {
+  if (!field) return ''
+  if (Array.isArray(field)) return field.join(' ')
+  if (typeof field === 'string') return field
+  return String(field)
+}
+
+// Helper function to safely get array from field that might be text, array, or JSONB
+function safeArrayField(field: any): string[] {
+  if (!field) return []
+  if (Array.isArray(field)) return field
+  if (typeof field === 'string') {
+    // Try to parse as JSON first
+    try {
+      const parsed = JSON.parse(field)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // If not JSON, split by common delimiters
+      return field.split(/[,;|]/).map(s => s.trim()).filter(s => s.length > 0)
+    }
+  }
+  return []
+}
+
 export async function POST(request: Request) {
   try {
     const { opportunity, project, userProfile, action } = await request.json()
@@ -495,9 +520,10 @@ function checkHardStops(opportunity: any, project: any, userProfile: any) {
   const reasons: string[] = []
 
   // Organization type check
-  if (opportunity.organization_types?.length > 0 && 
-      !opportunity.organization_types.includes(userProfile.organization_type) && 
-      !opportunity.organization_types.includes('all')) {
+  const orgTypes = safeArrayField(opportunity.organization_types)
+  if (orgTypes.length > 0 && 
+      !orgTypes.includes(userProfile.organization_type) && 
+      !orgTypes.includes('all')) {
     reasons.push('Organization type not eligible')
   }
 
@@ -529,16 +555,16 @@ function calculateKeywordMatch(opportunity: any, keywords: any) {
     opportunity.title || '',
     opportunity.description || '',
     opportunity.synopsis || '',
-    (opportunity.focus_areas || []).join(' '),
-    (opportunity.target_populations || []).join(' '),
-    (opportunity.eligibility_criteria || []).join(' '), // ADD ELIGIBILITY CRITERIA
-    opportunity.application_process || '', // ADD APPLICATION PROCESS
-    (opportunity.required_documents || []).join(' '), // ADD REQUIRED DOCUMENTS
-    opportunity.sponsor || '', // ADD SPONSOR INFO
-    (opportunity.organization_types || []).join(' '), // ADD ORG TYPES
-    (opportunity.project_types || []).join(' '), // ADD PROJECT TYPES
-    opportunity.cfda_number || '', // ADD CFDA NUMBER
-    opportunity.source || '' // ADD SOURCE
+    safeJoinField(opportunity.focus_areas),
+    safeJoinField(opportunity.target_populations),
+    safeJoinField(opportunity.eligibility_criteria),
+    opportunity.application_process || '',
+    safeJoinField(opportunity.required_documents),
+    opportunity.sponsor || '',
+    safeJoinField(opportunity.organization_types),
+    safeJoinField(opportunity.project_types),
+    opportunity.cfda_number || '',
+    opportunity.source || ''
   ].join(' ').toLowerCase()
 
   let score = 0
@@ -676,7 +702,7 @@ function calculateKeywordMatch(opportunity: any, keywords: any) {
   }
 
   // Check for organization type alignment bonus
-  const orgType = opportunity.organization_types || []
+  const orgType = safeArrayField(opportunity.organization_types)
   const userOrgHints = keywords.secondary.filter(k => ['nonprofit', 'profit', 'business', 'government'].includes(k))
   if (userOrgHints.length > 0 && orgType.some(type => 
     userOrgHints.some(hint => type.toLowerCase().includes(hint) || hint.includes(type.toLowerCase()))
@@ -769,10 +795,11 @@ function checkOrganizationType(opportunity: any, userProfile: any) {
   const strengths: string[] = []
   const weaknesses: string[] = []
 
-  if (!opportunity.organization_types || opportunity.organization_types.includes('all')) {
+  const orgTypesEligible = safeArrayField(opportunity.organization_types)
+  if (!orgTypesEligible.length || orgTypesEligible.includes('all')) {
     score = 20
     strengths.push('Organization type eligible')
-  } else if (opportunity.organization_types.includes(userProfile.organization_type)) {
+  } else if (orgTypesEligible.includes(userProfile.organization_type)) {
     score = 20
     strengths.push(`${userProfile.organization_type} organizations explicitly eligible`)
   } else {
