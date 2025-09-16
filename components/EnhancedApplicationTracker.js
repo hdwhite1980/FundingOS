@@ -29,6 +29,7 @@ import {
 import toast from 'react-hot-toast'
 import smartFormCompletionService from '../lib/smartFormCompletionService'
 import documentAnalysisService from '../lib/documentAnalysisService'
+import documentGenerationService from '../lib/documentGenerationService' // Add this import
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 
@@ -54,6 +55,7 @@ export default function EnhancedApplicationTracker({
   const [currentFileName, setCurrentFileName] = useState('')
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false)
   const [analysisData, setAnalysisData] = useState(null)
+  const [dynamicFormStructure, setDynamicFormStructure] = useState(null) // Add this state
 
   // Handle file upload and analysis
   const handleFileUpload = async (files) => {
@@ -82,13 +84,41 @@ export default function EnhancedApplicationTracker({
         if (fileContent) {
           const analysis = await documentAnalysisService.analyzeDocument(
             fileContent, 
-            file.type || 'application/pdf',
+            'application',
             {
               userProfile,
               projectData: projects.find(p => p.id === selectedProject),
               analysisType: 'application_form'
             }
           )
+
+          // IMPORTANT: Also extract dynamic form structure
+          try {
+            const formAnalysisResponse = await fetch('/api/ai/dynamic-form-analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                documentContent: fileContent,
+                documentType: 'grant_application',
+                extractionMode: 'comprehensive',
+                context: {
+                  fileName: file.name,
+                  userProfile,
+                  projectData: projects.find(p => p.id === selectedProject)
+                }
+              })
+            })
+            
+            if (formAnalysisResponse.ok) {
+              const formResult = await formAnalysisResponse.json()
+              if (formResult.success && formResult.data?.formStructure) {
+                setDynamicFormStructure(formResult.data.formStructure)
+                console.log(`📝 Extracted dynamic form structure with ${Object.keys(formResult.data.formStructure.formFields || {}).length} fields`)
+              }
+            }
+          } catch (formError) {
+            console.warn('Dynamic form analysis failed for', file.name, formError)
+          }
           
           analyses.push({
             fileName: file.name,
@@ -264,91 +294,72 @@ export default function EnhancedApplicationTracker({
     toast.info('Info collection cancelled. You can try again when ready.')
   }
 
-  // Handle download of generated application
+  // UPDATED: Handle download of generated application using our new document generation system
   const handleDownloadApplication = async () => {
     try {
       setProcessing(true)
       
       const project = projects.find(p => p.id === selectedProject)
-      const mockOpportunity = {
-        id: `ai-generated-${Date.now()}`,
-        title: filledForm.opportunity_title || 'AI-Generated Application',
-        description: 'Generated from uploaded documents',
-        sponsor: filledForm.sponsor || 'Various Sponsors',
-        amount_min: parseFloat(filledForm.funding_amount || filledForm.budget_amount || 0),
-        amount_max: parseFloat(filledForm.funding_amount || filledForm.budget_amount || 50000),
-        deadline_date: filledForm.deadline || null,
-        eligibility_requirements: filledForm.requirements || 'Standard requirements apply'
+      
+      // Check if we have the dynamic form structure from analysis
+      if (!dynamicFormStructure) {
+        toast.error('No form structure available for generation')
+        return
       }
 
-      // Prepare form template from document analysis
-      let formTemplate = null
-      if (documentAnalysis && documentAnalysis.length > 0) {
-        // Combine all form fields from analyzed documents
-        const combinedFormFields = {}
-        documentAnalysis.forEach(({ analysis, fileName }) => {
-          if (analysis.formFields) {
-            Object.assign(combinedFormFields, analysis.formFields)
-          }
-        })
-        
-        if (Object.keys(combinedFormFields).length > 0) {
-          formTemplate = {
-            formFields: combinedFormFields,
-            fileName: documentAnalysis[0]?.fileName || 'Analyzed_Document',
-            source: 'document_analysis'
-          }
-          console.log('📝 Using form template from document analysis:', formTemplate.fileName)
-        }
-      }
-
-      const applicationData = {
-        opportunity: mockOpportunity,
-        project: project,
-        userProfile: userProfile,
-        analysis: {
-          fitScore: formCompletion?.completionPercentage || 75,
-          strengths: formCompletion?.strengths || ['Application generated successfully'],
-          challenges: formCompletion?.challenges || [],
-          recommendations: formCompletion?.recommendations || ['Review and customize as needed'],
-          nextSteps: formCompletion?.nextSteps || ['Submit to grant agency'],
-          confidence: formCompletion?.confidence || 0.8,
-          reasoning: formCompletion?.reasoning || 'AI-generated application'
-        },
-        formTemplate: formTemplate, // Add the form template here
-        applicationDraft: '',
-        createdAt: new Date().toISOString()
-      }
-
-      const response = await fetch('/api/ai/generate-document', {
+      // Call our document generation API
+      const response = await fetch('/api/ai/document-generation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          applicationData,
-          documentType: 'grant-application'
-        }),
+          formStructure: dynamicFormStructure,
+          userData: {
+            organization: userProfile?.organization || userProfile || {},
+            project: project || {},
+            user: userProfile || {}
+          },
+          options: {
+            includeEmptyFields: false,
+            addInstructions: true,
+            format: 'pdf'
+          },
+          action: 'generate'
+        })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate document')
+        throw new Error('Generation API failed')
       }
 
       const result = await response.json()
-      
-      // Create and download the document
-      const blob = new Blob([result.document], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.style.display = 'none'
-      a.href = url
-      a.download = `${project.name}_${mockOpportunity.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_application.docx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
+      if (result.success) {
+        // Generate client-side PDF using our document generation service
+        const generatedDoc = await documentGenerationService.generateCompletedForm(
+          dynamicFormStructure,
+          {
+            organization: userProfile?.organization || userProfile || {},
+            project: project || {},
+            user: userProfile || {}
+          },
+          {
+            fieldMappings: result.data.fieldMappings,
+            styles: { includeEmptyFields: false, addInstructions: true }
+          }
+        )
 
-      toast.success('Application document downloaded successfully!')
+        if (generatedDoc.success) {
+          // Download the generated PDF
+          documentGenerationService.downloadPDF(
+            generatedDoc.document,
+            `completed-${project?.name || 'application'}.pdf`
+          )
+          toast.success('Application document downloaded successfully!')
+        } else {
+          throw new Error(generatedDoc.error)
+        }
+      } else {
+        throw new Error(result.message || 'Generation failed')
+      }
       
     } catch (error) {
       console.error('Download error:', error)
@@ -511,6 +522,9 @@ export default function EnhancedApplicationTracker({
                 <p><strong>Type:</strong> {doc.analysis?.documentType || 'Unknown'}</p>
                 <p><strong>Fields Found:</strong> {Object.keys(doc.analysis?.formFields || {}).length}</p>
                 <p><strong>Requirements:</strong> {doc.analysis?.requirements?.length || 0} found</p>
+                {dynamicFormStructure && (
+                  <p><strong>Form Fields Extracted:</strong> {Object.keys(dynamicFormStructure.formFields || {}).length}</p>
+                )}
               </div>
             </div>
           ))}
@@ -670,6 +684,12 @@ export default function EnhancedApplicationTracker({
             <span className="text-slate-600">Completion:</span>
             <div className="font-medium text-slate-900">{formCompletion?.completionPercentage || 0}%</div>
           </div>
+          {dynamicFormStructure && (
+            <div>
+              <span className="text-slate-600">Form Fields Detected:</span>
+              <div className="font-medium text-slate-900">{Object.keys(dynamicFormStructure.formFields || {}).length}</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -682,7 +702,7 @@ export default function EnhancedApplicationTracker({
         </button>
         <button
           onClick={handleDownloadApplication}
-          disabled={processing}
+          disabled={processing || !dynamicFormStructure}
           className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {processing ? (
