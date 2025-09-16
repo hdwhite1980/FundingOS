@@ -8,9 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import aiProviderService from '../../../../lib/aiProviderService'
 
-const MAX_TOKENS = 4000
-
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     const { 
       formStructure,
@@ -156,7 +154,7 @@ async function generateCompletedDocument(formStructure, userData, options) {
 
 async function generateIntelligentMappings(formStructure, userData, options) {
   const mappingPrompt = `
-Analyze this form structure and user data to create intelligent field mappings:
+Analyze this form structure and user data to create intelligent field mappings for ANY type of form:
 
 FORM STRUCTURE:
 ${JSON.stringify(formStructure, null, 2)}
@@ -164,14 +162,26 @@ ${JSON.stringify(formStructure, null, 2)}
 USER DATA:
 ${JSON.stringify(userData, null, 2)}
 
-Create comprehensive field mappings that:
-1. Map form fields to available user data
-2. Handle missing data gracefully
-3. Suggest data transformations where needed
-4. Identify calculated fields
-5. Recommend fallback values
+Create comprehensive field mappings by analyzing field labels semantically. Map fields based on their MEANING, not specific text matches:
 
-Focus on accuracy and completeness. Consider field types, validation rules, and semantic meaning.
+MAPPING STRATEGY:
+1. ORGANIZATION FIELDS: Look for variations of company/org name, legal name, business name
+2. CONTACT FIELDS: Name, title, phone, email, address variations  
+3. FINANCIAL FIELDS: EIN, tax ID, budget, amount, funding variations
+4. PROJECT FIELDS: Project name, description, goals, timeline variations
+5. NARRATIVE FIELDS: Mission, history, needs, outcomes, evaluation variations
+6. ADMINISTRATIVE: Dates, signatures, certifications variations
+
+FIELD LABEL SEMANTIC ANALYSIS:
+- "Organization name" = "Company name" = "Legal name" = "Entity name"
+- "EIN" = "Tax ID" = "Federal ID" = "Employer ID"
+- "Executive Director" = "CEO" = "President" = "Director" = "Contact person"
+- "Project name" = "Program name" = "Initiative name" = "Campaign name"
+- "Amount requested" = "Funding needed" = "Grant amount" = "Budget request"
+- "Mission statement" = "Purpose" = "Organizational mission"
+- And so on...
+
+Use intelligent semantic matching to map user data to form fields regardless of exact wording.
 
 REQUIRED JSON RESPONSE:
 {
@@ -180,9 +190,9 @@ REQUIRED JSON RESPONSE:
       "dataPath": "path.to.user.data",
       "transformation": "formatting rule if needed",
       "confidence": number (0-1),
-      "fallbackValue": "default if primary data missing",
+      "fallbackValue": "actual user data value",
       "requiresInput": boolean,
-      "mappingReason": "explanation of mapping logic"
+      "mappingReason": "semantic reason for mapping"
     }
   },
   "missingData": [
@@ -195,15 +205,9 @@ REQUIRED JSON RESPONSE:
       "priority": "high|medium|low"
     }
   ],
-  "calculatedFields": {
-    "field_id": {
-      "formula": "calculation logic",
-      "dependencies": ["other_field_ids"],
-      "fallback": "value if calculation fails"
-    }
-  },
+  "calculatedFields": {},
   "confidence": number (0-1),
-  "recommendedActions": ["list of suggestions for improving completion"]
+  "recommendedActions": ["suggestions for improving completion"]
 }
   `
 
@@ -212,7 +216,7 @@ REQUIRED JSON RESPONSE:
     [
       {
         role: 'system',
-        content: 'You are an expert at mapping form fields to user data. Create intelligent, accurate field mappings that maximize form completion. Always respond with valid JSON.'
+        content: 'You are an expert at semantic field mapping. Analyze field labels for MEANING rather than exact text matches. Map user data intelligently to any form type. Always respond with valid JSON.'
       },
       {
         role: 'user',
@@ -232,6 +236,8 @@ REQUIRED JSON RESPONSE:
 
   return aiProviderService.safeParseJSON(response.content)
 }
+
+// Remove the Missouri-specific function since we want universal support
 
 async function populateFormFields(formStructure, userData, mappings) {
   const populated = {}
@@ -333,33 +339,107 @@ function applyTransformation(value, transformation, fieldType) {
 function basicFieldMatch(field, userData) {
   const label = field.label.toLowerCase()
   
-  // Organization fields
-  if (label.includes('organization') || label.includes('company')) {
-    return userData.organization?.name
-  }
-  if (label.includes('ein') || label.includes('tax')) {
-    return userData.organization?.ein
-  }
-  if (label.includes('address')) {
-    const addr = userData.organization?.address
-    return addr ? `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}` : null
-  }
-  if (label.includes('phone')) {
-    return userData.organization?.phone || userData.user?.phone
-  }
-  if (label.includes('email')) {
-    return userData.organization?.email || userData.user?.email
+  // Extract actual user data from the structure provided
+  const org = userData.organization || userData.user || {}
+  const project = userData.project || {}
+  const user = userData.user || {}
+  
+  // ORGANIZATION NAME VARIATIONS
+  if (label.match(/(organization|company|entity|business|legal)\s*(name|title)/)) {
+    return org.organization_name || org.full_name || org.name || user.full_name
   }
   
-  // Project fields
-  if (label.includes('project') && label.includes('title')) {
-    return userData.project?.title
+  // TAX AND LEGAL IDENTIFIERS
+  if (label.match(/(ein|tax\s*id|federal\s*id|employer\s*id|tax\s*exempt)/)) {
+    return org.ein || org.tax_id || org.taxId
   }
-  if (label.includes('project') && label.includes('description')) {
-    return userData.project?.description
+  
+  // ADDRESS COMPONENTS
+  if (label.includes('address') && !label.includes('email')) {
+    return org.address_line1 || org.address?.street || org.address
   }
-  if (label.includes('budget') || label.includes('amount')) {
-    return userData.project?.budgetTotal
+  if (label.match(/^city/)) {
+    return org.city || org.address?.city
+  }
+  if (label.match(/^state/)) {
+    return org.state || org.state_province || org.address?.state
+  }
+  if (label.match(/(zip|postal)/)) {
+    return org.zip_code || org.postal_code || org.address?.zip
+  }
+  
+  // CONTACT INFORMATION
+  if (label.match(/(phone|telephone|tel)/)) {
+    return org.phone || user.phone
+  }
+  if (label.includes('email')) {
+    return org.email || user.email
+  }
+  if (label.includes('website')) {
+    return org.website
+  }
+  
+  // EXECUTIVE/LEADERSHIP ROLES
+  if (label.match(/(executive|director|ceo|president|leader|contact)/)) {
+    return user.full_name || org.executive_director || org.contact_person
+  }
+  
+  // ORGANIZATIONAL INFORMATION
+  if (label.includes('mission')) {
+    return org.mission_statement || 'To be provided upon request'
+  }
+  if (label.match(/(annual|yearly).*budget/)) {
+    return org.annual_budget || org.annual_revenue
+  }
+  if (label.includes('history')) {
+    return `${org.organization_name || 'Our organization'} was established in ${org.incorporation_year || org.founded_year || '[year]'} and has been serving the community since then.`
+  }
+  
+  // PROJECT/PROGRAM INFORMATION
+  if (label.match(/(project|program|initiative|campaign).*name/)) {
+    return project.name || project.title
+  }
+  if (label.match(/(project|program).*description/)) {
+    return project.description || project.summary
+  }
+  if (label.match(/(amount|funding|budget).*request/)) {
+    return project.funding_request_amount || project.funding_needed || project.funding_goal
+  }
+  if (label.match(/(total|project).*budget/)) {
+    return project.total_project_budget || project.funding_goal
+  }
+  if (label.match(/(timeline|duration|period)/)) {
+    return project.timeline || project.project_duration || `${project.project_duration || '12'} months`
+  }
+  
+  // NARRATIVE FIELDS
+  if (label.match(/(goal|objective)/)) {
+    return project.primary_goals || 'Project goals will be defined to meet program requirements'
+  }
+  if (label.match(/(need|problem|challenge)/)) {
+    return project.community_benefit || 'Community needs assessment will be provided'
+  }
+  if (label.includes('evaluation')) {
+    return project.evaluation_plan || 'Evaluation methodology will be developed in accordance with best practices'
+  }
+  if (label.match(/(outcome|impact|result)/)) {
+    return project.outcome_measures || 'Measurable outcomes will be tracked throughout the project period'
+  }
+  if (label.includes('geographic')) {
+    return project.project_location || org.geographic_service_area || org.city + ', ' + org.state
+  }
+  
+  // FINANCIAL INFORMATION
+  if (label.match(/(revenue|income)/)) {
+    return org.annual_revenue
+  }
+  if (label.includes('employee') && label.includes('count')) {
+    return org.employee_count || org.full_time_staff
+  }
+  
+  // DATE FIELDS
+  if (label.includes('date') || label.includes('deadline')) {
+    return new Date().toLocaleDateString()
   }
   
   return null
