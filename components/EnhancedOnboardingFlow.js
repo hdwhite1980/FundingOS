@@ -140,11 +140,11 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
         id: user.id,
         email: user.email,
         setup_completed: true,
-        annual_budget: formData.annual_budget ? parseFloat(formData.annual_budget) : null,
-        years_in_operation: formData.years_in_operation ? parseInt(formData.years_in_operation) : null,
-        full_time_staff: formData.full_time_staff ? parseInt(formData.full_time_staff) : null,
-        board_size: formData.board_size ? parseInt(formData.board_size) : null,
-        largest_grant: formData.largest_grant ? parseFloat(formData.largest_grant) : null
+        annual_budget: formData.annual_budget === '' ? null : (formData.annual_budget ? parseFloat(formData.annual_budget) : null),
+        years_in_operation: formData.years_in_operation === '' ? null : (formData.years_in_operation ? parseInt(formData.years_in_operation) : null),
+        full_time_staff: formData.full_time_staff === '' ? null : (formData.full_time_staff ? parseInt(formData.full_time_staff) : null),
+        board_size: formData.board_size === '' ? null : (formData.board_size ? parseInt(formData.board_size) : null),
+        largest_grant: formData.largest_grant === '' ? null : (formData.largest_grant ? parseFloat(formData.largest_grant) : null)
       }
 
       // Use upsert to handle both create and update paths robustly

@@ -36,7 +36,34 @@ export async function PUT(req: NextRequest) {
     }
     const supabase = getServerClient()
 
-    const payload = { id: userId, ...updates, updated_at: new Date().toISOString() }
+    // Sanitize: convert empty strings to null and coerce numeric fields
+    const numericFields = new Set([
+      'annual_budget',
+      'years_in_operation',
+      'full_time_staff',
+      'board_size',
+      'largest_grant'
+    ])
+
+    const sanitizedUpdates: Record<string, any> = {}
+    for (const [key, val] of Object.entries(updates)) {
+      if (val === '') {
+        sanitizedUpdates[key] = null
+        continue
+      }
+      if (numericFields.has(key)) {
+        if (val === null || val === undefined) {
+          sanitizedUpdates[key] = null
+        } else {
+          const n = typeof val === 'string' ? Number(val) : Number(val as any)
+          sanitizedUpdates[key] = Number.isFinite(n) ? n : null
+        }
+        continue
+      }
+      sanitizedUpdates[key] = val
+    }
+
+    const payload = { id: userId, ...sanitizedUpdates, updated_at: new Date().toISOString() }
     const { data, error } = await supabase
       .from('user_profiles')
       .upsert(payload, { onConflict: 'id' })
