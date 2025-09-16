@@ -1,4 +1,5 @@
 // Remaining step components for EnhancedOnboardingFlow.js
+import { Users, Target } from 'lucide-react'
 
 // Step 3: Organizational Capacity
 function OrganizationalCapacity({ formData, onChange }) {

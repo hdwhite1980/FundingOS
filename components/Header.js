@@ -3,10 +3,12 @@ import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import { Bell, Search, Settings, LogOut, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import Logo from './Logo'
+import AccountSettingsModal from './AccountSettingsModal'
 
 export default function Header({ user, userProfile, onProfileUpdate }) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
   const supabase = useSupabaseClient()
 
   const handleSignOut = async () => {
@@ -110,7 +112,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
             </div>
 
             {/* Settings */}
-            <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
+            <button onClick={() => setShowAccountSettings(true)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors">
               <Settings className="w-5 h-5" />
             </button>
 
@@ -151,7 +153,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
                   </div>
 
                   <div className="py-2">
-                    <button className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center">
+                    <button onClick={() => { setShowAccountSettings(true); setShowUserMenu(false) }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center">
                       <Settings className="w-4 h-4 mr-3" />
                       <span>Account Settings</span>
                     </button>
@@ -182,6 +184,15 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
             setShowNotifications(false)
           }}
         ></div>
+      )}
+
+      {showAccountSettings && (
+        <AccountSettingsModal
+          user={user}
+          userProfile={userProfile}
+          onUpdated={(p) => onProfileUpdate && onProfileUpdate(p)}
+          onClose={() => setShowAccountSettings(false)}
+        />
       )}
     </header>
   )
