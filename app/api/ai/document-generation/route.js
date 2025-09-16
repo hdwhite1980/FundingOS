@@ -5,10 +5,10 @@
  * File: app/api/ai/document-generation/route.js
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import aiProviderService from '../../../../lib/aiProviderService'
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     const { 
       formStructure,
