@@ -1,8 +1,9 @@
 /**
- * Enhanced Document Upload Modal with AI Analysis
+ * Enhanced Document Upload Modal with AI Analysis and Form Generation
  * 
  * This modal provides intelligent document upload functionality with real-time
- * AI analysis, document type detection, and extraction of key information.
+ * AI analysis, document type detection, and automatic form completion/generation.
+ * File: components/EnhancedDocumentUploadModal.jsx
  */
 
 'use client'
@@ -23,10 +24,14 @@ import {
   Zap,
   FileCheck,
   AlertTriangle,
-  Info
+  Info,
+  PlayCircle,
+  Settings,
+  FileOutput
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import documentAnalysisService from '../lib/documentAnalysisService'
+import documentGenerationService from '../lib/documentGenerationService'
 
 export default function EnhancedDocumentUploadModal({ 
   submission, 
@@ -43,6 +48,16 @@ export default function EnhancedDocumentUploadModal({
   const [analysisResults, setAnalysisResults] = useState({})
   const [selectedAnalysis, setSelectedAnalysis] = useState(null)
   const [aiInsights, setAiInsights] = useState(null)
+  
+  // New states for form generation
+  const [generating, setGenerating] = useState(false)
+  const [generatedDocuments, setGeneratedDocuments] = useState({})
+  const [showGenerationPreview, setShowGenerationPreview] = useState(null)
+  const [generationOptions, setGenerationOptions] = useState({
+    includeEmptyFields: false,
+    addInstructions: true,
+    format: 'pdf'
+  })
 
   const documentTypes = [
     { value: 'application', label: 'Application Form', icon: FileText },
@@ -171,6 +186,127 @@ export default function EnhancedDocumentUploadModal({
     }
   }
 
+  const generateCompletedForm = async (fileName) => {
+    const analysis = analysisResults[fileName]
+    if (!analysis?.dynamicFormStructure) {
+      toast.error('No form structure available for generation')
+      return
+    }
+
+    setGenerating(true)
+    try {
+      // Call the document generation API
+      const response = await fetch('/api/ai/document-generation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          formStructure: analysis.dynamicFormStructure,
+          userData: {
+            organization: userProfile?.organization || {},
+            project: projectData || {},
+            user: userProfile || {}
+          },
+          options: generationOptions,
+          action: 'generate'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Generation API failed')
+      }
+
+      const result = await response.json()
+      if (result.success) {
+        // Generate client-side PDF
+        const generatedDoc = await documentGenerationService.generateCompletedForm(
+          analysis.dynamicFormStructure,
+          {
+            organization: userProfile?.organization || {},
+            project: projectData || {},
+            user: userProfile || {}
+          },
+          {
+            fieldMappings: result.data.fieldMappings,
+            styles: generationOptions
+          }
+        )
+
+        if (generatedDoc.success) {
+          setGeneratedDocuments(prev => ({
+            ...prev,
+            [fileName]: {
+              document: generatedDoc.document,
+              metadata: generatedDoc.metadata,
+              completionStats: result.data.completionStats,
+              generatedAt: new Date().toISOString()
+            }
+          }))
+
+          toast.success(`Completed form generated for ${fileName}!`)
+        } else {
+          throw new Error(generatedDoc.error)
+        }
+      } else {
+        throw new Error(result.message || 'Generation failed')
+      }
+    } catch (error) {
+      console.error('Form generation failed:', error)
+      toast.error('Failed to generate completed form: ' + error.message)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const previewGeneration = async (fileName) => {
+    const analysis = analysisResults[fileName]
+    if (!analysis?.dynamicFormStructure) {
+      toast.error('No form structure available for preview')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/ai/document-generation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          formStructure: analysis.dynamicFormStructure,
+          userData: {
+            organization: userProfile?.organization || {},
+            project: projectData || {},
+            user: userProfile || {}
+          },
+          options: generationOptions,
+          action: 'preview'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Preview API failed')
+      }
+
+      const result = await response.json()
+      if (result.success) {
+        setShowGenerationPreview(result.data)
+      } else {
+        throw new Error(result.message || 'Preview failed')
+      }
+    } catch (error) {
+      console.error('Generation preview failed:', error)
+      toast.error('Failed to preview form generation: ' + error.message)
+    }
+  }
+
+  const downloadGeneratedDocument = (fileName) => {
+    const generated = generatedDocuments[fileName]
+    if (generated?.document) {
+      documentGenerationService.downloadPDF(
+        generated.document,
+        `completed-${fileName.replace(/\.[^/.]+$/, '')}.pdf`
+      )
+      toast.success('Document downloaded!')
+    }
+  }
+
   const generateConsolidatedInsights = async (analyses) => {
     try {
       const validAnalyses = analyses.filter(a => !a.error)
@@ -230,10 +366,11 @@ export default function EnhancedDocumentUploadModal({
         documentType,
         analysisResults: analysisResults,
         consolidatedInsights: aiInsights,
-        dynamicFormStructures // Include extracted form structures for easy access
+        dynamicFormStructures, // Include extracted form structures for easy access
+        generatedDocuments: generatedDocuments // Include any generated completed forms
       }
       
-      console.log(`📤 Uploading ${files.length} files with ${dynamicFormStructures.length} dynamic form structures`)
+      console.log(`📤 Uploading ${files.length} files with ${dynamicFormStructures.length} dynamic form structures and ${Object.keys(generatedDocuments).length} generated documents`)
       
       await onUpload(submission.id, uploadData)
       onClose()
@@ -250,10 +387,14 @@ export default function EnhancedDocumentUploadModal({
     const fileToRemove = files[index]
     setFiles(files.filter((_, i) => i !== index))
     
-    // Remove analysis result
+    // Remove analysis result and generated document
     const newResults = { ...analysisResults }
     delete newResults[fileToRemove.name]
     setAnalysisResults(newResults)
+
+    const newGenerated = { ...generatedDocuments }
+    delete newGenerated[fileToRemove.name]
+    setGeneratedDocuments(newGenerated)
   }
 
   const getAnalysisStatusIcon = (fileName) => {
@@ -285,7 +426,7 @@ export default function EnhancedDocumentUploadModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6">
           {/* Header */}
@@ -296,10 +437,10 @@ export default function EnhancedDocumentUploadModal({
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
-                  Upload & Analyze Documents
+                  Upload, Analyze & Generate Documents
                 </h3>
                 <p className="text-sm text-slate-600">
-                  Upload documents and get AI-powered insights instantly
+                  Upload documents, get AI insights, and generate completed forms instantly
                 </p>
               </div>
             </div>
@@ -360,6 +501,42 @@ export default function EnhancedDocumentUploadModal({
             </div>
           </div>
 
+          {/* Generation Options */}
+          {Object.keys(analysisResults).some(key => analysisResults[key].dynamicFormStructure) && (
+            <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="flex items-center space-x-2 mb-3">
+                <Settings className="w-4 h-4 text-indigo-600" />
+                <h4 className="text-sm font-medium text-indigo-900">Generation Options</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={generationOptions.includeEmptyFields}
+                    onChange={(e) => setGenerationOptions(prev => ({
+                      ...prev,
+                      includeEmptyFields: e.target.checked
+                    }))}
+                    className="rounded"
+                  />
+                  <span>Include empty fields</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={generationOptions.addInstructions}
+                    onChange={(e) => setGenerationOptions(prev => ({
+                      ...prev,
+                      addInstructions: e.target.checked
+                    }))}
+                    className="rounded"
+                  />
+                  <span>Add completion instructions</span>
+                </label>
+              </div>
+            </div>
+          )}
+
           {/* Uploaded Files List */}
           {files.length > 0 && (
             <div className="mb-6">
@@ -367,10 +544,10 @@ export default function EnhancedDocumentUploadModal({
                 <h4 className="text-sm font-medium text-slate-700">
                   Uploaded Files ({files.length})
                 </h4>
-                {enableAIAnalysis && analyzing && (
+                {enableAIAnalysis && (analyzing || generating) && (
                   <div className="flex items-center text-sm text-blue-600">
                     <Brain className="w-4 h-4 mr-2 animate-pulse" />
-                    Analyzing documents...
+                    {analyzing ? 'Analyzing documents...' : 'Generating forms...'}
                   </div>
                 )}
               </div>
@@ -378,6 +555,9 @@ export default function EnhancedDocumentUploadModal({
               <div className="space-y-3 max-h-64 overflow-y-auto">
                 {files.map((file, index) => {
                   const analysis = analysisResults[file.name]
+                  const generated = generatedDocuments[file.name]
+                  const hasFormStructure = analysis?.dynamicFormStructure
+                  
                   return (
                     <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                       <div className="flex items-center space-x-3 flex-1">
@@ -388,12 +568,22 @@ export default function EnhancedDocumentUploadModal({
                               {file.name}
                             </p>
                             {enableAIAnalysis && getAnalysisStatusIcon(file.name)}
+                            {generated && (
+                              <CheckCircle className="w-4 h-4 text-green-600" title="Generated" />
+                            )}
                           </div>
                           <p className="text-xs text-slate-600">
                             {formatFileSize(file.size)}
+                            {hasFormStructure && (
+                              <span className="ml-2 text-indigo-600">
+                                • {Object.keys(analysis.dynamicFormStructure.formFields || {}).length} fields detected
+                              </span>
+                            )}
                           </p>
-                          {analysis && !analysis.error && (
-                            <div className="mt-1">
+                          
+                          {/* Action buttons */}
+                          <div className="flex items-center space-x-4 mt-2">
+                            {analysis && !analysis.error && (
                               <button
                                 onClick={() => setSelectedAnalysis(analysis)}
                                 className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
@@ -401,8 +591,39 @@ export default function EnhancedDocumentUploadModal({
                                 <Eye className="w-3 h-3" />
                                 <span>View Analysis</span>
                               </button>
-                            </div>
-                          )}
+                            )}
+                            
+                            {hasFormStructure && !generated && (
+                              <>
+                                <button
+                                  onClick={() => previewGeneration(file.name)}
+                                  className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
+                                >
+                                  <PlayCircle className="w-3 h-3" />
+                                  <span>Preview Generation</span>
+                                </button>
+                                <button
+                                  onClick={() => generateCompletedForm(file.name)}
+                                  disabled={generating}
+                                  className="text-xs text-green-600 hover:text-green-800 flex items-center space-x-1"
+                                >
+                                  <FileOutput className="w-3 h-3" />
+                                  <span>Generate Form</span>
+                                </button>
+                              </>
+                            )}
+                            
+                            {generated && (
+                              <button
+                                onClick={() => downloadGeneratedDocument(file.name)}
+                                className="text-xs text-green-600 hover:text-green-800 flex items-center space-x-1"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>Download PDF ({Math.round(generated.completionStats?.completionPercentage || 0)}% complete)</span>
+                              </button>
+                            )}
+                          </div>
+                          
                           {analysis && analysis.error && (
                             <p className="text-xs text-red-600 mt-1">
                               Analysis failed: {analysis.error}
@@ -613,6 +834,100 @@ export default function EnhancedDocumentUploadModal({
                         <span>
                           Analyzed: {new Date(selectedAnalysis.metadata.analyzedAt).toLocaleString()}
                         </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Generation Preview Modal */}
+      <AnimatePresence>
+        {showGenerationPreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4"
+            onClick={() => setShowGenerationPreview(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Generation Preview
+                  </h3>
+                  <button 
+                    onClick={() => setShowGenerationPreview(null)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-green-900 mb-2">Completion Stats</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-green-700">Total Fields</p>
+                        <p className="font-medium">{showGenerationPreview.completionStats?.totalFields || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700">Populated Fields</p>
+                        <p className="font-medium">{showGenerationPreview.completionStats?.populatedFields || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700">Completion Rate</p>
+                        <p className="font-medium">{showGenerationPreview.completionStats?.completionPercentage || 0}%</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700">Ready to Generate</p>
+                        <p className="font-medium">{showGenerationPreview.previewStats?.readyToGenerate ? 'Yes' : 'No'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {showGenerationPreview.sections && (
+                    <div>
+                      <h4 className="font-medium text-slate-900 mb-3">Form Sections Preview</h4>
+                      <div className="space-y-4">
+                        {showGenerationPreview.sections.map((section, i) => (
+                          <div key={i} className="bg-slate-50 p-4 rounded-lg">
+                            <h5 className="font-medium text-slate-800 mb-2">{section.title}</h5>
+                            <div className="text-sm text-slate-600 mb-2">
+                              {section.completionStats.populated} of {section.completionStats.total} fields populated
+                            </div>
+                            <div className="space-y-2">
+                              {Object.entries(section.fields).slice(0, 3).map(([fieldId, field]) => (
+                                <div key={fieldId} className="flex items-center justify-between">
+                                  <span className="text-xs text-slate-600">{field.label}</span>
+                                  <span className={`text-xs px-2 py-1 rounded ${
+                                    field.populated 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {field.populated ? 'Populated' : 'Empty'}
+                                  </span>
+                                </div>
+                              ))}
+                              {Object.keys(section.fields).length > 3 && (
+                                <div className="text-xs text-slate-500">
+                                  ...and {Object.keys(section.fields).length - 3} more fields
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
