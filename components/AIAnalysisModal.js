@@ -6,7 +6,7 @@ import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveApiUrl } from '../lib/apiUrlUtils'
 import toast from 'react-hot-toast'
-import jsPDF from 'jspdf'
+import documentGenerationService from '../lib/documentGenerationService' // Add import
 
 // Helper function to normalize analysis results and handle different data structures
 function normalizeAnalysisResult(result) {
@@ -529,6 +529,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
     }
   }
 
+  // UPDATED: Handle document generation using our new system
   const handleGenerateDocument = async () => {
     try {
       setGenerating(true)
@@ -540,167 +541,218 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
         userProfile,
         analysis,
         applicationDraft,
-        formTemplate: null, // Will be populated if we have uploaded form data
         createdAt: new Date().toISOString()
       }
 
-      // Check if we have form template data from uploaded documents
+      let dynamicFormStructure = null
+      let formTemplate = null
+
+      // Check for dynamic form structure from various sources
       // Priority 1: Check for dynamic form structure from recent document analysis
       if (opportunity.dynamicFormStructure?.formFields) {
-        applicationData.dynamicFormStructure = opportunity.dynamicFormStructure
+        dynamicFormStructure = opportunity.dynamicFormStructure
         console.log('📝 Using dynamic form structure with', Object.keys(opportunity.dynamicFormStructure.formFields).length, 'fields')
       }
       // Priority 2: Check for uploaded documents with dynamic form structures
       else if (opportunity.uploadedDocuments?.dynamicFormStructures?.length > 0) {
         const latestFormStructure = opportunity.uploadedDocuments.dynamicFormStructures[0]
-        applicationData.dynamicFormStructure = latestFormStructure.formStructure
+        dynamicFormStructure = latestFormStructure.formStructure
         console.log('📝 Using uploaded dynamic form structure from', latestFormStructure.fileName, 'with', Object.keys(latestFormStructure.formStructure.formFields || {}).length, 'fields')
       }
-      // Priority 3: Check for uploaded forms with analysis results (legacy)
+      // Priority 3: Check for uploaded forms with analysis results (legacy support)
       else if (opportunity.uploadedForms && opportunity.uploadedForms.length > 0) {
-        // Use the first application form found
         const applicationForm = opportunity.uploadedForms.find(form => 
           form.documentType === 'application' || form.analysisResults?.formFields
         )
         
         if (applicationForm && applicationForm.analysisResults?.formFields) {
-          applicationData.formTemplate = {
+          // Convert legacy format to new dynamic form structure
+          dynamicFormStructure = {
             formFields: applicationForm.analysisResults.formFields,
-            fileName: applicationForm.fileName,
-            source: 'uploaded_form'
+            formMetadata: {
+              title: applicationForm.fileName,
+              source: 'uploaded_form'
+            }
           }
-          console.log('📝 Using uploaded form template:', applicationForm.fileName)
+          console.log('📝 Using legacy form template:', applicationForm.fileName)
         }
       }
       // Priority 4: Check if project has stored dynamic form templates
       else if (project.dynamicFormStructure?.formFields) {
-        applicationData.dynamicFormStructure = project.dynamicFormStructure
+        dynamicFormStructure = project.dynamicFormStructure
         console.log('📝 Using project dynamic form structure with', Object.keys(project.dynamicFormStructure.formFields).length, 'fields')
       }
 
-      // Generate filled document using AI
-      const response = await fetch(resolveApiUrl('/api/ai/generate-document'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          applicationData,
-          documentType: 'grant-application'
-        }),
-      })
+      // If we have a dynamic form structure, use our new generation system
+      if (dynamicFormStructure?.formFields) {
+        console.log('🟢 Using NEW document generation system with dynamic form structure')
+        
+        // Call our new document generation API
+        const response = await fetch(resolveApiUrl('/api/ai/document-generation'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            formStructure: dynamicFormStructure,
+            userData: {
+              organization: userProfile?.organization || userProfile || {},
+              project: project || {},
+              user: userProfile || {}
+            },
+            options: {
+              includeEmptyFields: false,
+              addInstructions: true,
+              format: 'pdf'
+            },
+            action: 'generate'
+          })
+        })
 
-      if (!response.ok) {
-        throw new Error('Failed to generate document')
-      }
-
-      const result = await response.json()
-      
-      // Save to applications
-      const submittedAmount = opportunity.amount_max || opportunity.amount_min || project.budget || 25000
-      
-      await directUserServices.applications.createApplication(user.id, {
-        project_id: project.id,
-        opportunity_id: opportunity.id,
-        status: 'draft',
-        submitted_amount: submittedAmount,
-        application_data: applicationData,
-        generated_document: result.formFields,
-        ai_analysis: analysis
-      })
-
-      // Generate PDF with professional form layout using the exact template structure
-      const pdf = new jsPDF()
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 20
-      const lineHeight = 8
-      let yPosition = margin
-
-      // Header
-      pdf.setFontSize(16)
-      pdf.setFont('helvetica', 'bold')
-      const formTitle = applicationData.formTemplate ? 
-        `${applicationData.formTemplate.fileName?.replace(/\.[^/.]+$/, "").toUpperCase()} - COMPLETED` :
-        'GRANT APPLICATION'
-      pdf.text(formTitle, pageWidth / 2, yPosition, { align: 'center' })
-      yPosition += lineHeight * 2
-
-      // Metadata section
-      pdf.setFontSize(10)
-      pdf.setFont('helvetica', 'normal')
-      const metadata = result.metadata || {}
-      pdf.text(`Applicant: ${metadata.applicant || userProfile?.full_name || 'Applicant Name'}`, margin, yPosition)
-      yPosition += lineHeight
-      pdf.text(`Date: ${metadata.date || new Date().toLocaleDateString()}`, margin, yPosition)
-      yPosition += lineHeight
-      pdf.text(`Opportunity: ${opportunity.title}`, margin, yPosition)
-      yPosition += lineHeight
-      
-      if (applicationData.formTemplate) {
-        pdf.text(`Form Template: ${applicationData.formTemplate.fileName}`, margin, yPosition)
-        yPosition += lineHeight
-      }
-      yPosition += lineHeight
-
-      // Form fields
-      pdf.setFontSize(12)
-      const formFields = result.formFields || []
-      
-      for (const field of formFields) {
-        // Check if we need a new page
-        if (yPosition > pageHeight - 40) {
-          pdf.addPage()
-          yPosition = margin
+        if (!response.ok) {
+          throw new Error('Document generation API failed')
         }
 
-        // Field label (bold)
-        pdf.setFont('helvetica', 'bold')
-        pdf.text(`${field.label}:`, margin, yPosition)
-        yPosition += lineHeight + 2
+        const result = await response.json()
+        if (result.success) {
+          // Generate client-side PDF using our document generation service
+          const generatedDoc = await documentGenerationService.generateCompletedForm(
+            dynamicFormStructure,
+            {
+              organization: userProfile?.organization || userProfile || {},
+              project: project || {},
+              user: userProfile || {}
+            },
+            {
+              fieldMappings: result.data.fieldMappings,
+              styles: { includeEmptyFields: false, addInstructions: true }
+            }
+          )
 
-        // Field value (normal, wrapped)
-        pdf.setFont('helvetica', 'normal')
+          if (generatedDoc.success) {
+            // Download the generated PDF
+            const projectName = (project.name || project.title || 'Project').replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
+            const opportunityName = opportunity.title.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
+            
+            documentGenerationService.downloadPDF(
+              generatedDoc.document,
+              `${projectName}_${opportunityName}_completed_form.pdf`
+            )
+            
+            // Save to applications
+            const submittedAmount = opportunity.amount_max || opportunity.amount_min || project.budget || 25000
+            
+            await directUserServices.applications.createApplication(user.id, {
+              project_id: project.id,
+              opportunity_id: opportunity.id,
+              status: 'draft',
+              submitted_amount: submittedAmount,
+              application_data: applicationData,
+              generated_document: result.data,
+              ai_analysis: analysis
+            })
+
+            toast.success(`Completed form generated and downloaded! Based on ${dynamicFormStructure.formMetadata?.title || 'uploaded form'} with ${result.data.completionStats?.completionPercentage || 0}% completion.`)
+          } else {
+            throw new Error(generatedDoc.error || 'PDF generation failed')
+          }
+        } else {
+          throw new Error(result.message || 'Generation failed')
+        }
+      } else {
+        // Fallback to legacy system for opportunities without form structure
+        console.log('⚠️ No dynamic form structure found, using legacy document generation')
         
-        // Split long text into lines that fit the page width
-        const textWidth = pageWidth - (margin * 2)
-        const lines = pdf.splitTextToSize(field.value || '', textWidth)
+        const response = await fetch(resolveApiUrl('/api/ai/generate-document'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            applicationData,
+            documentType: 'grant-application'
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to generate document')
+        }
+
+        const result = await response.json()
         
-        for (const line of lines) {
-          if (yPosition > pageHeight - 20) {
-            pdf.addPage()
+        // Save to applications
+        const submittedAmount = opportunity.amount_max || opportunity.amount_min || project.budget || 25000
+        
+        await directUserServices.applications.createApplication(user.id, {
+          project_id: project.id,
+          opportunity_id: opportunity.id,
+          status: 'draft',
+          submitted_amount: submittedAmount,
+          application_data: applicationData,
+          generated_document: result.formFields,
+          ai_analysis: analysis
+        })
+
+        // Generate basic PDF using legacy approach
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const margin = 20
+        const lineHeight = 8
+        let yPosition = margin
+
+        // Header
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.text('GRANT APPLICATION', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += lineHeight * 2
+
+        // Metadata section
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        const metadata = result.metadata || {}
+        doc.text(`Applicant: ${metadata.applicant || userProfile?.full_name || 'Applicant Name'}`, margin, yPosition)
+        yPosition += lineHeight
+        doc.text(`Date: ${metadata.date || new Date().toLocaleDateString()}`, margin, yPosition)
+        yPosition += lineHeight
+        doc.text(`Opportunity: ${opportunity.title}`, margin, yPosition)
+        yPosition += lineHeight * 2
+
+        // Form fields
+        doc.setFontSize(12)
+        const formFields = result.formFields || []
+        
+        for (const field of formFields) {
+          if (yPosition > doc.internal.pageSize.getHeight() - 40) {
+            doc.addPage()
             yPosition = margin
           }
-          pdf.text(line, margin, yPosition)
+
+          doc.setFont('helvetica', 'bold')
+          doc.text(`${field.label}:`, margin, yPosition)
+          yPosition += lineHeight + 2
+
+          doc.setFont('helvetica', 'normal')
+          const textWidth = pageWidth - (margin * 2)
+          const lines = doc.splitTextToSize(field.value || '', textWidth)
+          
+          for (const line of lines) {
+            if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+              doc.addPage()
+              yPosition = margin
+            }
+            doc.text(line, margin, yPosition)
+            yPosition += lineHeight
+          }
+          
           yPosition += lineHeight
         }
+
+        // Download PDF
+        const projectName = (project.name || project.title || 'Project').replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
+        const opportunityName = opportunity.title.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
         
-        yPosition += lineHeight // Extra space between fields
+        doc.save(`${projectName}_${opportunityName}_grant_application.pdf`)
+
+        toast.success('Grant application PDF generated and downloaded!')
       }
-
-      // Create and download the PDF
-      const pdfBlob = pdf.output('blob')
-      const url = window.URL.createObjectURL(pdfBlob)
-      const a = document.createElement('a')
-      a.style.display = 'none'
-      a.href = url
-      
-      // Create a proper filename with project and opportunity names
-      const projectName = (project.name || project.title || 'Project').replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
-      const opportunityName = opportunity.title.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
-      const templateSuffix = applicationData.formTemplate ? '_completed_form' : '_grant_application'
-      a.download = `${projectName}_${opportunityName}${templateSuffix}.pdf`
-      
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      const successMessage = applicationData.formTemplate ? 
-        `Completed form template "${applicationData.formTemplate.fileName}" downloaded as PDF! Ready for submission.` :
-        'Professional grant application PDF generated and downloaded! Ready for submission.'
-      
-      toast.success(successMessage)
       
     } catch (error) {
       console.error('Document generation error:', error)
