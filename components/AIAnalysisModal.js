@@ -6,7 +6,8 @@ import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveApiUrl } from '../lib/apiUrlUtils'
 import toast from 'react-hot-toast'
-import documentGenerationService from '../lib/documentGenerationService' // Add import
+import documentGenerationService from '../lib/documentGenerationService'
+import { jsPDF } from 'jspdf' // Add jsPDF import
 
 // Helper function to normalize analysis results and handle different data structures
 function normalizeAnalysisResult(result) {
