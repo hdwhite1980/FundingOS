@@ -11,6 +11,211 @@ import aiProviderService from '../../../../lib/aiProviderService'
 
 const MAX_TOKENS = 4000
 
+// Universal form field detection patterns that should work for any grant application
+const UNIVERSAL_FORM_PATTERNS = {
+  // Organization/Applicant Information
+  organization: {
+    patterns: [
+      /organization\s*name/i,
+      /applicant\s*organization/i,
+      /entity\s*name/i,
+      /institution\s*name/i,
+      /company\s*name/i,
+      /agency\s*name/i
+    ],
+    fieldType: 'text',
+    section: 'applicant_info'
+  },
+  
+  // Contact Information
+  contact_person: {
+    patterns: [
+      /contact\s*person/i,
+      /principal\s*investigator/i,
+      /project\s*director/i,
+      /authorized\s*representative/i,
+      /primary\s*contact/i
+    ],
+    fieldType: 'text',
+    section: 'contact_info'
+  },
+  
+  email: {
+    patterns: [
+      /email\s*address/i,
+      /e-mail/i,
+      /electronic\s*mail/i
+    ],
+    fieldType: 'email',
+    section: 'contact_info'
+  },
+  
+  phone: {
+    patterns: [
+      /phone\s*number/i,
+      /telephone/i,
+      /contact\s*number/i
+    ],
+    fieldType: 'tel',
+    section: 'contact_info'
+  },
+  
+  address: {
+    patterns: [
+      /mailing\s*address/i,
+      /street\s*address/i,
+      /physical\s*address/i,
+      /organization\s*address/i
+    ],
+    fieldType: 'textarea',
+    section: 'contact_info'
+  },
+  
+  // Project Information
+  project_title: {
+    patterns: [
+      /project\s*title/i,
+      /program\s*title/i,
+      /grant\s*title/i,
+      /proposal\s*title/i,
+      /application\s*title/i
+    ],
+    fieldType: 'text',
+    section: 'project_info'
+  },
+  
+  project_description: {
+    patterns: [
+      /project\s*description/i,
+      /program\s*description/i,
+      /project\s*summary/i,
+      /abstract/i,
+      /overview/i
+    ],
+    fieldType: 'textarea',
+    section: 'project_info'
+  },
+  
+  // Financial Information
+  requested_amount: {
+    patterns: [
+      /requested\s*amount/i,
+      /funding\s*amount/i,
+      /grant\s*amount/i,
+      /total\s*budget/i,
+      /project\s*cost/i,
+      /amount\s*requested/i
+    ],
+    fieldType: 'currency',
+    section: 'budget_info'
+  },
+  
+  project_period: {
+    patterns: [
+      /project\s*period/i,
+      /grant\s*period/i,
+      /performance\s*period/i,
+      /project\s*duration/i
+    ],
+    fieldType: 'text',
+    section: 'project_info'
+  },
+  
+  start_date: {
+    patterns: [
+      /start\s*date/i,
+      /begin\s*date/i,
+      /commencement\s*date/i,
+      /project\s*start/i
+    ],
+    fieldType: 'date',
+    section: 'project_info'
+  },
+  
+  end_date: {
+    patterns: [
+      /end\s*date/i,
+      /completion\s*date/i,
+      /finish\s*date/i,
+      /project\s*end/i
+    ],
+    fieldType: 'date',
+    section: 'project_info'
+  },
+  
+  // Eligibility & Requirements
+  tax_exempt_status: {
+    patterns: [
+      /tax\s*exempt/i,
+      /501\(c\)\(3\)/i,
+      /nonprofit\s*status/i,
+      /tax\s*id/i,
+      /ein/i,
+      /federal\s*id/i
+    ],
+    fieldType: 'text',
+    section: 'eligibility'
+  },
+  
+  // Narrative Sections (common across most grants)
+  statement_of_need: {
+    patterns: [
+      /statement\s*of\s*need/i,
+      /needs\s*assessment/i,
+      /problem\s*statement/i,
+      /community\s*need/i
+    ],
+    fieldType: 'textarea',
+    section: 'narrative'
+  },
+  
+  project_goals: {
+    patterns: [
+      /project\s*goals/i,
+      /objectives/i,
+      /outcomes/i,
+      /goals\s*and\s*objectives/i
+    ],
+    fieldType: 'textarea',
+    section: 'narrative'
+  },
+  
+  methodology: {
+    patterns: [
+      /methodology/i,
+      /approach/i,
+      /implementation\s*plan/i,
+      /work\s*plan/i,
+      /activities/i
+    ],
+    fieldType: 'textarea',
+    section: 'narrative'
+  },
+  
+  evaluation: {
+    patterns: [
+      /evaluation/i,
+      /assessment\s*plan/i,
+      /measurement/i,
+      /metrics/i,
+      /success\s*indicators/i
+    ],
+    fieldType: 'textarea',
+    section: 'narrative'
+  },
+  
+  sustainability: {
+    patterns: [
+      /sustainability/i,
+      /long.term\s*plan/i,
+      /continuation/i,
+      /future\s*funding/i
+    ],
+    fieldType: 'textarea',
+    section: 'narrative'
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { 
@@ -73,32 +278,311 @@ async function extractFormStructure(
   extractionMode: string, 
   context: any
 ) {
-  const prompt = buildDynamicExtractionPrompt(documentContent, extractionMode, context)
-  
-  const response = await aiProviderService.generateCompletion(
-    'document-analysis',
-    [
+  // First try AI-based extraction
+  let aiExtractedStructure = null
+  try {
+    const prompt = buildDynamicExtractionPrompt(documentContent, extractionMode, context)
+    
+    const response = await aiProviderService.generateCompletion(
+      'document-analysis',
+      [
+        {
+          role: 'system',
+          content: getDynamicExtractionSystemPrompt()
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
       {
-        role: 'system',
-        content: getDynamicExtractionSystemPrompt()
-      },
-      {
-        role: 'user',
-        content: prompt
+        maxTokens: MAX_TOKENS,
+        temperature: 0.1,
+        responseFormat: 'json_object'
       }
-    ],
-    {
-      maxTokens: MAX_TOKENS,
-      temperature: 0.1,
-      responseFormat: 'json_object'
-    }
-  )
+    )
 
-  if (!response?.content) {
-    throw new Error('No response received from AI provider')
+    if (response?.content) {
+      aiExtractedStructure = aiProviderService.safeParseJSON(response.content)
+    }
+  } catch (error) {
+    console.warn('AI extraction failed, falling back to pattern matching:', error)
   }
 
-  return aiProviderService.safeParseJSON(response.content)
+  // Always run pattern-based extraction as backup/enhancement
+  const patternExtractedStructure = extractUniversalFormStructure(
+    documentContent, 
+    context.documentType || 'grant_application'
+  )
+
+  // Merge both approaches - AI takes precedence but patterns fill gaps
+  return mergeExtractionResults(aiExtractedStructure, patternExtractedStructure)
+}
+
+// Function to extract form structure using universal patterns
+function extractUniversalFormStructure(documentContent: string, documentType = 'grant_application') {
+  const extractedFields: any = {}
+  const sections = new Set()
+  
+  // Convert document to searchable text
+  const searchableText = documentContent.toLowerCase()
+  
+  // Look for each pattern
+  Object.entries(UNIVERSAL_FORM_PATTERNS).forEach(([fieldName, config]) => {
+    config.patterns.forEach(pattern => {
+      if (pattern.test(searchableText)) {
+        extractedFields[fieldName] = {
+          label: fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          type: config.fieldType,
+          section: config.section,
+          required: isFieldRequired(fieldName, searchableText),
+          placeholder: generatePlaceholder(fieldName, config.fieldType),
+          validation: getFieldValidation(config.fieldType)
+        }
+        sections.add(config.section)
+      }
+    })
+  })
+  
+  // Also look for any explicit form fields (checkboxes, inputs, etc.)
+  const explicitFields = extractExplicitFormFields(searchableText)
+  Object.assign(extractedFields, explicitFields)
+  
+  // Create section structure
+  const sectionStructure: any[] = []
+  sections.forEach((sectionName: string) => {
+    const sectionFields = Object.keys(extractedFields)
+      .filter(fieldName => extractedFields[fieldName].section === sectionName)
+    
+    if (sectionFields.length > 0) {
+      sectionStructure.push({
+        id: sectionName,
+        title: sectionName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        fields: sectionFields,
+        order: getSectionOrder(sectionName),
+        description: `Fields related to ${sectionName.replace(/_/g, ' ')}`
+      })
+    }
+  })
+  
+  return {
+    formFields: extractedFields,
+    formSections: sectionStructure,
+    formMetadata: {
+      title: extractFormTitle(documentContent) || 'Grant Application',
+      documentType,
+      totalFields: Object.keys(extractedFields).length,
+      extractedAt: new Date().toISOString(),
+      confidence: calculatePatternExtractionConfidence(extractedFields, documentContent)
+    },
+    extractionConfidence: calculatePatternExtractionConfidence(extractedFields, documentContent),
+    detectedFormType: documentType,
+    fieldPatterns: categorizeFields(extractedFields)
+  }
+}
+
+// Helper functions for pattern-based extraction
+function isFieldRequired(fieldName: string, text: string) {
+  const requiredPatterns = [
+    new RegExp(`${fieldName.replace(/_/g, '\\s*')}.*\\*`, 'i'),
+    new RegExp(`\\*.*${fieldName.replace(/_/g, '\\s*')}`, 'i'),
+    new RegExp(`${fieldName.replace(/_/g, '\\s*')}.*(required|mandatory)`, 'i')
+  ]
+  return requiredPatterns.some(pattern => pattern.test(text))
+}
+
+function generatePlaceholder(fieldName: string, fieldType: string) {
+  const placeholders: any = {
+    text: {
+      organization: 'Enter your organization name',
+      contact_person: 'Enter contact person name',
+      project_title: 'Enter your project title'
+    },
+    email: 'Enter email address',
+    tel: 'Enter phone number',
+    currency: 'Enter dollar amount',
+    date: 'MM/DD/YYYY',
+    textarea: `Enter your ${fieldName.replace(/_/g, ' ')}`
+  }
+  
+  return placeholders[fieldType]?.[fieldName] || placeholders[fieldType] || 'Enter information'
+}
+
+function getFieldValidation(fieldType: string) {
+  const validations: any = {
+    email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Please enter a valid email address' },
+    currency: { pattern: /^\$?\d{1,3}(,\d{3})*(\.\d{2})?$/, message: 'Please enter a valid dollar amount' },
+    tel: { pattern: /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/, message: 'Please enter a valid phone number' },
+    date: { pattern: /^\d{2}\/\d{2}\/\d{4}$/, message: 'Please enter date in MM/DD/YYYY format' }
+  }
+  return validations[fieldType] || null
+}
+
+function extractExplicitFormFields(text: string) {
+  // Look for explicit form patterns like:
+  // [ ] Checkbox options
+  // _________ Blank lines
+  // Field: ____________
+  const explicitFields: any = {}
+  
+  // Checkbox patterns
+  const checkboxMatches = text.match(/\[\s*\]\s*([^\n\r]+)/g) || []
+  checkboxMatches.forEach((match: string, index: number) => {
+    const label = match.replace(/\[\s*\]/, '').trim()
+    if (label.length > 3) {
+      explicitFields[`checkbox_${index}`] = {
+        label,
+        type: 'checkbox',
+        section: 'additional_info',
+        required: false
+      }
+    }
+  })
+  
+  // Signature fields
+  if (text.includes('signature') || text.includes('signed by')) {
+    explicitFields['signature'] = {
+      label: 'Authorized Signature',
+      type: 'text',
+      section: 'certification',
+      required: true,
+      placeholder: 'Enter name of authorized signatory'
+    }
+    
+    explicitFields['signature_date'] = {
+      label: 'Date Signed',
+      type: 'date',
+      section: 'certification',
+      required: true
+    }
+  }
+  
+  return explicitFields
+}
+
+function extractFormTitle(content: string) {
+  // Look for likely form titles at the beginning of the document
+  const titlePatterns = [
+    /^([^.\n]{5,60})\s*(application|grant|proposal|form)/i,
+    /(application|grant|proposal)\s*for\s*([^.\n]{5,60})/i,
+    /([^.\n]{5,60})\s*(funding|grant|award)\s*(application|request)/i
+  ]
+  
+  const firstLines = content.split('\n').slice(0, 10).join('\n')
+  
+  for (const pattern of titlePatterns) {
+    const match = firstLines.match(pattern)
+    if (match) {
+      return match[1] || match[2] || match[0]
+    }
+  }
+  
+  return null
+}
+
+function getSectionOrder(sectionName: string) {
+  const sectionOrder: any = {
+    'applicant_info': 1,
+    'contact_info': 2,
+    'project_info': 3,
+    'budget_info': 4,
+    'narrative': 5,
+    'eligibility': 6,
+    'additional_info': 7,
+    'certification': 8
+  }
+  return sectionOrder[sectionName] || 999
+}
+
+function calculatePatternExtractionConfidence(fields: any, content: string) {
+  // Base confidence on number of fields found and text analysis quality
+  const fieldCount = Object.keys(fields).length
+  const hasKeyFields = ['organization', 'project_title', 'requested_amount'].some(key => fields[key])
+  const contentLength = content.length
+  
+  let confidence = 0.3 // Base confidence
+  
+  if (fieldCount > 5) confidence += 0.2
+  if (fieldCount > 10) confidence += 0.2
+  if (hasKeyFields) confidence += 0.2
+  if (contentLength > 1000) confidence += 0.1
+  
+  return Math.min(confidence, 0.95)
+}
+
+function categorizeFields(fields: any) {
+  const categories: any = {
+    organizational: [],
+    contact: [],
+    project: [],
+    financial: [],
+    narrative: [],
+    compliance: []
+  }
+  
+  Object.entries(fields).forEach(([fieldId, field]: [string, any]) => {
+    switch (field.section) {
+      case 'applicant_info':
+        categories.organizational.push(fieldId)
+        break
+      case 'contact_info':
+        categories.contact.push(fieldId)
+        break
+      case 'project_info':
+        categories.project.push(fieldId)
+        break
+      case 'budget_info':
+        categories.financial.push(fieldId)
+        break
+      case 'narrative':
+        categories.narrative.push(fieldId)
+        break
+      case 'eligibility':
+      case 'certification':
+        categories.compliance.push(fieldId)
+        break
+    }
+  })
+  
+  return categories
+}
+
+function mergeExtractionResults(aiResult: any, patternResult: any) {
+  if (!aiResult && !patternResult) {
+    return { formFields: {}, formSections: [], formMetadata: {} }
+  }
+  
+  if (!aiResult) return patternResult
+  if (!patternResult) return aiResult
+  
+  // Merge form fields - AI takes precedence, patterns fill gaps
+  const mergedFields = { ...patternResult.formFields }
+  if (aiResult.formFields) {
+    Object.assign(mergedFields, aiResult.formFields)
+  }
+  
+  // Merge sections - prefer AI structure if available
+  const mergedSections = aiResult.formSections || patternResult.formSections || []
+  
+  // Merge metadata
+  const mergedMetadata = {
+    ...patternResult.formMetadata,
+    ...aiResult.formMetadata,
+    totalFields: Object.keys(mergedFields).length,
+    extractionMethod: 'hybrid_ai_pattern'
+  }
+  
+  return {
+    formFields: mergedFields,
+    formSections: mergedSections,
+    formMetadata: mergedMetadata,
+    extractionConfidence: Math.max(
+      aiResult.extractionConfidence || 0,
+      patternResult.extractionConfidence || 0
+    ),
+    detectedFormType: aiResult.detectedFormType || patternResult.detectedFormType,
+    fieldPatterns: aiResult.fieldPatterns || patternResult.fieldPatterns
+  }
 }
 
 function buildDynamicExtractionPrompt(
