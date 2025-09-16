@@ -20,6 +20,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
     full_name: existingProfile?.full_name || user.user_metadata?.full_name || '',
     organization_name: existingProfile?.organization_name || user.user_metadata?.organization_name || '',
     organization_type: existingProfile?.organization_type || '',
+    organization_types: existingProfile?.organization_types || (existingProfile?.organization_type ? [existingProfile.organization_type] : []),
     tax_id: existingProfile?.tax_id || '',
     address_line1: existingProfile?.address_line1 || '',
     address_line2: existingProfile?.address_line2 || '',
@@ -91,7 +92,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <OrganizationDetails formData={formData} onChange={handleInputChange} />
+        return <OrganizationDetails formData={formData} onChange={handleInputChange} setFormData={setFormData} />
       case 2:
         return <LocationContact formData={formData} onChange={handleInputChange} />
       case 3:
@@ -198,7 +199,20 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
   )
 }
 
-function OrganizationDetails({ formData, onChange }) {
+function OrganizationDetails({ formData, onChange, setFormData }) {
+  const toggleOrgType = (value) => {
+    setFormData(prev => {
+      const current = Array.isArray(prev.organization_types) ? prev.organization_types : []
+      let updated
+      if (current.includes(value)) {
+        updated = current.filter(v => v !== value)
+      } else {
+        updated = [...current, value]
+      }
+      const primary = updated[0] || ''
+      return { ...prev, organization_types: updated, organization_type: primary }
+    })
+  }
   return (
     <div className="space-y-6">
       <div>
@@ -236,20 +250,26 @@ function OrganizationDetails({ formData, onChange }) {
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
-          <label className="form-label">Organization Type *</label>
-          <select
-            name="organization_type"
-            className="form-input"
-            value={formData.organization_type}
-            onChange={onChange}
-            required
-          >
-            <option value="">Select type</option>
-            <option value="nonprofit">Nonprofit</option>
-            <option value="for_profit">For-Profit Business</option>
-            <option value="government">Government Entity</option>
-            <option value="individual">Individual</option>
-          </select>
+          <label className="form-label">Organization Type (Select all that apply) *</label>
+          <div className="grid grid-cols-1 gap-2">
+            {[
+              { value: 'nonprofit', label: 'Nonprofit' },
+              { value: 'for_profit', label: 'For-Profit Business' },
+              { value: 'government', label: 'Government Entity' },
+              { value: 'individual', label: 'Individual' }
+            ].map(opt => (
+              <label key={opt.value} className="flex items-center p-2 border rounded hover:bg-white cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mr-3"
+                  checked={formData.organization_types?.includes(opt.value) || false}
+                  onChange={() => toggleOrgType(opt.value)}
+                />
+                <span className="text-sm">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">Primary type is the first selected.</p>
         </div>
         
         <div>
@@ -552,7 +572,11 @@ function CompleteSetup({ formData }) {
           </div>
           <div className="flex justify-between">
             <span>Type:</span>
-            <span className="font-medium capitalize">{formData.organization_type?.replace('_', ' ')}</span>
+            <span className="font-medium capitalize">
+              {Array.isArray(formData.organization_types) && formData.organization_types.length > 0
+                ? formData.organization_types.join(', ').replaceAll('_', ' ')
+                : formData.organization_type?.replace('_', ' ')}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Location:</span>

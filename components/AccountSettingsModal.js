@@ -9,6 +9,10 @@ const ORG_TYPES = [
   { value: 'for_profit', label: 'For-Profit Business' },
   { value: 'government', label: 'Government Entity' },
   { value: 'individual', label: 'Individual' },
+  { value: 'minority_owned', label: 'Minority-Owned' },
+  { value: 'women_owned', label: 'Women-Owned' },
+  { value: 'veteran_owned', label: 'Veteran-Owned' },
+  { value: 'small_business', label: 'Small Business' },
 ]
 
 const USER_ROLES = [
@@ -29,6 +33,7 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     email: user?.email || userProfile?.email || '',
     organization_name: userProfile?.organization_name || '',
     organization_type: userProfile?.organization_type || 'nonprofit',
+    organization_types: userProfile?.organization_types || (userProfile?.organization_type ? [userProfile.organization_type] : []),
     user_role: userProfile?.user_role || 'company',
   })
 
@@ -49,6 +54,7 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       email: user?.email || userProfile?.email || '',
       organization_name: userProfile?.organization_name || '',
       organization_type: userProfile?.organization_type || 'nonprofit',
+      organization_types: userProfile?.organization_types || (userProfile?.organization_type ? [userProfile.organization_type] : []),
       user_role: userProfile?.user_role || 'company',
     }))
     setNotifications(() => {
@@ -67,6 +73,20 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  const toggleOrgType = (value) => {
+    setForm((prev) => {
+      const current = Array.isArray(prev.organization_types) ? prev.organization_types : []
+      let updated
+      if (current.includes(value)) {
+        updated = current.filter(v => v !== value)
+      } else {
+        updated = [...current, value]
+      }
+      const primary = updated[0] || ''
+      return { ...prev, organization_types: updated, organization_type: primary }
+    })
+  }
+
   const toggleNotif = (key) => setNotifications((prev) => ({ ...prev, [key]: !prev[key] }))
 
   const prepareUpdates = () => {
@@ -76,6 +96,7 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       full_name: form.full_name,
       organization_name: form.organization_name,
       organization_type: form.organization_type,
+      organization_types: form.organization_types,
       user_role: form.user_role,
     }
     for (const [k, v] of Object.entries(candidates)) {
@@ -258,20 +279,27 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Organization Type</label>
-                <select
-                  name="organization_type"
-                  value={form.organization_type}
-                  onChange={handleChange}
-                  className="w-full form-input"
-                >
+                <label className="block text-sm font-medium text-slate-700 mb-1">Organization Type (Select all that apply)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {ORG_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <label key={t.value} className="flex items-center p-2 border rounded-lg hover:bg-white cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mr-3"
+                        checked={form.organization_types?.includes(t.value) || false}
+                        onChange={() => toggleOrgType(t.value)}
+                      />
+                      <span className="text-sm">{t.label}</span>
+                    </label>
                   ))}
-                </select>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Primary type is set to your first selection.</p>
               </div>
               {!hasColumn('organization_type') && (
                 <p className="text-xs text-amber-600">Organization fields not available on your profile schema yet.</p>
+              )}
+              {!hasColumn('organization_types') && (
+                <p className="text-xs text-amber-600">Multi-select org types not available until database migration is applied.</p>
               )}
             </div>
           )}
