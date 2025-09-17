@@ -295,7 +295,11 @@ export default function TwoFactorAuth() {
             
             {qrCodeUrl && (
               <div className="inline-block p-4 bg-white border rounded-lg shadow-sm">
-                <img src={qrCodeUrl} alt="2FA QR Code" className="w-48 h-48" />
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=192x192&data=${encodeURIComponent(qrCodeUrl)}`}
+                  alt="2FA QR Code" 
+                  className="w-48 h-48" 
+                />
               </div>
             )}
           </div>
