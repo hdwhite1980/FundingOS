@@ -12,12 +12,12 @@ export async function POST(request) {
     const body = await request.json()
     const { email, code, newPassword, action } = body
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
-    }
 
     switch (action) {
       case 'request': {
+        if (!email) {
+          return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+        }
         // Send password reset email with code
         const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
           redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`

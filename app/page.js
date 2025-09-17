@@ -19,6 +19,16 @@ export default function HomePage() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const router = useRouter()
 
+  // If Supabase lands on root with #access_token, forward to reset page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const { hash, pathname } = window.location
+      if (hash && hash.includes('access_token') && pathname !== '/auth/reset-password') {
+        router.replace(`/auth/reset-password${hash}`)
+      }
+    }
+  }, [router])
+
   useEffect(() => {
     console.log('HomePage: Auth state changed', {
       user: user ? { id: user.id, email: user.email } : null,
