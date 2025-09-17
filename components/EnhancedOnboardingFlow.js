@@ -19,7 +19,6 @@ import {
 } from 'lucide-react'
 import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import toast from 'react-hot-toast'
-import { userProfileService } from '../lib/supabase'
 import {
   OrganizationalCapacity,
   MissionFocus,
@@ -136,20 +135,33 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
   const handleSubmit = async () => {
     setLoading(true)
     try {
+      // Sanitize numeric fields before sending to database
+      const sanitizeNumericField = (value) => {
+        if (value === '' || value === null || value === undefined) return null
+        const num = typeof value === 'string' ? Number(value) : Number(value)
+        return Number.isFinite(num) ? num : null
+      }
+
       const profileData = {
         ...formData,
         id: user.id,
         email: user.email,
         setup_completed: true,
-        annual_budget: formData.annual_budget === '' ? null : (formData.annual_budget ? parseFloat(formData.annual_budget) : null),
-        years_in_operation: formData.years_in_operation === '' ? null : (formData.years_in_operation ? parseInt(formData.years_in_operation) : null),
-        full_time_staff: formData.full_time_staff === '' ? null : (formData.full_time_staff ? parseInt(formData.full_time_staff) : null),
-        board_size: formData.board_size === '' ? null : (formData.board_size ? parseInt(formData.board_size) : null),
-        largest_grant: formData.largest_grant === '' ? null : (formData.largest_grant ? parseFloat(formData.largest_grant) : null)
+        annual_budget: sanitizeNumericField(formData.annual_budget),
+        years_in_operation: sanitizeNumericField(formData.years_in_operation),
+        full_time_staff: sanitizeNumericField(formData.full_time_staff),
+        board_size: sanitizeNumericField(formData.board_size),
+        largest_grant: sanitizeNumericField(formData.largest_grant)
       }
 
-      // Use the sanitized profile service instead of direct supabase call
-      const profile = await userProfileService.createProfile(profileData)
+      // Use direct supabase call with proper sanitization
+      const { data: profile, error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert(profileData, { onConflict: 'id' })
+        .select()
+        .single()
+
+      if (upsertError) throw upsertError
 
       toast.success('Profile setup completed!')
       onComplete(profile)
