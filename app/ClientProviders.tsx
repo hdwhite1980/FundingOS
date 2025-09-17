@@ -2,7 +2,7 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { SessionContextProvider } from '@supabase/auth-helpers-react'
 import { AuthProvider } from '../contexts/AuthContext'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 
 interface ClientProvidersProps {
@@ -10,7 +10,26 @@ interface ClientProvidersProps {
 }
 
 export default function ClientProviders({ children }: ClientProvidersProps) {
-  const [supabaseClient] = useState(() => createClientComponentClient())
+  const options = useMemo(() => {
+    const fromProcess = {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    }
+    const fromWindow = typeof window !== 'undefined' && (window as any).__PUBLIC_ENV__
+      ? {
+          supabaseUrl: (window as any).__PUBLIC_ENV__.NEXT_PUBLIC_SUPABASE_URL,
+          supabaseKey: (window as any).__PUBLIC_ENV__.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        }
+      : {}
+    const supabaseUrl = (fromProcess.supabaseUrl || (fromWindow as any).supabaseUrl || '').toString()
+    const supabaseKey = (fromProcess.supabaseKey || (fromWindow as any).supabaseKey || '').toString()
+    const cfg = (supabaseUrl && supabaseKey) ? { supabaseUrl, supabaseKey } : undefined
+    return cfg
+  }, [])
+
+  const [supabaseClient] = useState(() =>
+    options ? createClientComponentClient(options) : createClientComponentClient()
+  )
 
   return (
     <SessionContextProvider supabaseClient={supabaseClient}>
