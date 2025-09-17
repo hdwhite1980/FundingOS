@@ -170,6 +170,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
       }
 
       console.log('Profile data being saved:', cleanedProfileData) // Debug log
+      console.log('setup_completed value:', cleanedProfileData.setup_completed) // Debug log
 
       // Use direct supabase call with proper sanitization
       const { data: profile, error: upsertError } = await supabase
@@ -180,7 +181,14 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
 
       if (upsertError) throw upsertError
 
+      console.log('Profile saved successfully:', profile) // Debug log
+      console.log('Saved profile setup_completed:', profile.setup_completed) // Debug log
+
       toast.success('Profile setup completed!')
+      
+      // Small delay to ensure database transaction is fully committed
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       onComplete(profile)
     } catch (error) {
       console.error('Profile save error:', error) // Debug log

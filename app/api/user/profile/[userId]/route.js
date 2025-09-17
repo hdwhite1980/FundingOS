@@ -27,10 +27,23 @@ export async function GET(request, { params }) {
     }
 
     if (!profile) {
-      return Response.json({ profile: null }, { status: 404 })
+      return Response.json({ profile: null }, { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
     }
 
-    return Response.json({ profile })
+    return Response.json({ profile }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',  
+        'Expires': '0'
+      }
+    })
   } catch (error) {
     console.error('API error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })

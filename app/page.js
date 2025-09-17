@@ -44,16 +44,22 @@ export default function HomePage() {
       
       // Make direct API call to get real profile from database
       const response = await fetch(`/api/user/profile/${user.id}`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${user.access_token || ''}`
+          'Content-Type': 'application/json'
         }
       })
       
       let profile = null
       
+      console.log('HomePage: API response status:', response.status)
+      
       if (response.ok) {
         const result = await response.json()
         profile = result.profile
+        console.log('HomePage: API returned profile:', profile)
+      } else {
+        console.log('HomePage: API response not ok:', response.status, response.statusText)
       }
       
       // If no profile found, we'll let onboarding create it
@@ -67,12 +73,15 @@ export default function HomePage() {
         }
         setNeedsOnboarding(true)
       } else if (!profile.setup_completed) {
+        console.log('HomePage: Profile found but setup not completed:', profile.setup_completed)
         setNeedsOnboarding(true)
       } else {
+        console.log('HomePage: Profile found and setup completed:', profile.setup_completed)
         setNeedsOnboarding(false)
       }
       
-      console.log('HomePage: Profile result', profile)
+      console.log('HomePage: Final profile result:', profile)
+      console.log('HomePage: Setting needsOnboarding to:', !profile.setup_completed)
       setUserProfile(profile)
     } catch (error) {
       console.error('HomePage: Error checking user profile:', error)
@@ -83,8 +92,17 @@ export default function HomePage() {
   }
 
   const handleOnboardingComplete = (profile) => {
+    console.log('HomePage: Onboarding completed with profile:', profile)
+    console.log('HomePage: Profile setup_completed value:', profile.setup_completed)
     setUserProfile(profile)
     setNeedsOnboarding(false)
+    console.log('HomePage: Set needsOnboarding to false')
+    
+    // Force a re-check of the profile from database to ensure persistence
+    setTimeout(() => {
+      console.log('HomePage: Re-checking profile after onboarding completion')
+      checkUserProfile()
+    }, 500)
   }
 
   // Role sync is now handled during profile creation above
