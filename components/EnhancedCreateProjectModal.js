@@ -119,7 +119,7 @@ export default function CreateProjectModal({
     // Project Basics
     name: editProject?.name || '',
     description: editProject?.description || '',
-    project_category: editProject?.project_category || '',
+    project_categories: editProject?.project_categories || (editProject?.project_category ? [editProject.project_category] : []),
     project_category_other: editProject?.project_category_other || '',
     
     // Scope & Impact
@@ -271,11 +271,14 @@ export default function CreateProjectModal({
 
       const projectData = {
         ...formData,
-        total_project_budget: formData.total_project_budget ? parseFloat(formData.total_project_budget) : null,
-        funding_request_amount: formData.funding_request_amount ? parseFloat(formData.funding_request_amount) : null,
-        cash_match_available: formData.cash_match_available ? parseFloat(formData.cash_match_available) : null,
-        in_kind_match_available: formData.in_kind_match_available ? parseFloat(formData.in_kind_match_available) : null,
-        estimated_people_served: formData.estimated_people_served ? parseInt(formData.estimated_people_served) : null,
+        // Handle both old and new project category fields for backward compatibility
+        project_category: formData.project_categories?.length > 0 ? formData.project_categories[0] : null,
+        project_categories: formData.project_categories || [],
+        total_project_budget: formData.total_project_budget ? parseFloat(formData.total_project_budget.toString().replace(/[^\d.]/g, '')) : null,
+        funding_request_amount: formData.funding_request_amount ? parseFloat(formData.funding_request_amount.toString().replace(/[^\d.]/g, '')) : null,
+        cash_match_available: formData.cash_match_available ? parseFloat(formData.cash_match_available.toString().replace(/[^\d.]/g, '')) : null,
+        in_kind_match_available: formData.in_kind_match_available ? parseFloat(formData.in_kind_match_available.toString().replace(/[^\d.]/g, '')) : null,
+        estimated_people_served: formData.estimated_people_served ? parseInt(formData.estimated_people_served.toString().replace(/[^\d]/g, '')) : null,
         personnel_percentage: formData.personnel_percentage ? parseFloat(formData.personnel_percentage) : null,
         equipment_percentage: formData.equipment_percentage ? parseFloat(formData.equipment_percentage) : null,
         travel_percentage: formData.travel_percentage ? parseFloat(formData.travel_percentage) : null,
@@ -289,7 +292,14 @@ export default function CreateProjectModal({
         toast.success('Project updated successfully!')
         onProjectUpdated?.(result)
       } else {
+        console.log('Creating project with processed data:', projectData)
         result = await directUserServices.projects.createProject(user.id, projectData)
+        
+        if (!result) {
+          throw new Error('Project creation failed - no data returned from server')
+        }
+        
+        console.log('Project creation successful:', result)
         toast.success('Project created successfully!')
         onProjectCreated?.(result)
       }
@@ -297,7 +307,16 @@ export default function CreateProjectModal({
       onClose()
     } catch (error) {
       console.error('Error saving project:', error)
-      toast.error(error.message || 'Failed to save project')
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to save project'
+      if (error.message) {
+        errorMessage = error.message
+      } else if (error.details) {
+        errorMessage = error.details
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

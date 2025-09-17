@@ -157,6 +157,77 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const forgotPassword = async (email) => {
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error)
+      }
+
+      return result
+    } catch (error) {
+      console.error('Error requesting password reset:', error)
+      throw error
+    }
+  }
+
+  const resetPasswordWithCode = async (email, code, newPassword) => {
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify',
+          email,
+          code,
+          newPassword
+        })
+      })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error)
+      }
+
+      return result
+    } catch (error) {
+      console.error('Error resetting password with code:', error)
+      throw error
+    }
+  }
+
+  const exchangeResetToken = async (hashFragment) => {
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'exchange',
+          code: hashFragment
+        })
+      })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error)
+      }
+
+      return result
+    } catch (error) {
+      console.error('Error exchanging reset token:', error)
+      throw error
+    }
+  }
+
   const value = {
     user,
     session,
@@ -166,7 +237,10 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signOut,
     resetPassword,
-    updatePassword
+    updatePassword,
+    forgotPassword,
+    resetPasswordWithCode,
+    exchangeResetToken
   }
 
   return (

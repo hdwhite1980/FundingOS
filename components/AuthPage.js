@@ -9,6 +9,8 @@ import Logo from './Logo'
 export default function AuthPage() {
   const supabase = useSupabaseClient()
   const [isSignUp, setIsSignUp] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showResetPassword, setShowResetPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -17,6 +19,12 @@ export default function AuthPage() {
     fullName: '',
     organizationName: '',
     userRole: 'company'
+  })
+  const [resetData, setResetData] = useState({
+    email: '',
+    code: '',
+    newPassword: '',
+    confirmNewPassword: ''
   })
   
   const handleSubmit = async (e) => {
@@ -109,9 +117,89 @@ export default function AuthPage() {
     }
   }
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetData.email })
+      })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error)
+      }
+
+      toast.success(result.message)
+      setShowResetPassword(true)
+      setShowForgotPassword(false)
+    } catch (error) {
+      console.error('Forgot password error:', error)
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    
+    if (resetData.newPassword !== resetData.confirmNewPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    if (resetData.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify',
+          email: resetData.email,
+          code: resetData.code,
+          newPassword: resetData.newPassword
+        })
+      })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error)
+      }
+
+      toast.success(result.message)
+      setShowResetPassword(false)
+      setShowForgotPassword(false)
+      setResetData({ email: '', code: '', newPassword: '', confirmNewPassword: '' })
+    } catch (error) {
+      console.error('Reset password error:', error)
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const handleResetInputChange = (e) => {
+    setResetData({
+      ...resetData,
       [e.target.name]: e.target.value
     })
   }
@@ -188,16 +276,131 @@ export default function AuthPage() {
             className="text-center mb-8"
           >
             <h2 className="text-3xl font-bold text-slate-900 mb-3">
-              {isSignUp ? 'Start Your Funding Journey' : 'Welcome Back'}
+              {showForgotPassword ? 'Reset Your Password' : 
+               showResetPassword ? 'Enter New Password' :
+               isSignUp ? 'Start Your Funding Journey' : 'Welcome Back'}
             </h2>
             <p className="text-slate-600 leading-relaxed">
-              {isSignUp 
+              {showForgotPassword ? 'Enter your email address and we\'ll send you instructions to reset your password' :
+               showResetPassword ? 'Enter the code from your email and your new password' :
+               isSignUp 
                 ? 'Join thousands of organizations securing funding with AI-powered insights'
                 : 'Sign in to access your funding opportunities and continue growing'
               }
             </p>
           </motion.div>
 
+          {showForgotPassword ? (
+            <motion.form
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              onSubmit={handleForgotPassword}
+              className="space-y-6"
+            >
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                  <Mail className="inline w-4 h-4 mr-2 text-emerald-600" />
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  value={resetData.email}
+                  onChange={handleResetInputChange}
+                  placeholder="Enter your email"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  'Send Reset Instructions'
+                )}
+              </button>
+            </motion.form>
+          ) : showResetPassword ? (
+            <motion.form
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              onSubmit={handleResetPassword}
+              className="space-y-6"
+            >
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Reset Code
+                </label>
+                <input
+                  type="text"
+                  name="code"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  value={resetData.code}
+                  onChange={handleResetInputChange}
+                  placeholder="Enter the code from your email"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                  <Lock className="inline w-4 h-4 mr-2 text-emerald-600" />
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  name="newPassword"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  value={resetData.newPassword}
+                  onChange={handleResetInputChange}
+                  placeholder="Enter your new password"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                  <Lock className="inline w-4 h-4 mr-2 text-emerald-600" />
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  name="confirmNewPassword"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  value={resetData.confirmNewPassword}
+                  onChange={handleResetInputChange}
+                  placeholder="Confirm your new password"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-600 text-white py-3.5 px-6 rounded-xl font-semibold hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Updating Password...
+                  </div>
+                ) : (
+                  'Update Password'
+                )}
+              </button>
+            </motion.form>
+          ) : (
           <motion.form
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -327,17 +530,43 @@ export default function AuthPage() {
               )}
             </button>
           </motion.form>
+          )}
 
           <div className="text-center mt-6 sm:mt-8">
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-emerald-600 hover:text-emerald-700 font-semibold transition-colors"
-            >
-              {isSignUp
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Sign up"
-              }
-            </button>
+            {showForgotPassword || showResetPassword ? (
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false)
+                  setShowResetPassword(false)
+                  setResetData({ email: '', code: '', newPassword: '', confirmNewPassword: '' })
+                }}
+                className="text-emerald-600 hover:text-emerald-700 font-semibold transition-colors"
+              >
+                ← Back to Sign In
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsSignUp(!isSignUp)}
+                  className="text-emerald-600 hover:text-emerald-700 font-semibold transition-colors"
+                >
+                  {isSignUp
+                    ? 'Already have an account? Sign in'
+                    : "Don't have an account? Sign up"
+                  }
+                </button>
+                {!isSignUp && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-slate-500 hover:text-slate-700 text-sm transition-colors"
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {isSignUp && (

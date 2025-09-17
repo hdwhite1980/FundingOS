@@ -2,7 +2,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, User, Building2, Bell, ShieldCheck, Settings, Mail, Smartphone, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
-// Saving via server routes to centralize policy and auth
+import ActiveSessionsManager from './ActiveSessionsManager'
+import TwoFactorAuth from './TwoFactorAuth'
+import DeviceManager from './DeviceManager'
 
 const ORG_TYPES = [
   { value: 'nonprofit', label: 'Nonprofit' },
@@ -363,13 +365,57 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
           )}
 
           {activeTab === 'security' && (
-            <div className="space-y-3 text-sm text-slate-700">
-              <p>Manage your security from the authentication provider.</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li><a className="text-emerald-700 hover:underline" href="/auth/reset-password">Reset password</a></li>
-                <li>Two-factor authentication (coming soon)</li>
-                <li>Active sessions and device management (coming soon)</li>
-              </ul>
+            <div className="space-y-8">
+              <TwoFactorAuth />
+              
+              <div className="border-t pt-8">
+                <ActiveSessionsManager />
+              </div>
+              
+              <div className="border-t pt-8">
+                <DeviceManager />
+              </div>
+              
+              <div className="border-t pt-8">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-slate-900">Password Management</h3>
+                  <p className="text-sm text-slate-600">
+                    Manage your account password and recovery options
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        // You can integrate the password reset flow here
+                        window.location.href = '/auth/reset-password'
+                      }}
+                      className="px-4 py-2 text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors text-center"
+                    >
+                      Change Password
+                    </a>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/auth/forgot-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: user?.email })
+                          })
+                          if (response.ok) {
+                            toast.success('Password reset instructions sent to your email')
+                          }
+                        } catch (error) {
+                          toast.error('Failed to send reset email')
+                        }
+                      }}
+                      className="px-4 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      Send Reset Email
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

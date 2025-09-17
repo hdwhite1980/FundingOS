@@ -67,25 +67,44 @@ export function ProjectBasics({ formData, onChange }) {
 
       {/* Project Category */}
       <div className="bg-slate-50 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-4">Project Category *</h4>
+        <h4 className="font-semibold text-gray-900 mb-4">Project Category * (Select all that apply)</h4>
         <div className="grid md:grid-cols-2 gap-3">
           {PROJECT_CATEGORIES.map((category) => (
             <label key={category.value} className="flex items-center p-3 border rounded-lg hover:bg-white cursor-pointer">
               <input
-                type="radio"
-                name="project_category"
+                type="checkbox"
+                name="project_categories"
                 value={category.value}
-                checked={formData.project_category === category.value}
-                onChange={onChange}
+                checked={formData.project_categories?.includes(category.value) || false}
+                onChange={(e) => {
+                  const currentCategories = formData.project_categories || []
+                  let updatedCategories
+                  
+                  if (e.target.checked) {
+                    // Add category if checked
+                    updatedCategories = [...currentCategories, category.value]
+                  } else {
+                    // Remove category if unchecked
+                    updatedCategories = currentCategories.filter(cat => cat !== category.value)
+                  }
+                  
+                  // Create synthetic event for the parent onChange handler
+                  const syntheticEvent = {
+                    target: {
+                      name: 'project_categories',
+                      value: updatedCategories
+                    }
+                  }
+                  onChange(syntheticEvent)
+                }}
                 className="mr-3"
-                required
               />
               <span className="text-sm font-medium">{category.label}</span>
             </label>
           ))}
         </div>
         
-        {formData.project_category === 'other' && (
+        {formData.project_categories?.includes('other') && (
           <div className="mt-4">
             <label className="form-label">Please specify:</label>
             <input
@@ -105,6 +124,26 @@ export function ProjectBasics({ formData, onChange }) {
 
 // Step 2: Scope & Impact
 export function ScopeImpact({ formData, onChange }) {
+  // Helper function to format numbers with commas
+  const formatNumber = (value) => {
+    if (!value || isNaN(value)) return ''
+    const num = parseInt(value)
+    return new Intl.NumberFormat('en-US').format(num)
+  }
+
+  // Handler for number input changes
+  const handleNumberChange = (e) => {
+    const { name, value } = e.target
+    // Remove any non-numeric characters
+    const cleanValue = value.replace(/[^\d]/g, '')
+    onChange({
+      target: {
+        name,
+        value: cleanValue
+      }
+    })
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -136,15 +175,19 @@ export function ScopeImpact({ formData, onChange }) {
             <div>
               <label className="form-label">Estimated Number of People Served *</label>
               <input
-                type="number"
+                type="text"
                 name="estimated_people_served"
                 className="form-input"
-                value={formData.estimated_people_served}
-                onChange={onChange}
+                value={formData.estimated_people_served ? formatNumber(formData.estimated_people_served) : ''}
+                onChange={handleNumberChange}
                 placeholder="Number of direct beneficiaries"
-                min="1"
                 required
               />
+              {formData.estimated_people_served && (
+                <p className="text-xs text-emerald-600 mt-1">
+                  {formatNumber(formData.estimated_people_served)} people
+                </p>
+              )}
             </div>
             
             <div>
@@ -227,6 +270,38 @@ export function FundingRequirements({ formData, onChange }) {
     return total
   }
 
+  // Helper function to format currency values
+  const formatCurrency = (value) => {
+    if (!value || isNaN(value)) return '$0'
+    const num = parseFloat(value)
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(num)
+  }
+
+  // Helper function to format numbers with commas
+  const formatNumber = (value) => {
+    if (!value || isNaN(value)) return '0'
+    const num = parseFloat(value)
+    return new Intl.NumberFormat('en-US').format(num)
+  }
+
+  // Handler for currency input changes
+  const handleCurrencyChange = (e) => {
+    const { name, value } = e.target
+    // Remove any non-numeric characters except decimal points
+    const cleanValue = value.replace(/[^\d.]/g, '')
+    onChange({
+      target: {
+        name,
+        value: cleanValue
+      }
+    })
+  }
+
   const percentageTotal = calculatePercentages()
 
   return (
@@ -243,16 +318,23 @@ export function FundingRequirements({ formData, onChange }) {
       <div className="bg-slate-50 rounded-lg p-6">
         <h4 className="font-semibold text-gray-900 mb-4">Total Project Budget *</h4>
         <div>
-          <input
-            type="number"
-            name="total_project_budget"
-            className="form-input text-lg font-medium"
-            value={formData.total_project_budget}
-            onChange={onChange}
-            placeholder="0"
-            min="0"
-            required
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">$</span>
+            <input
+              type="text"
+              name="total_project_budget"
+              className="form-input text-lg font-medium pl-8"
+              value={formData.total_project_budget ? formatNumber(formData.total_project_budget) : ''}
+              onChange={handleCurrencyChange}
+              placeholder="0"
+              required
+            />
+          </div>
+          {formData.total_project_budget && (
+            <p className="text-sm text-emerald-600 mt-1 font-medium">
+              Total Budget: {formatCurrency(formData.total_project_budget)}
+            </p>
+          )}
           <p className="text-sm text-gray-500 mt-2">Include all costs: personnel, equipment, supplies, indirect costs, etc.</p>
         </div>
       </div>
@@ -361,42 +443,63 @@ export function FundingRequirements({ formData, onChange }) {
       <div className="grid md:grid-cols-3 gap-4">
         <div>
           <label className="form-label">Funding Request Amount *</label>
-          <input
-            type="number"
-            name="funding_request_amount"
-            className="form-input"
-            value={formData.funding_request_amount}
-            onChange={onChange}
-            placeholder="0"
-            min="0"
-            required
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">$</span>
+            <input
+              type="text"
+              name="funding_request_amount"
+              className="form-input pl-8"
+              value={formData.funding_request_amount ? formatNumber(formData.funding_request_amount) : ''}
+              onChange={handleCurrencyChange}
+              placeholder="0"
+              required
+            />
+          </div>
+          {formData.funding_request_amount && (
+            <p className="text-xs text-emerald-600 mt-1">
+              {formatCurrency(formData.funding_request_amount)}
+            </p>
+          )}
         </div>
         
         <div>
           <label className="form-label">Cash Match Available</label>
-          <input
-            type="number"
-            name="cash_match_available"
-            className="form-input"
-            value={formData.cash_match_available}
-            onChange={onChange}
-            placeholder="0"
-            min="0"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">$</span>
+            <input
+              type="text"
+              name="cash_match_available"
+              className="form-input pl-8"
+              value={formData.cash_match_available ? formatNumber(formData.cash_match_available) : ''}
+              onChange={handleCurrencyChange}
+              placeholder="0"
+            />
+          </div>
+          {formData.cash_match_available && (
+            <p className="text-xs text-emerald-600 mt-1">
+              {formatCurrency(formData.cash_match_available)}
+            </p>
+          )}
         </div>
         
         <div>
           <label className="form-label">In-Kind Match Available</label>
-          <input
-            type="number"
-            name="in_kind_match_available"
-            className="form-input"
-            value={formData.in_kind_match_available}
-            onChange={onChange}
-            placeholder="0"
-            min="0"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">$</span>
+            <input
+              type="text"
+              name="in_kind_match_available"
+              className="form-input pl-8"
+              value={formData.in_kind_match_available ? formatNumber(formData.in_kind_match_available) : ''}
+              onChange={handleCurrencyChange}
+              placeholder="0"
+            />
+          </div>
+          {formData.in_kind_match_available && (
+            <p className="text-xs text-emerald-600 mt-1">
+              {formatCurrency(formData.in_kind_match_available)}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -738,6 +841,25 @@ export function FundingStrategy({ formData, onChange, onFundingTypesChange }) {
 
 // Step 7: Innovation & Review
 export function InnovationReview({ formData, onChange }) {
+  // Helper function to format currency values consistently
+  const formatCurrency = (value) => {
+    if (!value || isNaN(value)) return 'Not specified'
+    const num = parseFloat(value)
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(num)
+  }
+
+  // Helper function to format people served with commas
+  const formatNumber = (value) => {
+    if (!value || isNaN(value)) return 'Not specified'
+    const num = parseInt(value)
+    return new Intl.NumberFormat('en-US').format(num)
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -801,32 +923,33 @@ export function InnovationReview({ formData, onChange }) {
           </div>
           
           <div className="flex justify-between">
-            <span className="font-medium">Category:</span>
-            <span>{formData.project_category?.replace('_', ' ') || 'Not specified'}</span>
-          </div>
-          
-          <div className="flex justify-between">
-            <span className="font-medium">People Served:</span>
-            <span>{formData.estimated_people_served || 'Not specified'}</span>
-          </div>
-          
-          <div className="flex justify-between">
-            <span className="font-medium">Total Budget:</span>
-            <span>
-              {formData.total_project_budget 
-                ? `$${parseFloat(formData.total_project_budget).toLocaleString()}` 
+            <span className="font-medium">Categories:</span>
+            <span className="text-right max-w-[250px]">
+              {formData.project_categories?.length > 0 
+                ? formData.project_categories.map(cat => 
+                    PROJECT_CATEGORIES.find(c => c.value === cat)?.label || cat
+                  ).join(', ')
                 : 'Not specified'
               }
             </span>
           </div>
           
           <div className="flex justify-between">
+            <span className="font-medium">People Served:</span>
+            <span>{formatNumber(formData.estimated_people_served)}</span>
+          </div>
+          
+          <div className="flex justify-between">
+            <span className="font-medium">Total Budget:</span>
+            <span className="font-semibold">
+              {formatCurrency(formData.total_project_budget)}
+            </span>
+          </div>
+          
+          <div className="flex justify-between">
             <span className="font-medium">Funding Request:</span>
-            <span>
-              {formData.funding_request_amount 
-                ? `$${parseFloat(formData.funding_request_amount).toLocaleString()}` 
-                : 'Not specified'
-              }
+            <span className="font-semibold">
+              {formatCurrency(formData.funding_request_amount)}
             </span>
           </div>
           
