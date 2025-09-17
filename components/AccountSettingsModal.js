@@ -367,59 +367,125 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
 
           {activeTab === 'security' && (
             <div className="space-y-8">
-              <TwoFactorAuth />
-              
-              <div className="border-t pt-8">
-                <ActiveSessionsManager />
+              <div className="bg-white border border-slate-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Two-Factor Authentication</h3>
+                <div className="min-h-[200px]">
+                  {(() => {
+                    try {
+                      return <TwoFactorAuth />
+                    } catch (error) {
+                      console.error('TwoFactorAuth component error:', error)
+                      return (
+                        <div className="text-center py-8 text-slate-500 border border-slate-200 rounded-lg bg-slate-50">
+                          <p>Two-Factor Authentication temporarily unavailable</p>
+                          <p className="text-xs mt-1">Check console for details</p>
+                        </div>
+                      )
+                    }
+                  })()}
+                </div>
               </div>
               
               <div className="border-t pt-8">
-                <DeviceManager />
-              </div>
-              
-              <div className="border-t pt-8">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900">Password Management</h3>
-                  <p className="text-sm text-slate-600">
-                    Manage your account password and recovery options
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        // You can integrate the password reset flow here
-                        window.location.href = '/auth/reset-password'
-                      }}
-                      className="px-4 py-2 text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors text-center"
-                    >
-                      Change Password
-                    </a>
-                    <button
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/auth/forgot-password', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: user?.email })
-                          })
-                          if (response.ok) {
-                            toast.success('Password reset instructions sent to your email')
-                          }
-                        } catch (error) {
-                          toast.error('Failed to send reset email')
-                        }
-                      }}
-                      className="px-4 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                    >
-                      Send Reset Email
-                    </button>
+                <div className="bg-white border border-slate-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Active Sessions</h3>
+                  <div className="min-h-[150px]">
+                    {(() => {
+                      try {
+                        return <ActiveSessionsManager />
+                      } catch (error) {
+                        console.error('ActiveSessionsManager component error:', error)
+                        return (
+                          <div className="text-center py-8 text-slate-500 border border-slate-200 rounded-lg bg-slate-50">
+                            <p>Session management temporarily unavailable</p>
+                            <p className="text-xs mt-1">Check console for details</p>
+                          </div>
+                        )
+                      }
+                    })()}
                   </div>
                 </div>
               </div>
               
               <div className="border-t pt-8">
-                <DeleteAccount />
+                <div className="bg-white border border-slate-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Device Management</h3>
+                  <div className="min-h-[150px]">
+                    {(() => {
+                      try {
+                        return <DeviceManager />
+                      } catch (error) {
+                        console.error('DeviceManager component error:', error)
+                        return (
+                          <div className="text-center py-8 text-slate-500 border border-slate-200 rounded-lg bg-slate-50">
+                            <p>Device management temporarily unavailable</p>
+                            <p className="text-xs mt-1">Check console for details</p>
+                          </div>
+                        )
+                      }
+                    })()}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border-t pt-8">
+                <div className="bg-white border border-slate-200 rounded-lg p-4">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-slate-900">Password Management</h3>
+                    <p className="text-sm text-slate-600">
+                      Manage your account password and recovery options
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          // You can integrate the password reset flow here
+                          window.location.href = '/auth/reset-password'
+                        }}
+                        className="px-4 py-2 text-white bg-emerald-600 border border-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors text-center"
+                      >
+                        Change Password
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/auth/forgot-password', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email: user?.email })
+                            })
+                            if (response.ok) {
+                              toast.success('Password reset instructions sent to your email')
+                            }
+                          } catch (error) {
+                            toast.error('Failed to send reset email')
+                          }
+                        }}
+                        className="px-4 py-2 text-emerald-600 border border-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
+                      >
+                        Send Reset Email
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border-t pt-8">
+                <div className="bg-white border border-slate-200 rounded-lg p-4">
+                  {(() => {
+                    try {
+                      return <DeleteAccount />
+                    } catch (error) {
+                      console.error('DeleteAccount component error:', error)
+                      return (
+                        <div className="text-center py-8 text-slate-500 border border-slate-200 rounded-lg bg-slate-50">
+                          <p>Delete account options temporarily unavailable</p>
+                          <p className="text-xs mt-1">Check console for details</p>
+                        </div>
+                      )
+                    }
+                  })()}
+                </div>
               </div>
             </div>
           )}

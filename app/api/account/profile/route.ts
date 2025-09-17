@@ -20,8 +20,39 @@ export async function GET(req: NextRequest) {
       .select('*')
       .eq('id', userId)
       .maybeSingle()
+    
     if (error && error.code !== 'PGRST116') throw error
-    return NextResponse.json({ profile: data || null })
+    
+    // If no profile exists, create a minimal one with user's email
+    if (!data) {
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
+      if (authError || !authUser?.user?.email) {
+        return NextResponse.json({ profile: null })
+      }
+      
+      // Create minimal profile with required email field
+      const minimalProfile = {
+        id: userId,
+        email: authUser.user.email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      
+      const { data: newProfile, error: insertError } = await supabase
+        .from('user_profiles')
+        .insert(minimalProfile)
+        .select()
+        .single()
+        
+      if (insertError) {
+        console.error('Failed to create minimal profile:', insertError)
+        return NextResponse.json({ profile: null })
+      }
+      
+      return NextResponse.json({ profile: newProfile })
+    }
+    
+    return NextResponse.json({ profile: data })
   } catch (e: any) {
     console.error('GET /api/account/profile error:', e)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
@@ -36,6 +67,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'userId and updates required' }, { status: 400 })
     }
     const supabase = getServerClient()
+
+    // Get user email from auth system to ensure NOT NULL constraint is satisfied
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
+    if (authError || !authUser?.user?.email) {
+      console.error('Failed to get user email:', authError)
+      return NextResponse.json({ error: 'User authentication required' }, { status: 401 })
+    }
 
     // Sanitize: convert empty strings to null and coerce numeric fields
     const numericFields = new Set([
@@ -74,7 +112,12 @@ export async function PUT(req: NextRequest) {
       sanitizedUpdates[key] = val
     }
 
-    const payload = { id: userId, ...sanitizedUpdates, updated_at: new Date().toISOString() }
+    const payload = { 
+      id: userId, 
+      email: authUser.user.email, // Always include email to satisfy NOT NULL constraint
+      ...sanitizedUpdates, 
+      updated_at: new Date().toISOString() 
+    }
     const { data, error } = await supabase
       .from('user_profiles')
       .upsert(payload, { onConflict: 'id' })

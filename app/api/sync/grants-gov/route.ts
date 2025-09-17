@@ -531,7 +531,8 @@ export async function GET(request: Request) {
         funding_instrument: 'grant',
         raw_data: opp,
         ai_metadata: opp._aiMetadata || null, // Store AI search context
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
+        updated_at: new Date().toISOString() // Add both fields for compatibility
       }
     })
 

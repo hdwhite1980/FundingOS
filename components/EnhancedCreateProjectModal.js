@@ -252,14 +252,20 @@ export default function CreateProjectModal({
   }
 
   const handleNext = () => {
+    console.log('handleNext called, currentStep:', currentStep)
     if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1)
+      const nextStep = currentStep + 1
+      console.log('Setting currentStep to:', nextStep)
+      setCurrentStep(nextStep)
     }
   }
 
   const handlePrevious = () => {
+    console.log('handlePrevious called, currentStep:', currentStep)
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
+      const prevStep = currentStep - 1
+      console.log('Setting currentStep to:', prevStep)
+      setCurrentStep(prevStep)
     }
   }
 
@@ -282,9 +288,13 @@ export default function CreateProjectModal({
 
       const projectData = {
         ...formData,
+        // Map form fields to database fields
+        location: formData.project_location || 'Unspecified',
         // Handle both old and new project category fields for backward compatibility
         project_category: formData.project_categories?.length > 0 ? formData.project_categories[0] : null,
         project_categories: formData.project_categories || [],
+        // Ensure project_type is set from project_categories for database compatibility
+        project_type: formData.project_categories?.length > 0 ? formData.project_categories[0] : 'other',
         total_project_budget: formData.total_project_budget ? parseFloat(formData.total_project_budget.toString().replace(/[^\d.]/g, '')) : null,
         funding_request_amount: formData.funding_request_amount ? parseFloat(formData.funding_request_amount.toString().replace(/[^\d.]/g, '')) : null,
         cash_match_available: formData.cash_match_available ? parseFloat(formData.cash_match_available.toString().replace(/[^\d.]/g, '')) : null,
@@ -334,21 +344,23 @@ export default function CreateProjectModal({
   }
 
   const renderStepContent = () => {
+    console.log('Rendering step content for currentStep:', currentStep)
+    
     switch (currentStep) {
       case 1:
-        return <ProjectBasics formData={formData} onChange={handleInputChange} />
+        return <ProjectBasics key="step-1" formData={formData} onChange={handleInputChange} />
       case 2:
-        return <ScopeImpact formData={formData} onChange={handleInputChange} />
+        return <ScopeImpact key="step-2" formData={formData} onChange={handleInputChange} />
       case 3:
-        return <FundingRequirements formData={formData} onChange={handleInputChange} />
+        return <FundingRequirements key="step-3" formData={formData} onChange={handleInputChange} />
       case 4:
-        return <ProjectReadiness formData={formData} onChange={handleInputChange} />
+        return <ProjectReadiness key="step-4" formData={formData} onChange={handleInputChange} />
       case 5:
-        return <OutcomesEvaluation formData={formData} onChange={handleInputChange} onArrayChange={handleArrayChange} onGoalsChange={handleGoalsChange} />
+        return <OutcomesEvaluation key="step-5" formData={formData} onChange={handleInputChange} onArrayChange={handleArrayChange} onGoalsChange={handleGoalsChange} />
       case 6:
-        return <FundingStrategy formData={formData} onChange={handleInputChange} onFundingTypesChange={handleFundingTypesChange} />
+        return <FundingStrategy key="step-6" formData={formData} onChange={handleInputChange} onFundingTypesChange={handleFundingTypesChange} />
       case 7:
-        return <InnovationReview formData={formData} onChange={handleInputChange} />
+        return <InnovationReview key="step-7" formData={formData} onChange={handleInputChange} />
       case 8:
         return (
           <div className="space-y-6">
@@ -474,7 +486,7 @@ export default function CreateProjectModal({
         <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentStep}
+              key={`step-${currentStep}`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}

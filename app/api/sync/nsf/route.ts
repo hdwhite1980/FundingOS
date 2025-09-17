@@ -445,7 +445,8 @@ export async function GET(request: Request) {
         funding_instrument: 'grant',
         raw_data: award,
         ai_metadata: award._aiMetadata || null,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
+        updated_at: new Date().toISOString() // Add both fields for compatibility
       }
     })
 
