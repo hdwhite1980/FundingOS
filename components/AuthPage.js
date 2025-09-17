@@ -63,7 +63,7 @@ export default function AuthPage() {
             const userId = data.user.id
             // Create user_profile row if not yet created (race-safe upsert)
             await supabase.from('user_profiles').upsert({
-              id: userId,
+              user_id: userId,  // Changed from 'id' to 'user_id'
               email: formData.email,
               full_name: formData.fullName,
               organization_name: formData.organizationName,
@@ -72,7 +72,7 @@ export default function AuthPage() {
               setup_completed: true, // Skip general onboarding
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
-            }, { onConflict: 'id' })
+            }, { onConflict: 'user_id' })  // Changed conflict column
 
             // Create angel_investors row with empty preferences (triggers angel onboarding)
             const { data: existingAngel } = await supabase

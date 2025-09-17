@@ -1,0 +1,272 @@
+| record_type     | routine_name                           | routine_type | data_type | routine_definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------- | -------------------------------------- | ------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FUNCTION_SCHEMA | calculate_roi                          | FUNCTION     | trigger   | 
+BEGIN
+  NEW.roi_percentage = CASE 
+    WHEN NEW.investment_amount > 0 AND NEW.current_value IS NOT NULL THEN 
+      ROUND(((NEW.current_value - NEW.investment_amount) / NEW.investment_amount * 100)::NUMERIC, 2)
+    ELSE 0
+  END;
+  
+  NEW.updated_at = now();
+  
+  RETURN NEW;
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| FUNCTION_SCHEMA | cleanup_inactive_devices               | FUNCTION     | integer   | 
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM user_devices 
+  WHERE is_active = FALSE 
+  AND removed_at < NOW() - INTERVAL '30 days';
+  
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| FUNCTION_SCHEMA | cleanup_old_sessions                   | FUNCTION     | integer   | 
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM user_sessions 
+  WHERE last_activity < NOW() - INTERVAL '7 days';
+  
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| FUNCTION_SCHEMA | close_active_chat_sessions             | FUNCTION     | void      | 
+BEGIN
+  UPDATE chat_sessions 
+  SET is_active = false, 
+      session_end = NOW(),
+      updated_at = NOW()
+  WHERE user_id = user_uuid AND is_active = true;
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| FUNCTION_SCHEMA | get_donor_stats                        | FUNCTION     | json      | 
+DECLARE
+    result JSON;
+BEGIN
+    SELECT json_build_object(
+        'total_donors', COUNT(DISTINCT d.id),
+        'total_raised', COALESCE(SUM(d.total_donated), 0),
+        'major_donors', COUNT(DISTINCT d.id) FILTER (WHERE d.is_major_donor = true),
+        'avg_donation', CASE 
+            WHEN COUNT(DISTINCT d.id) > 0 THEN COALESCE(SUM(d.total_donated), 0) / COUNT(DISTINCT d.id)
+            ELSE 0 
+        END,
+        'recent_donations', (
+            SELECT json_agg(
+                json_build_object(
+                    'amount', don.amount,
+                    'date', don.donation_date,
+                    'donor_name', d2.name
+                )
+            )
+            FROM donations don
+            JOIN donors d2 ON don.donor_id = d2.id
+            WHERE don.user_id = target_user_id
+            ORDER BY don.donation_date DESC
+            LIMIT 5
+        )
+    )
+    INTO result
+    FROM donors d
+    WHERE d.user_id = target_user_id;
+    
+    RETURN result;
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| FUNCTION_SCHEMA | increment_sam_usage                    | FUNCTION     | void      | 
+BEGIN
+  INSERT INTO sam_gov_usage (date, request_count)
+  VALUES (usage_date, 1)
+  ON CONFLICT (date)
+  DO UPDATE SET 
+    request_count = sam_gov_usage.request_count + 1,
+    updated_at = NOW();
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| FUNCTION_SCHEMA | sync_angel_investor_preference_columns | FUNCTION     | trigger   | 
+BEGIN
+  NEW.core_completed = (NEW.investment_preferences->'flags'->>'core_completed')::BOOLEAN;
+  NEW.preferences_completed = (NEW.investment_preferences->'flags'->>'preferences_completed')::BOOLEAN;
+  NEW.enhancement_completed = (NEW.investment_preferences->'flags'->>'enhancement_completed')::BOOLEAN;
+  NEW.experience_level = NEW.investment_preferences->'core'->>'experience_level';
+  NEW.accredited_status_label = NEW.investment_preferences->'core'->>'accredited_status';
+  NEW.accredited_status = CASE NEW.accredited_status_label
+    WHEN 'verified' THEN true
+    WHEN 'need_verification' THEN true
+    WHEN 'no' THEN false
+    ELSE NEW.accredited_status
+  END;
+  NEW.investment_range = NEW.investment_preferences->'core'->>'investment_range';
+  NEW.annual_investment_range = NEW.investment_preferences->'core'->>'annual_investment_range';
+  NEW.stages = ARRAY(SELECT jsonb_array_elements_text(COALESCE(NEW.investment_preferences->'core'->'stages','[]'::jsonb)));
+  NEW.industries = ARRAY(SELECT jsonb_array_elements_text(COALESCE(NEW.investment_preferences->'core'->'industries','[]'::jsonb)));
+  NEW.geographies = ARRAY(SELECT jsonb_array_elements_text(COALESCE(NEW.investment_preferences->'preferences'->'geographies','[]'::jsonb)));
+  NEW.motivations = ARRAY(SELECT jsonb_array_elements_text(COALESCE(NEW.investment_preferences->'preferences'->'motivations','[]'::jsonb)));
+  NEW.involvement_level = NEW.investment_preferences->'preferences'->>'involvement_level';
+  NEW.decision_speed = NEW.investment_preferences->'preferences'->>'decision_speed';
+  NEW.notification_frequency = NEW.investment_preferences->'preferences'->>'notification_frequency';
+  NEW.equity_range = NEW.investment_preferences->'enhancement'->>'equity_range';
+  NEW.exits = NULLIF(NEW.investment_preferences->'enhancement'->>'exits','')::INTEGER;
+  NEW.professional_background = NEW.investment_preferences->'enhancement'->>'professional_background';
+  NEW.expertise = ARRAY(SELECT jsonb_array_elements_text(COALESCE(NEW.investment_preferences->'enhancement'->'expertise','[]'::jsonb)));
+  RETURN NEW;
+END;
+ |
+| FUNCTION_SCHEMA | test_auth_uid                          | FUNCTION     | uuid      | SELECT auth.uid()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| FUNCTION_SCHEMA | update_angel_investor_metrics          | FUNCTION     | trigger   | 
+BEGIN
+  -- Update the angel investor's portfolio metrics
+  UPDATE public.angel_investors 
+  SET 
+    total_invested = (
+      SELECT COALESCE(SUM(ai.investment_amount), 0)
+      FROM public.angel_investments ai
+      WHERE ai.investor_id = COALESCE(NEW.investor_id, OLD.investor_id)
+      AND ai.status = 'active'
+    ),
+    active_investments = (
+      SELECT COUNT(*)
+      FROM public.angel_investments ai
+      WHERE ai.investor_id = COALESCE(NEW.investor_id, OLD.investor_id)
+      AND ai.status = 'active'
+    ),
+    portfolio_value = (
+      SELECT COALESCE(SUM(ai.investment_amount * 1.15), 0) -- Mock 15% growth
+      FROM public.angel_investments ai
+      WHERE ai.investor_id = COALESCE(NEW.investor_id, OLD.investor_id)
+      AND ai.status = 'active'
+    ),
+    updated_at = now()
+  WHERE user_id = COALESCE(NEW.investor_id, OLD.investor_id);
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| FUNCTION_SCHEMA | update_investor_stats                  | FUNCTION     | trigger   | 
+BEGIN
+  -- Update investor's total invested, portfolio value, and active investments
+  UPDATE angel_investors 
+  SET 
+    total_invested = (
+      SELECT COALESCE(SUM(investment_amount), 0) 
+      FROM angel_investments 
+      WHERE investor_id = COALESCE(NEW.investor_id, OLD.investor_id)
+        AND status = 'active'
+    ),
+    portfolio_value = (
+      SELECT COALESCE(SUM(COALESCE(current_value, investment_amount)), 0) 
+      FROM angel_investments 
+      WHERE investor_id = COALESCE(NEW.investor_id, OLD.investor_id)
+        AND status = 'active'
+    ),
+    active_investments = (
+      SELECT COUNT(*) 
+      FROM angel_investments 
+      WHERE investor_id = COALESCE(NEW.investor_id, OLD.investor_id) 
+        AND status = 'active'
+    ),
+    updated_at = now()
+  WHERE id = COALESCE(NEW.investor_id, OLD.investor_id);
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| FUNCTION_SCHEMA | update_investor_totals                 | FUNCTION     | trigger   | 
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE investors 
+        SET 
+            total_invested = (
+                SELECT COALESCE(SUM(amount), 0) 
+                FROM investments 
+                WHERE investor_id = NEW.investor_id
+            ),
+            investment_count = (
+                SELECT COUNT(*) 
+                FROM investments 
+                WHERE investor_id = NEW.investor_id
+            ),
+            last_investment_date = GREATEST(
+                last_investment_date, 
+                NEW.investment_date
+            ),
+            first_investment_date = COALESCE(
+                LEAST(first_investment_date, NEW.investment_date),
+                NEW.investment_date
+            )
+        WHERE id = NEW.investor_id;
+        RETURN NEW;
+    END IF;
+    
+    IF TG_OP = 'UPDATE' THEN
+        UPDATE investors 
+        SET 
+            total_invested = (
+                SELECT COALESCE(SUM(amount), 0) 
+                FROM investments 
+                WHERE investor_id = NEW.investor_id
+            ),
+            investment_count = (
+                SELECT COUNT(*) 
+                FROM investments 
+                WHERE investor_id = NEW.investor_id
+            )
+        WHERE id = NEW.investor_id;
+        RETURN NEW;
+    END IF;
+    
+    IF TG_OP = 'DELETE' THEN
+        UPDATE investors 
+        SET 
+            total_invested = (
+                SELECT COALESCE(SUM(amount), 0) 
+                FROM investments 
+                WHERE investor_id = OLD.investor_id
+            ),
+            investment_count = (
+                SELECT COUNT(*) 
+                FROM investments 
+                WHERE investor_id = OLD.investor_id
+            )
+        WHERE id = OLD.investor_id;
+        RETURN OLD;
+    END IF;
+    
+    RETURN NULL;
+END;
+                                                                                                                                                                                                                                                                      |
+| FUNCTION_SCHEMA | update_project_funding                 | FUNCTION     | trigger   | 
+BEGIN
+  -- Update project's amount_raised
+  UPDATE projects
+  SET 
+    amount_raised = (
+      SELECT COALESCE(SUM(investment_amount), 0)
+      FROM angel_investments
+      WHERE project_id = COALESCE(NEW.project_id, OLD.project_id)
+        AND status = 'active'
+    ),
+    updated_at = now()
+  WHERE id = COALESCE(NEW.project_id, OLD.project_id);
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| FUNCTION_SCHEMA | update_session_activity                | FUNCTION     | trigger   | 
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| FUNCTION_SCHEMA | update_updated_at_column               | FUNCTION     | trigger   | 
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |

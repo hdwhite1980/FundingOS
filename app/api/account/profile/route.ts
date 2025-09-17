@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)  // Changed from 'id' to 'user_id'
       .maybeSingle()
     
     if (error && error.code !== 'PGRST116') throw error
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       
       // Create minimal profile with required email field
       const minimalProfile = {
-        id: userId,
+        user_id: userId,  // Changed from 'id' to 'user_id'
         email: authUser.user.email,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -113,14 +113,14 @@ export async function PUT(req: NextRequest) {
     }
 
     const payload = { 
-      id: userId, 
+      user_id: userId,  // Changed from 'id' to 'user_id'
       email: authUser.user.email, // Always include email to satisfy NOT NULL constraint
       ...sanitizedUpdates, 
       updated_at: new Date().toISOString() 
     }
     const { data, error } = await supabase
       .from('user_profiles')
-      .upsert(payload, { onConflict: 'id' })
+      .upsert(payload, { onConflict: 'user_id' })  // Changed conflict column
       .select()
       .single()
     if (error) throw error
