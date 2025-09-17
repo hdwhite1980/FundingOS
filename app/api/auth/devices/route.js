@@ -1,6 +1,6 @@
 // app/api/auth/devices/route.js
 import { NextResponse } from 'next/server'
-import { createAuthenticatedSupabaseClient, createUnauthorizedResponse } from '../../../../lib/vercelAuthHelper'
+import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
 export const dynamic = 'force-dynamic'
 import crypto from 'crypto'
 
@@ -13,14 +13,14 @@ function generateDeviceFingerprint(userAgent, ip) {
 // Get all registered devices for the user
 export async function GET(request) {
   try {
-    const { supabase, user, authMethod, isAuthenticated } = await createAuthenticatedSupabaseClient(request)
+    const { supabase, user } = await getVercelAuth()
 
-    if (!isAuthenticated) {
+    if (!user) {
       console.log('🔐 Devices API - User not authenticated')
-      return createUnauthorizedResponse()
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('🔐 Devices API - Authenticated via:', authMethod, user.id)
+    console.log('🔐 Devices API - Authenticated:', user.id)
 
     // Get all registered devices for the user
     const { data: devices, error } = await supabase
@@ -68,11 +68,11 @@ export async function GET(request) {
 // Register a new device
 export async function POST(request) {
   try {
-    const { supabase, user, authMethod, isAuthenticated } = await createAuthenticatedSupabaseClient(request)
+    const { supabase, user } = await getVercelAuth()
 
-    if (!isAuthenticated) {
+    if (!user) {
       console.log('🔐 Devices POST API - User not authenticated')
-      return createUnauthorizedResponse()
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     console.log('🔐 Devices POST API - Authenticated via:', authMethod, user.id)
