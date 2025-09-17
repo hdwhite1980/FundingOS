@@ -33,13 +33,40 @@ export async function GET(request) {
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         )
         
-        // Test basic connection
-        const { data, error } = await supabase.from('profiles').select('count').limit(1)
+        // Test basic connection and check for required tables
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('count')
+          .limit(1)
         
-        envCheck.connection_test = {
-          success: !error,
-          error: error?.message || null,
-          can_query_db: !!data
+        if (error && error.message?.includes('does not exist')) {
+          // Try alternative table names
+          const { data: altData, error: altError } = await supabase
+            .from('user_profiles')
+            .select('count')
+            .limit(1)
+          
+          envCheck.connection_test = {
+            success: !altError,
+            error: error.message + ' (tried user_profiles: ' + (altError?.message || 'success') + ')',
+            can_query_db: !!altData,
+            table_status: {
+              profiles_exists: false,
+              user_profiles_exists: !altError,
+              needs_schema_setup: true
+            }
+          }
+        } else {
+          envCheck.connection_test = {
+            success: !error,
+            error: error?.message || null,
+            can_query_db: !!data,
+            table_status: {
+              profiles_exists: !error,
+              user_profiles_exists: null,
+              needs_schema_setup: !!error
+            }
+          }
         }
       } catch (connError) {
         envCheck.connection_test = {
