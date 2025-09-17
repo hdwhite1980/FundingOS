@@ -3,47 +3,14 @@ import { useState, useEffect } from 'react'
 import { Monitor, Smartphone, Globe, Calendar, MapPin, X, Shield, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { useSecurityData } from '../hooks/useSecurityData'
 
 export default function ActiveSessionsManager() {
   const { user } = useAuth()
-  const [sessions, setSessions] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, sessions, refetch } = useSecurityData()
   const [terminating, setTerminating] = useState(new Set())
 
-  const loadSessions = async () => {
-    if (!user?.id) return
-    
-    try {
-      setLoading(true)
-      const response = await fetch('/api/auth/sessions', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load sessions')
-      }
-
-      const data = await response.json()
-      setSessions(data.sessions || [])
-    } catch (error) {
-      console.error('Error loading sessions:', error)
-      
-      // Check if this is a schema error (table doesn't exist yet)
-      if (error.message?.includes('user_sessions') || 
-          error.message?.includes('does not exist') ||
-          error.message?.includes('device_fingerprint')) {
-        console.log('Sessions table not ready yet - this is expected during database setup')
-        setSessions([])
-      } else {
-        toast.error('Failed to load active sessions')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Remove the old loadSessions function since we now use the hook
 
   const terminateSession = async (sessionId) => {
     if (!user?.id || terminating.has(sessionId)) return
@@ -94,16 +61,14 @@ export default function ActiveSessionsManager() {
       }
 
       toast.success('All other sessions terminated')
-      await loadSessions()
+      await refetch() // Refresh data from API
     } catch (error) {
       console.error('Error terminating all sessions:', error)
       toast.error('Failed to terminate all sessions')
     }
   }
 
-  useEffect(() => {
-    loadSessions()
-  }, [user?.id])
+  // Data is now loaded automatically by the useSecurityData hook
 
   const getDeviceIcon = (userAgent) => {
     if (!userAgent) return Globe

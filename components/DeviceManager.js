@@ -3,48 +3,15 @@ import { useState, useEffect } from 'react'
 import { Monitor, Smartphone, Tablet, Globe, MapPin, Calendar, Shield, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { useSecurityData } from '../hooks/useSecurityData'
 
 export default function DeviceManager() {
   const { user } = useAuth()
-  const [devices, setDevices] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, devices, refetch } = useSecurityData()
   const [trusting, setTrusting] = useState(new Set())
   const [removing, setRemoving] = useState(new Set())
 
-  const loadDevices = async () => {
-    if (!user?.id) return
-    
-    try {
-      setLoading(true)
-      const response = await fetch('/api/auth/devices', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load devices')
-      }
-
-      const data = await response.json()
-      setDevices(data.devices || [])
-    } catch (error) {
-      console.error('Error loading devices:', error)
-      
-      // Check if this is a schema error (devices table doesn't exist yet)
-      if (error.message?.includes('user_devices') || 
-          error.message?.includes('does not exist') ||
-          error.message?.includes('device_fingerprint')) {
-        console.log('Devices table not ready yet - this is expected during database setup')
-        setDevices([])
-      } else {
-        toast.error('Failed to load trusted devices')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Remove the old loadDevices function since we now use the hook
 
   const trustDevice = async (deviceId) => {
     if (!user?.id || trusting.has(deviceId)) return
@@ -210,9 +177,7 @@ export default function DeviceManager() {
     })
   }
 
-  useEffect(() => {
-    loadDevices()
-  }, [user?.id])
+  // Data is now loaded automatically by the useSecurityData hook
 
   if (loading) {
     return (

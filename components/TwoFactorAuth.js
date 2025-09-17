@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react'
 import { Shield, Smartphone, Key, QrCode, Copy, Check, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { useSecurityData } from '../hooks/useSecurityData'
 
 export default function TwoFactorAuth() {
   const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
+  const { loading, error, twoFactorEnabled, refetch } = useSecurityData()
   const [setupStep, setSetupStep] = useState('check') // 'check', 'setup', 'verify', 'backup'
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [secret, setSecret] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
@@ -16,40 +16,7 @@ export default function TwoFactorAuth() {
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedBackup, setCopiedBackup] = useState(false)
 
-  const checkTwoFactorStatus = async () => {
-    if (!user?.id) return
-    
-    try {
-      setLoading(true)
-      const response = await fetch('/api/auth/2fa/status', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to check 2FA status')
-      }
-
-      const data = await response.json()
-      setTwoFactorEnabled(data.enabled)
-    } catch (error) {
-      console.error('Error checking 2FA status:', error)
-      
-      // Check if this is a schema error (2FA columns don't exist yet)
-      if (error.message?.includes('two_factor') || 
-          error.message?.includes('does not exist') ||
-          error.message?.includes('column')) {
-        console.log('2FA columns not ready yet - this is expected during database setup')
-        setTwoFactorEnabled(false)
-      } else {
-        toast.error('Failed to check 2FA status')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Remove the old checkTwoFactorStatus function since we now use the hook
 
   const initiateTwoFactorSetup = async () => {
     try {
@@ -114,7 +81,7 @@ export default function TwoFactorAuth() {
   }
 
   const completeTwoFactorSetup = () => {
-    setTwoFactorEnabled(true)
+    refetch() // Refresh data from API instead of setting local state
     setSetupStep('check')
     setVerificationCode('')
     setSecret('')
@@ -140,7 +107,7 @@ export default function TwoFactorAuth() {
         throw new Error('Failed to disable 2FA')
       }
 
-      setTwoFactorEnabled(false)
+      refetch() // Refresh data from API instead of setting local state
       toast.success('Two-factor authentication disabled')
     } catch (error) {
       console.error('Error disabling 2FA:', error)
@@ -166,9 +133,7 @@ export default function TwoFactorAuth() {
     }
   }
 
-  useEffect(() => {
-    checkTwoFactorStatus()
-  }, [user?.id])
+  // Data is now loaded automatically by the useSecurityData hook
 
   if (loading && setupStep === 'check') {
     return (
