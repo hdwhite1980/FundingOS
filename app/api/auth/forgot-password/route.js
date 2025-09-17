@@ -1,57 +1,55 @@
-// pages/api/auth/forgot-password.js
+// app/api/auth/forgot-password/route.js
+import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
+export async function POST(request) {
   try {
-    const { email } = req.body
+    const body = await request.json()
+    const { email } = body
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' })
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format' })
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
     // Check if user exists first (optional - you might want to always return success for security)
-    const { data: userCheck, error: checkError } = await supabase
+    const { data: userCheck, error: checkError } = await supabaseAdmin
       .from('user_profiles')
       .select('email')
       .eq('email', email)
       .single()
 
     // Send password reset email
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`
     })
 
     if (error) {
       console.error('Forgot password error:', error)
       // Don't reveal if user exists or not for security
-      return res.status(200).json({ 
+      return NextResponse.json({ 
         success: true, 
         message: 'If an account with that email exists, we have sent password reset instructions.' 
       })
     }
 
-    return res.status(200).json({ 
+    return NextResponse.json({ 
       success: true, 
       message: 'If an account with that email exists, we have sent password reset instructions.' 
     })
 
   } catch (error) {
     console.error('Forgot password API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

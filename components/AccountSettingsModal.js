@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import ActiveSessionsManager from './ActiveSessionsManager'
 import TwoFactorAuth from './TwoFactorAuth'
 import DeviceManager from './DeviceManager'
+import DeleteAccount from './DeleteAccount'
 
 const ORG_TYPES = [
   { value: 'nonprofit', label: 'Nonprofit' },
@@ -415,6 +416,10 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
                     </button>
                   </div>
                 </div>
+              </div>
+              
+              <div className="border-t pt-8">
+                <DeleteAccount />
               </div>
             </div>
           )}

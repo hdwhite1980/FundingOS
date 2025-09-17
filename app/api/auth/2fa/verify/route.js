@@ -1,12 +1,9 @@
-// pages/api/auth/2fa/verify.js
-import { createClient } from '@supabase/supabase-js'
+// app/api/auth/2fa/verify/route.js
+import { NextResponse } from 'next/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import speakeasy from 'speakeasy'
 import crypto from 'crypto'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
 
 function generateBackupCodes() {
   const codes = []
@@ -17,29 +14,20 @@ function generateBackupCodes() {
   return codes
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
+export async function POST(request) {
   try {
-    const { token, secret } = req.body
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { token, secret } = body
 
     if (!token || !secret) {
-      return res.status(400).json({ error: 'Token and secret are required' })
-    }
-
-    // Get user from the session
-    const authHeader = req.headers.authorization
-    if (!authHeader) {
-      return res.status(401).json({ error: 'No authorization header' })
-    }
-
-    const authToken = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authToken)
-    
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid token' })
+      return NextResponse.json({ error: 'Token and secret are required' }, { status: 400 })
     }
 
     // Verify the TOTP token
@@ -51,7 +39,7 @@ export default async function handler(req, res) {
     })
 
     if (!verified) {
-      return res.status(400).json({ error: 'Invalid verification code' })
+      return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
     }
 
     // Generate backup codes
@@ -74,16 +62,16 @@ export default async function handler(req, res) {
 
     if (updateError) {
       console.error('Error enabling 2FA:', updateError)
-      return res.status(500).json({ error: 'Failed to enable 2FA' })
+      return NextResponse.json({ error: 'Failed to enable 2FA' }, { status: 500 })
     }
 
-    return res.status(200).json({
+    return NextResponse.json({
       success: true,
       backup_codes: backupCodes
     })
 
   } catch (error) {
     console.error('2FA verify API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

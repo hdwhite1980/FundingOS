@@ -1,36 +1,34 @@
-// pages/api/auth/reset-password.js
+// app/api/auth/reset-password/route.js
+import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
+export async function POST(request) {
   try {
-    const { email, code, newPassword, action } = req.body
+    const body = await request.json()
+    const { email, code, newPassword, action } = body
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' })
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
     switch (action) {
       case 'request': {
         // Send password reset email with code
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
           redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`
         })
 
         if (error) {
           console.error('Password reset request error:', error)
-          return res.status(400).json({ error: error.message })
+          return NextResponse.json({ error: error.message }, { status: 400 })
         }
 
-        return res.status(200).json({ 
+        return NextResponse.json({ 
           success: true, 
           message: 'Password reset email sent. Check your inbox for instructions.' 
         })
@@ -39,11 +37,11 @@ export default async function handler(req, res) {
       case 'verify': {
         // Verify reset code and update password
         if (!code || !newPassword) {
-          return res.status(400).json({ error: 'Code and new password are required' })
+          return NextResponse.json({ error: 'Code and new password are required' }, { status: 400 })
         }
 
         if (newPassword.length < 6) {
-          return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+          return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 })
         }
 
         // Create a client with the reset token to update the password
@@ -60,7 +58,7 @@ export default async function handler(req, res) {
 
         if (sessionError) {
           console.error('Session error:', sessionError)
-          return res.status(400).json({ error: 'Invalid or expired reset code' })
+          return NextResponse.json({ error: 'Invalid or expired reset code' }, { status: 400 })
         }
 
         // Update the password
@@ -70,10 +68,10 @@ export default async function handler(req, res) {
 
         if (updateError) {
           console.error('Password update error:', updateError)
-          return res.status(400).json({ error: updateError.message })
+          return NextResponse.json({ error: updateError.message }, { status: 400 })
         }
 
-        return res.status(200).json({ 
+        return NextResponse.json({ 
           success: true, 
           message: 'Password updated successfully. You can now sign in with your new password.' 
         })
@@ -82,7 +80,7 @@ export default async function handler(req, res) {
       case 'exchange': {
         // Exchange URL hash for access token (for URL-based reset flow)
         if (!code) {
-          return res.status(400).json({ error: 'Reset code is required' })
+          return NextResponse.json({ error: 'Reset code is required' }, { status: 400 })
         }
 
         const resetClient = createClient(
@@ -97,7 +95,7 @@ export default async function handler(req, res) {
           const refreshToken = params.get('refresh_token')
 
           if (!accessToken) {
-            return res.status(400).json({ error: 'Invalid reset link format' })
+            return NextResponse.json({ error: 'Invalid reset link format' }, { status: 400 })
           }
 
           // Verify the tokens by setting the session
@@ -108,10 +106,10 @@ export default async function handler(req, res) {
 
           if (error) {
             console.error('Token validation error:', error)
-            return res.status(400).json({ error: 'Invalid or expired reset link' })
+            return NextResponse.json({ error: 'Invalid or expired reset link' }, { status: 400 })
           }
 
-          return res.status(200).json({ 
+          return NextResponse.json({ 
             success: true, 
             access_token: accessToken,
             user: data.user,
@@ -119,16 +117,16 @@ export default async function handler(req, res) {
           })
         } catch (parseError) {
           console.error('Token parsing error:', parseError)
-          return res.status(400).json({ error: 'Invalid reset link format' })
+          return NextResponse.json({ error: 'Invalid reset link format' }, { status: 400 })
         }
       }
 
       default:
-        return res.status(400).json({ error: 'Invalid action. Use: request, verify, or exchange' })
+        return NextResponse.json({ error: 'Invalid action. Use: request, verify, or exchange' }, { status: 400 })
     }
 
   } catch (error) {
     console.error('Password reset API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
