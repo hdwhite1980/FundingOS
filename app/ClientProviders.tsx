@@ -1,8 +1,8 @@
 'use client'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { SessionContextProvider } from '@supabase/auth-helpers-react'
 import { AuthProvider } from '../contexts/AuthContext'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 
 interface ClientProvidersProps {
@@ -10,26 +10,40 @@ interface ClientProvidersProps {
 }
 
 export default function ClientProviders({ children }: ClientProvidersProps) {
-  const options = useMemo(() => {
-    const fromProcess = {
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  const cfg = useMemo(() => {
+    const pe = {
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     }
-    const fromWindow = typeof window !== 'undefined' && (window as any).__PUBLIC_ENV__
+    const we = typeof window !== 'undefined' && (window as any).__PUBLIC_ENV__
       ? {
-          supabaseUrl: (window as any).__PUBLIC_ENV__.NEXT_PUBLIC_SUPABASE_URL,
-          supabaseKey: (window as any).__PUBLIC_ENV__.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          url: (window as any).__PUBLIC_ENV__.NEXT_PUBLIC_SUPABASE_URL,
+          key: (window as any).__PUBLIC_ENV__.NEXT_PUBLIC_SUPABASE_ANON_KEY,
         }
-      : {}
-    const supabaseUrl = (fromProcess.supabaseUrl || (fromWindow as any).supabaseUrl || '').toString()
-    const supabaseKey = (fromProcess.supabaseKey || (fromWindow as any).supabaseKey || '').toString()
-    const cfg = (supabaseUrl && supabaseKey) ? { supabaseUrl, supabaseKey } : undefined
-    return cfg
+      : { url: undefined, key: undefined }
+    const url = (pe.url || we.url || '').toString()
+    const key = (pe.key || we.key || '').toString()
+    return { url, key }
   }, [])
 
-  const [supabaseClient] = useState(() =>
-    options ? createClientComponentClient(options) : createClientComponentClient()
-  )
+  const [supabaseClient, setSupabaseClient] = useState<any>(null)
+
+  useEffect(() => {
+    if (!supabaseClient) {
+      if (!cfg.url || !cfg.key) {
+        console.error('Supabase public env missing in browser (url or key).')
+        return
+      }
+      const client = createClient(cfg.url, cfg.key, {
+        auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
+      })
+      setSupabaseClient(client)
+    }
+  }, [cfg.url, cfg.key, supabaseClient])
+
+  if (!supabaseClient) {
+    return null
+  }
 
   return (
     <SessionContextProvider supabaseClient={supabaseClient}>
