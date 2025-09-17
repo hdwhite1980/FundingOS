@@ -7,11 +7,23 @@ import { cookies } from 'next/headers'
 export async function GET(request) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
+    
+    // Debug: Check session first
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    console.log('2FA API - Session check:', { hasSession: !!session, sessionError })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    console.log('2FA API - User check:', { hasUser: !!user, userError })
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.log('2FA API - No user found, returning 401')
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        debug: { hasSession: !!session, hasUser: !!user }
+      }, { status: 401 })
     }
+
+    console.log('2FA API - User authenticated:', user.id)
 
     // Check if user has 2FA enabled in their profile
     const { data: profile, error } = await supabase

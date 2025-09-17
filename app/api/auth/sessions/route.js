@@ -9,10 +9,24 @@ import sessionManager from '../../../../lib/sessionManager'
 export async function GET(request) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
+    
+    // Debug: Check session and user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    console.log('Sessions API Debug:', {
+      hasSession: !!session,
+      hasUser: !!user,
+      sessionError,
+      userError,
+      userId: user?.id
+    })
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        debug: { hasSession: !!session, hasUser: !!user, sessionError, userError }
+      }, { status: 401 })
     }
 
     const sessions = await sessionManager.getActiveSessions(user.id)
