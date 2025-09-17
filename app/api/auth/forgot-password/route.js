@@ -29,9 +29,17 @@ export async function POST(request) {
       .eq('email', email)
       .single()
 
+    // Build robust redirect URL
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      || (request.headers.get('origin') && `${request.headers.get('origin')}`)
+      || (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`)
+      || 'http://localhost:3000'
+
+    const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/reset-password`
+
     // Send password reset email
     const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`
+      redirectTo
     })
 
     if (error) {

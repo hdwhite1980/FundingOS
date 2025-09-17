@@ -19,11 +19,12 @@ export default function HomePage() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const router = useRouter()
 
-  // If Supabase lands on root with #access_token, forward to reset page
+  // If Supabase lands on root with auth hash, forward to reset page
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const { hash, pathname } = window.location
-      if (hash && hash.includes('access_token') && pathname !== '/auth/reset-password') {
+      const shouldForward = hash && (hash.includes('access_token') || hash.includes('error=') || hash.includes('type=recovery'))
+      if (shouldForward && pathname !== '/auth/reset-password') {
         router.replace(`/auth/reset-password${hash}`)
       }
     }

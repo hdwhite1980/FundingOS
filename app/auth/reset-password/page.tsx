@@ -9,17 +9,39 @@ export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [success, setSuccess] = useState<string | null>(null)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [hashParams, setHashParams] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash : ''
-    if (!hash || !hash.includes('access_token')) {
-      setError('Invalid or missing reset link. Please use the link from your email.')
+    const raw = hash.startsWith('#') ? hash.substring(1) : hash
+    const params = new URLSearchParams(raw)
+    const err = params.get('error')
+    const errorDescription = params.get('error_description')
+    const access = params.get('access_token')
+    const refresh = params.get('refresh_token')
+    const type = params.get('type')
+    const hp: Record<string, string> = {}
+    params.forEach((v, k) => { hp[k] = v })
+    setHashParams(hp)
+
+    // Handle errors from Supabase (expired/invalid links)
+    if (err) {
+      setError(decodeURIComponent(errorDescription || 'The reset link is invalid or has expired.'))
       setLoading(false)
       return
     }
 
-    // Remove leading '#'
-    const code = hash.startsWith('#') ? hash.substring(1) : hash
+    if (!access) {
+      // For recovery flow, Supabase sometimes sets type=recovery and tokens in hash
+      if (type !== 'recovery') {
+        setError('Invalid or missing reset link. Please use the link from your email.')
+        setLoading(false)
+        return
+      }
+    }
+
+    const code = raw
     ;(async () => {
       try {
         setLoading(true)
@@ -66,6 +88,31 @@ export default function ResetPasswordPage() {
     }
   }
 
+  const resendEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+    if (!email) {
+      setError('Please enter your email to resend the reset link.')
+      return
+    }
+    try {
+      setResendLoading(true)
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send reset email')
+      setSuccess('Reset email sent. Please check your inbox.')
+    } catch (e: any) {
+      setError(e.message || 'Failed to send reset email')
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
@@ -74,7 +121,29 @@ export default function ResetPasswordPage() {
           <p className="text-slate-600">Verifying your reset link…</p>
         )}
         {!loading && error && (
-          <div className="text-red-600 text-sm mb-4">{error}</div>
+          <div>
+            <div className="text-red-600 text-sm mb-4">{error}</div>
+            <form onSubmit={resendEmail} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  placeholder="you@example.org"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-emerald-600 text-white py-2.5 rounded-md font-medium hover:bg-emerald-700 disabled:opacity-50"
+                disabled={resendLoading}
+              >
+                {resendLoading ? 'Sending…' : 'Resend reset email'}
+              </button>
+            </form>
+          </div>
         )}
         {!loading && !error && (
           <form onSubmit={onSubmit} className="space-y-4">
@@ -83,7 +152,7 @@ export default function ResetPasswordPage() {
               <input
                 type="email"
                 value={email}
-                disabled
+                disabled={!error}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md bg-slate-100 text-slate-600"
               />
             </div>
