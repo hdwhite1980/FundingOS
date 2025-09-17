@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 // app/api/auth/2fa/setup/route.js
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
