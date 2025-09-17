@@ -8,24 +8,46 @@ import sessionManager from '../../../../lib/sessionManager'
 // Get active sessions for current user
 export async function GET(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    // VERCEL PRODUCTION FIX: Explicit cookie handling
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
     
-    // Debug: Check session and user
+    // Try multiple auth methods
+    let user = null
+    let authMethod = 'none'
+    
+    // Method 1: getSession() first (better for Vercel)
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (session?.user) {
+      user = session.user
+      authMethod = 'getSession'
+    }
     
-    console.log('Sessions API Debug:', {
+    // Method 2: getUser() fallback
+    if (!user) {
+      const { data: { user: user1 }, error: userError } = await supabase.auth.getUser()
+      if (user1) {
+        user = user1
+        authMethod = 'getUser'
+      }
+    }
+    
+    console.log('🔐 Sessions API Debug (Vercel):', {
       hasSession: !!session,
       hasUser: !!user,
-      sessionError,
-      userError,
+      authMethod,
       userId: user?.id
     })
 
     if (!user) {
       return NextResponse.json({ 
         error: 'Unauthorized',
-        debug: { hasSession: !!session, hasUser: !!user, sessionError, userError }
+        debug: { 
+          authMethod: 'none_worked',
+          environment: 'vercel-production'
+        }
       }, { status: 401 })
     }
 
