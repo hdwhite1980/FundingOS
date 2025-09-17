@@ -9,6 +9,7 @@ export default function TwoFactorAuth() {
   const { user } = useAuth()
   const { loading, error, twoFactorEnabled, refetch } = useSecurityData()
   const [setupStep, setSetupStep] = useState('check') // 'check', 'setup', 'verify', 'backup'
+  const [setupLoading, setSetupLoading] = useState(false) // For individual 2FA operations
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [secret, setSecret] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
@@ -20,7 +21,7 @@ export default function TwoFactorAuth() {
 
   const initiateTwoFactorSetup = async () => {
     try {
-      setLoading(true)
+      setSetupLoading(true)
       const response = await fetch('/api/auth/2fa/setup', {
         method: 'POST',
         headers: {
@@ -40,7 +41,7 @@ export default function TwoFactorAuth() {
       console.error('Error setting up 2FA:', error)
       toast.error('Failed to setup 2FA')
     } finally {
-      setLoading(false)
+      setSetupLoading(false)
     }
   }
 
@@ -51,7 +52,7 @@ export default function TwoFactorAuth() {
     }
 
     try {
-      setLoading(true)
+      setSetupLoading(true)
       const response = await fetch('/api/auth/2fa/verify', {
         method: 'POST',
         headers: {
@@ -76,7 +77,7 @@ export default function TwoFactorAuth() {
       console.error('Error verifying 2FA:', error)
       toast.error(error.message)
     } finally {
-      setLoading(false)
+      setSetupLoading(false)
     }
   }
 
@@ -95,7 +96,7 @@ export default function TwoFactorAuth() {
     }
 
     try {
-      setLoading(true)
+      setSetupLoading(true)
       const response = await fetch('/api/auth/2fa/disable', {
         method: 'POST',
         headers: {
@@ -113,7 +114,7 @@ export default function TwoFactorAuth() {
       console.error('Error disabling 2FA:', error)
       toast.error('Failed to disable 2FA')
     } finally {
-      setLoading(false)
+      setSetupLoading(false)
     }
   }
 
