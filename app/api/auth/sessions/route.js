@@ -81,15 +81,13 @@ export async function GET(request) {
 // Force logout from all other sessions
 export async function DELETE(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const { supabase, user, session } = await getVercelAuth()
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get current session ID
-    const { data: { session } } = await supabase.auth.getSession()
     const currentSessionId = session?.access_token ? 
       sessionManager.extractSessionId(session.access_token) : null
 

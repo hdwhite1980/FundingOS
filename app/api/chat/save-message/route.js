@@ -1,8 +1,7 @@
 // app/api/chat/save-message/route.js
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
 import chatSessionService from '../../../../lib/chatSessionService'
 
 export async function POST(request) {
@@ -16,16 +15,13 @@ export async function POST(request) {
     const { userId: bodyUserId, messageType, content, metadata = {} } = await request.json()
     
     // Create Supabase client with auth context
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    // Try to get user from session first
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { supabase, user, session } = await getVercelAuth()
     
     let userId = null
     let chatService = null
     
-    if (sessionError || !session?.user) {
-      console.log(`[${requestId}] No session found, checking request body for userId`)
+    if (!user) {
+      console.log(`[${requestId}] No user found, checking request body for userId`)
       
       if (!bodyUserId) {
         console.log(`[${requestId}] No authenticated user found in session or request body`)
@@ -54,8 +50,8 @@ export async function POST(request) {
         }
       }
     } else {
-      userId = session.user.id
-      console.log(`[${requestId}] Using userId from session: ${userId}`)
+      userId = user.id
+      console.log(`[${requestId}] Using userId from user: ${userId}`)
       
       // Use regular authenticated client
       chatService = {

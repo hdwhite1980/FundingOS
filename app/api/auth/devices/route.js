@@ -1,7 +1,6 @@
 // app/api/auth/devices/route.js
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createAuthenticatedSupabaseClient, createUnauthorizedResponse } from '../../../../lib/vercelAuthHelper'
 export const dynamic = 'force-dynamic'
 import crypto from 'crypto'
 
@@ -14,12 +13,14 @@ function generateDeviceFingerprint(userAgent, ip) {
 // Get all registered devices for the user
 export async function GET(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, authMethod, isAuthenticated } = await createAuthenticatedSupabaseClient(request)
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAuthenticated) {
+      console.log('🔐 Devices API - User not authenticated')
+      return createUnauthorizedResponse()
     }
+
+    console.log('🔐 Devices API - Authenticated via:', authMethod, user.id)
 
     // Get all registered devices for the user
     const { data: devices, error } = await supabase
@@ -67,12 +68,14 @@ export async function GET(request) {
 // Register a new device
 export async function POST(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, authMethod, isAuthenticated } = await createAuthenticatedSupabaseClient(request)
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isAuthenticated) {
+      console.log('🔐 Devices POST API - User not authenticated')
+      return createUnauthorizedResponse()
     }
+
+    console.log('🔐 Devices POST API - Authenticated via:', authMethod, user.id)
 
     const userAgent = request.headers.get('user-agent')
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
@@ -136,9 +139,8 @@ export async function POST(request) {
 // Update device trust status or remove device
 export async function PATCH(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
-
+    const { supabase, user } = await getVercelAuth()
+    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -187,8 +189,7 @@ export async function PATCH(request) {
 // Remove a device
 export async function DELETE(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getVercelAuth()
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

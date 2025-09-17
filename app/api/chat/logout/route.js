@@ -1,8 +1,7 @@
 // app/api/chat/logout/route.js
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
 import chatSessionService from '../../../../lib/chatSessionService'
 import { MailgunEmailService } from '../../../../lib/email-service'
 
@@ -10,8 +9,7 @@ const emailService = new MailgunEmailService()
 
 export async function POST(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getVercelAuth()
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
