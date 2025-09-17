@@ -29,6 +29,18 @@ export async function GET(request) {
       .order('last_seen', { ascending: false })
 
     if (error) {
+      // Check if this is a schema error (devices table doesn't exist yet)
+      if (error.message?.includes('user_devices') || 
+          error.message?.includes('does not exist') ||
+          error.message?.includes('device_fingerprint')) {
+        console.log('Devices table not ready yet - this is expected during database setup')
+        return NextResponse.json({ 
+          success: true,
+          devices: [],
+          message: 'Device management not yet configured' 
+        })
+      }
+      
       console.error('Error fetching devices:', error)
       return NextResponse.json({ error: 'Failed to fetch devices' }, { status: 500 })
     }

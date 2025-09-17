@@ -31,7 +31,16 @@ export default function DeviceManager() {
       setDevices(data.devices || [])
     } catch (error) {
       console.error('Error loading devices:', error)
-      toast.error('Failed to load trusted devices')
+      
+      // Check if this is a schema error (devices table doesn't exist yet)
+      if (error.message?.includes('user_devices') || 
+          error.message?.includes('does not exist') ||
+          error.message?.includes('device_fingerprint')) {
+        console.log('Devices table not ready yet - this is expected during database setup')
+        setDevices([])
+      } else {
+        toast.error('Failed to load trusted devices')
+      }
     } finally {
       setLoading(false)
     }

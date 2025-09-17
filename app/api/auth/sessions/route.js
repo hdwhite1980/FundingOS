@@ -24,6 +24,19 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Error getting user sessions:', error)
+    
+    // Check if this is a schema error (table doesn't exist yet)
+    if (error.message?.includes('user_sessions') || 
+        error.message?.includes('does not exist') ||
+        error.message?.includes('device_fingerprint')) {
+      return NextResponse.json({ 
+        success: true, 
+        sessions: [],
+        currentSessionCount: 0,
+        message: 'Sessions feature not yet configured' 
+      })
+    }
+    
     return NextResponse.json({ error: 'Failed to get sessions' }, { status: 500 })
   }
 }

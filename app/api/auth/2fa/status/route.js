@@ -20,6 +20,17 @@ export async function GET(request) {
       .single()
 
     if (error) {
+      // Check if this is a schema error (2FA columns don't exist yet)
+      if (error.message?.includes('two_factor') || 
+          error.message?.includes('does not exist') ||
+          error.message?.includes('column')) {
+        console.log('2FA columns not ready yet - this is expected during database setup')
+        return NextResponse.json({ 
+          enabled: false,
+          message: '2FA feature not yet configured' 
+        })
+      }
+      
       console.error('Error checking 2FA status:', error)
       return NextResponse.json({ error: 'Failed to check 2FA status' }, { status: 500 })
     }

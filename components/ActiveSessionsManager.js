@@ -30,7 +30,16 @@ export default function ActiveSessionsManager() {
       setSessions(data.sessions || [])
     } catch (error) {
       console.error('Error loading sessions:', error)
-      toast.error('Failed to load active sessions')
+      
+      // Check if this is a schema error (table doesn't exist yet)
+      if (error.message?.includes('user_sessions') || 
+          error.message?.includes('does not exist') ||
+          error.message?.includes('device_fingerprint')) {
+        console.log('Sessions table not ready yet - this is expected during database setup')
+        setSessions([])
+      } else {
+        toast.error('Failed to load active sessions')
+      }
     } finally {
       setLoading(false)
     }
