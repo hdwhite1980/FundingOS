@@ -63,7 +63,22 @@ export async function POST(request) {
 
     // Generate a new secret for 2FA
     const crypto = require('crypto')
-    const secret = crypto.randomBytes(20).toString('base32')
+    
+    // Create a base32 secret (Google Authenticator compatible)
+    // Node.js doesn't support base32 natively, so we'll create a custom implementation
+    const generateBase32Secret = (length = 32) => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+      let result = ''
+      const bytes = crypto.randomBytes(length)
+      
+      for (let i = 0; i < length; i++) {
+        result += chars[bytes[i] % chars.length]
+      }
+      
+      return result
+    }
+    
+    const secret = generateBase32Secret(32)
     
     // Get user email for QR code
     const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId)
