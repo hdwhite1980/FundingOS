@@ -35,7 +35,19 @@ export default function ClientProviders({ children }: ClientProvidersProps) {
         return
       }
       const client = createClient(cfg.url, cfg.key, {
-        auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
+        auth: { 
+          autoRefreshToken: true, 
+          persistSession: true, 
+          detectSessionInUrl: true,
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          storageKey: 'supabase.auth.token',
+          flowType: 'pkce'
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'funding-os-web'
+          }
+        }
       })
       setSupabaseClient(client)
     }
