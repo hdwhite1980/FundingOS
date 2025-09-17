@@ -12,23 +12,35 @@ export async function POST(request) {
   try {
     console.log(`[${requestId}] ${timestamp} - Chat save-message request received`)
     
+    // Parse request body first
+    const { userId: bodyUserId, messageType, content, metadata = {} } = await request.json()
+    
     // Create Supabase client with auth context
     const supabase = createRouteHandlerClient({ cookies })
     
-    // Verify user is authenticated
+    // Try to get user from session first
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
-    if (sessionError || !session?.user) {
-      console.log(`[${requestId}] No authenticated user found`)
-      return NextResponse.json({ 
-        error: 'Authentication required', 
-        code: 'UNAUTHORIZED',
-        message: 'Please log in to save chat messages'
-      }, { status: 401 })
-    }
+    let userId = null
     
-    const { messageType, content, metadata = {} } = await request.json()
-    const userId = session.user.id
+    if (sessionError || !session?.user) {
+      console.log(`[${requestId}] No session found, checking request body for userId`)
+      
+      if (!bodyUserId) {
+        console.log(`[${requestId}] No authenticated user found in session or request body`)
+        return NextResponse.json({ 
+          error: 'Authentication required', 
+          code: 'UNAUTHORIZED',
+          message: 'Please log in to save chat messages'
+        }, { status: 401 })
+      }
+      
+      userId = bodyUserId
+      console.log(`[${requestId}] Using userId from request body: ${userId} (no session)`)
+    } else {
+      userId = session.user.id
+      console.log(`[${requestId}] Using userId from session: ${userId}`)
+    }
 
     if (!messageType || !content) {
       console.log(`[${requestId}] Missing required fields:`, { messageType: !!messageType, content: !!content })
