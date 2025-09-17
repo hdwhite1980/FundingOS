@@ -2,6 +2,7 @@ import { Inter } from 'next/font/google'
 import ClientProviders from './ClientProviders'
 import './globals.css'
 import ErrorBoundary from '../components/ErrorBoundary'
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,14 +23,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body className={`${inter.className} font-sans antialiased bg-slate-50`}>
+        <Script id="public-env" strategy="beforeInteractive">
+          {`window.__PUBLIC_ENV__ = ${JSON.stringify(publicEnv)};`}
+        </Script>
         <ClientProviders>
           <ErrorBoundary>
-            <script
-              id="public-env"
-              dangerouslySetInnerHTML={{
-                __html: `window.__PUBLIC_ENV__ = ${JSON.stringify(publicEnv)};`
-              }}
-            />
             {children}
           </ErrorBoundary>
         </ClientProviders>
