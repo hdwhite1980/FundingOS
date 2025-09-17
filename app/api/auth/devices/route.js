@@ -13,7 +13,7 @@ function generateDeviceFingerprint(userAgent, ip) {
 // Get all registered devices for the user
 export async function GET(request) {
   try {
-    const { supabase, user } = await getVercelAuth()
+    const { supabase, user } = await getVercelAuth(request)
 
     if (!user) {
       console.log('🔐 Devices API - User not authenticated')
@@ -68,7 +68,7 @@ export async function GET(request) {
 // Register a new device
 export async function POST(request) {
   try {
-    const { supabase, user } = await getVercelAuth()
+    const { supabase, user } = await getVercelAuth(request)
 
     if (!user) {
       console.log('🔐 Devices POST API - User not authenticated')
@@ -139,7 +139,7 @@ export async function POST(request) {
 // Update device trust status or remove device
 export async function PATCH(request) {
   try {
-    const { supabase, user } = await getVercelAuth()
+    const { supabase, user } = await getVercelAuth(request)
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -1,19 +1,15 @@
 export const dynamic = 'force-dynamic'
 // app/api/auth/2fa/status/route.js
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
 
 export async function GET(request) {
   try {
-    // VERCEL PRODUCTION FIX: Create client with explicit cookie handling
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ 
-      cookies: () => cookieStore
-    })
-    
-    // Try multiple auth methods for Vercel compatibility
-    let user = null
+    const { supabase, user } = await getVercelAuth(request)
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     let authMethod = 'none'
     let debugInfo = {}
     

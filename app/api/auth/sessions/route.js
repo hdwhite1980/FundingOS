@@ -1,12 +1,13 @@
 export const dynamic = 'force-dynamic'
 // app/api/auth/sessions/route.js
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
 import sessionManager from '../../../../lib/sessionManager'
 
 // Get active sessions for current user
 export async function GET(request) {
+  try {
+    const { supabase, user, session } = await getVercelAuth(request)
   try {
     // VERCEL PRODUCTION FIX: Explicit cookie handling
     const cookieStore = cookies()
