@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import toast from 'react-hot-toast'
+import { userProfileService } from '../lib/supabase'
 import {
   OrganizationalCapacity,
   MissionFocus,
@@ -147,14 +148,8 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
         largest_grant: formData.largest_grant === '' ? null : (formData.largest_grant ? parseFloat(formData.largest_grant) : null)
       }
 
-      // Use upsert to handle both create and update paths robustly
-      const { data: profile, error: upsertError } = await supabase
-        .from('user_profiles')
-        .upsert(profileData, { onConflict: 'id' })
-        .select()
-        .single()
-
-      if (upsertError) throw upsertError
+      // Use the sanitized profile service instead of direct supabase call
+      const profile = await userProfileService.createProfile(profileData)
 
       toast.success('Profile setup completed!')
       onComplete(profile)
