@@ -139,7 +139,12 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
       if (response.ok) {
         const data = await response.json()
         if (data.messages && data.messages.length > 0) {
-          setChatMessages(data.messages)
+          // Convert timestamps to Date objects for proper display
+          const messagesWithDates = data.messages.map(msg => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+          setChatMessages(messagesWithDates)
           return true // Had previous session
         }
       } else if (response.status === 401) {
@@ -365,6 +370,17 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
            (opportunities?.length < 5 && lowerMessage.includes('analyz'))
   }
 
+  // Safe timestamp formatting
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'now'
+    if (timestamp instanceof Date) return timestamp.toLocaleTimeString()
+    try {
+      return new Date(timestamp).toLocaleTimeString()
+    } catch {
+      return 'now'
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -557,7 +573,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
                             ? 'text-blue-600'
                             : 'text-slate-500'
                         }`}>
-                          {message.timestamp.toLocaleTimeString()}
+                          {formatTimestamp(message.timestamp)}
                         </p>
                       </div>
                     </motion.div>

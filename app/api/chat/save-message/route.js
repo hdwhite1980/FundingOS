@@ -22,6 +22,7 @@ export async function POST(request) {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
     let userId = null
+    let chatService = null
     
     if (sessionError || !session?.user) {
       console.log(`[${requestId}] No session found, checking request body for userId`)
@@ -37,9 +38,31 @@ export async function POST(request) {
       
       userId = bodyUserId
       console.log(`[${requestId}] Using userId from request body: ${userId} (no session)`)
+      
+      // For requests without session, we need to use service role to bypass RLS
+      const { createClient } = require('@supabase/supabase-js')
+      const serviceSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      // Import chatSessionService dynamically to use service role client
+      const chatSessionServiceModule = await import('../../../../lib/chatSessionService')
+      chatService = {
+        saveMessage: async (userId, messageType, content, metadata) => {
+          return chatSessionServiceModule.default.saveMessageWithAuth(serviceSupabase, userId, messageType, content, metadata)
+        }
+      }
     } else {
       userId = session.user.id
       console.log(`[${requestId}] Using userId from session: ${userId}`)
+      
+      // Use regular authenticated client
+      chatService = {
+        saveMessage: async (userId, messageType, content, metadata) => {
+          return chatSessionService.saveMessageWithAuth(supabase, userId, messageType, content, metadata)
+        }
+      }
     }
 
     if (!messageType || !content) {
@@ -54,8 +77,8 @@ export async function POST(request) {
 
     console.log(`[${requestId}] Attempting to save message for user ${userId}`)
     
-    // Use the authenticated Supabase client to save the message
-    const message = await chatSessionService.saveMessageWithAuth(supabase, userId, messageType, content, metadata)
+    // Use the appropriate chat service (authenticated or service role)
+    const message = await chatService.saveMessage(userId, messageType, content, metadata)
 
     console.log(`[${requestId}] Message saved successfully:`, message.id)
     return NextResponse.json({ success: true, message })
