@@ -1,6 +1,21 @@
-import { supabase } from '../../../../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import AIService from '../../../../lib/aiService'
 import { NextResponse } from 'next/server'
+
+// Create service role client for sync operations (bypasses RLS)
+const supabaseServiceRole = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
+
+// Also import regular client for user profile queries
+import { supabase } from '../../../../lib/supabase'
 
 interface NIHProject {
   core_project_num: string
@@ -527,8 +542,8 @@ export async function GET(request: Request) {
 
     console.log(`Processing ${validOpportunities.length} valid NIH opportunities`)
 
-    // Store in database
-    const { data: inserted, error } = await supabase
+    // Store in database using service role client (bypasses RLS)
+    const { data: inserted, error } = await supabaseServiceRole
       .from('opportunities')
       .upsert(validOpportunities, { 
         onConflict: 'external_id,source',

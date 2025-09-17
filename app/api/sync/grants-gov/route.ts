@@ -1,6 +1,21 @@
-import { supabase } from '../../../../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import AIService from '../../../../lib/aiService' // Add this import
 import { NextResponse } from 'next/server'
+
+// Create service role client for sync operations (bypasses RLS)
+const supabaseServiceRole = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
+
+// Also import regular client for user profile queries
+import { supabase } from '../../../../lib/supabase'
 
 interface GrantsGovOpportunity {
   id: string
@@ -541,9 +556,9 @@ export async function GET(request: Request) {
 
     console.log(`Processing ${processedOpportunities.length} opportunities, ${validOpportunities.length} valid for database insert`)
 
-    // Test database connection
+    // Test database connection with service role client
     console.log('Testing database connection...')
-    const { count, error: countError } = await supabase
+    const { count, error: countError } = await supabaseServiceRole
       .from('opportunities')
       .select('*', { count: 'exact', head: true })
     
@@ -555,7 +570,8 @@ export async function GET(request: Request) {
     console.log(`Database connection successful. Current opportunities count: ${count}`)
 
     // Store in database
-    const { data: inserted, error } = await supabase
+    // Use service role client for inserting opportunities (bypasses RLS)
+    const { data: inserted, error } = await supabaseServiceRole
       .from('opportunities')
       .upsert(validOpportunities, { 
         onConflict: 'external_id,source',
