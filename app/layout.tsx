@@ -1,6 +1,7 @@
 import { Inter } from 'next/font/google'
 import ClientProviders from './ClientProviders'
 import './globals.css'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <body className={`${inter.className} font-sans antialiased bg-slate-50`}>
         <ClientProviders>
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </ClientProviders>
       </body>
     </html>

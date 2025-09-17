@@ -2,6 +2,8 @@
 const nextConfig = {
   // Enable standalone output for deployment
   output: 'standalone',
+  // Generate source maps in production for better debugging
+  productionBrowserSourceMaps: true,
   // Security headers
   async headers() {
     return [
