@@ -6,8 +6,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useSecurityData } from '../hooks/useSecurityData'
 
 export default function TwoFactorAuth() {
-  const { user } = useAuth()
-  const { loading, error, twoFactorEnabled, refetch } = useSecurityData()
+  const { user: authUser } = useAuth()
+  const { loading, error, twoFactorEnabled, refetch, user } = useSecurityData()
   const [setupStep, setSetupStep] = useState('check') // 'check', 'setup', 'verify', 'backup'
   const [setupLoading, setSetupLoading] = useState(false) // For individual 2FA operations
   const [qrCodeUrl, setQrCodeUrl] = useState('')
@@ -21,13 +21,20 @@ export default function TwoFactorAuth() {
 
   const initiateTwoFactorSetup = async () => {
     try {
+      // Use either user from securityData or fallback to authUser
+      const userId = user?.id || authUser?.id
+      
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
       setSetupLoading(true)
       const response = await fetch('/api/auth/2fa/setup-new', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: user.id })
+        body: JSON.stringify({ userId })
       })
 
       if (!response.ok) {
@@ -61,7 +68,7 @@ export default function TwoFactorAuth() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user?.id || authUser?.id,
           token: verificationCode.replace(/\s/g, ''), // Remove spaces
           secret: secret
         })
@@ -105,7 +112,7 @@ export default function TwoFactorAuth() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: user.id })
+        body: JSON.stringify({ userId: user?.id || authUser?.id })
       })
 
       if (!response.ok) {
