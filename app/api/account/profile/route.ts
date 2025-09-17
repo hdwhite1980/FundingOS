@@ -42,7 +42,17 @@ export async function PUT(req: NextRequest) {
       'years_in_operation',
       'full_time_staff',
       'board_size',
-      'largest_grant'
+      'largest_grant',
+      'annual_revenue',
+      'employee_count',
+      'service_radius',
+      // Additional fields from database schema
+      'incorporation_year',
+      'years_operating',
+      'part_time_staff',
+      'volunteers',
+      'board_members',
+      'indirect_cost_rate'
     ])
 
     const sanitizedUpdates: Record<string, any> = {}

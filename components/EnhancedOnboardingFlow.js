@@ -147,17 +147,34 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
         id: user.id,
         email: user.email,
         setup_completed: true,
+        // Sanitize all known numeric fields in user_profiles table
         annual_budget: sanitizeNumericField(formData.annual_budget),
         years_in_operation: sanitizeNumericField(formData.years_in_operation),
         full_time_staff: sanitizeNumericField(formData.full_time_staff),
         board_size: sanitizeNumericField(formData.board_size),
-        largest_grant: sanitizeNumericField(formData.largest_grant)
+        largest_grant: sanitizeNumericField(formData.largest_grant),
+        service_radius: sanitizeNumericField(formData.service_radius),
+        // Additional numeric fields from database schema
+        incorporation_year: sanitizeNumericField(formData.incorporation_year),
+        years_operating: sanitizeNumericField(formData.years_operating),
+        part_time_staff: sanitizeNumericField(formData.part_time_staff),
+        volunteers: sanitizeNumericField(formData.volunteers),
+        board_members: sanitizeNumericField(formData.board_members),
+        indirect_cost_rate: sanitizeNumericField(formData.indirect_cost_rate)
       }
+
+      // Clean up any remaining empty strings in the entire object
+      const cleanedProfileData = {}
+      for (const [key, value] of Object.entries(profileData)) {
+        cleanedProfileData[key] = value === '' ? null : value
+      }
+
+      console.log('Profile data being saved:', cleanedProfileData) // Debug log
 
       // Use direct supabase call with proper sanitization
       const { data: profile, error: upsertError } = await supabase
         .from('user_profiles')
-        .upsert(profileData, { onConflict: 'id' })
+        .upsert(cleanedProfileData, { onConflict: 'id' })
         .select()
         .single()
 
@@ -166,6 +183,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
       toast.success('Profile setup completed!')
       onComplete(profile)
     } catch (error) {
+      console.error('Profile save error:', error) // Debug log
       toast.error('Failed to save profile: ' + error.message)
     } finally {
       setLoading(false)
