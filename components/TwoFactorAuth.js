@@ -22,19 +22,21 @@ export default function TwoFactorAuth() {
   const initiateTwoFactorSetup = async () => {
     try {
       setSetupLoading(true)
-      const response = await fetch('/api/auth/2fa/setup', {
+      const response = await fetch('/api/auth/2fa/setup-new', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({ userId: user.id })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to setup 2FA')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to setup 2FA')
       }
 
       const data = await response.json()
-      setQrCodeUrl(data.qr_code)
+      setQrCodeUrl(data.qr_code_url)
       setSecret(data.secret)
       setSetupStep('setup')
     } catch (error) {
@@ -53,12 +55,13 @@ export default function TwoFactorAuth() {
 
     try {
       setSetupLoading(true)
-      const response = await fetch('/api/auth/2fa/verify', {
+      const response = await fetch('/api/auth/2fa/verify-new', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId: user.id,
           token: verificationCode.replace(/\s/g, ''), // Remove spaces
           secret: secret
         })
@@ -97,11 +100,12 @@ export default function TwoFactorAuth() {
 
     try {
       setSetupLoading(true)
-      const response = await fetch('/api/auth/2fa/disable', {
+      const response = await fetch('/api/auth/2fa/disable-new', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({ userId: user.id })
       })
 
       if (!response.ok) {
