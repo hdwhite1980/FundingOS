@@ -17,17 +17,61 @@ export default function TwoFactorAuth() {
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedBackup, setCopiedBackup] = useState(false)
 
+  // Robust user ID getter as fallback
+  const getRobustUserId = () => {
+    // Try hooks first
+    let userId = user?.id || authUser?.id
+    
+    // Fallback to localStorage if hooks fail
+    if (!userId) {
+      const authSources = [
+        'sb-supabase-auth-token',
+        'supabase.auth.token', 
+        'sb-auth-token',
+        'sb-localhost-auth-token'
+      ];
+      
+      for (const key of authSources) {
+        const data = localStorage.getItem(key);
+        if (data) {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.user?.id) {
+              userId = parsed.user.id;
+              console.log(`✅ TwoFactorAuth: Got user ID from localStorage (${key})`);
+              break;
+            }
+          } catch (e) {
+            // Continue to next source
+          }
+        }
+      }
+    }
+    
+    return userId;
+  };
+
   // Remove the old checkTwoFactorStatus function since we now use the hook
 
   const initiateTwoFactorSetup = async () => {
     try {
-      // Use either user from securityData or fallback to authUser
-      const userId = user?.id || authUser?.id
+      // Debug logging
+      console.log('🔍 TwoFactorAuth Debug:', {
+        user: user,
+        authUser: authUser,
+        loading: loading,
+        error: error
+      })
+      
+      // Use robust user ID getter
+      const userId = getRobustUserId()
       
       if (!userId) {
-        throw new Error('User not authenticated')
+        console.error('❌ No user ID found:', { user, authUser, localStorage: 'checked' })
+        throw new Error('User not authenticated - please refresh the page and try again')
       }
 
+      console.log('✅ Found user ID:', userId)
       setSetupLoading(true)
       const response = await fetch('/api/auth/2fa/setup-new', {
         method: 'POST',
@@ -68,7 +112,7 @@ export default function TwoFactorAuth() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user?.id || authUser?.id,
+          userId: getRobustUserId(),
           token: verificationCode.replace(/\s/g, ''), // Remove spaces
           secret: secret
         })
@@ -112,7 +156,7 @@ export default function TwoFactorAuth() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: user?.id || authUser?.id })
+        body: JSON.stringify({ userId: getRobustUserId() })
       })
 
       if (!response.ok) {
