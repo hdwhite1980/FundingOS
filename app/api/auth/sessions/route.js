@@ -1,32 +1,32 @@
 ﻿// app/api/auth/sessions/route.js
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getVercelAuth } from '@/lib/vercelAuthHelper.js'
 
 export const dynamic = 'force-dynamic'
 
 // Get active sessions for the current user
 export async function GET(request) {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ 
-      cookies: () => cookieStore
-    })
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const authResult = await getVercelAuth(request)
 
-    if (!user || userError) {
+    if (!authResult.user) {
       console.log('🔐 Sessions API - User not authenticated')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        debug: { 
+          authMethod: authResult.authMethod,
+          error: authResult.error
+        }
+      }, { status: 401 })
     }
 
-    console.log('🔐 Sessions API - Authenticated:', user.id)
+    console.log('🔐 Sessions API - Authenticated:', authResult.user.id)
 
     // Get active sessions for the user
-    const { data: sessions, error } = await supabase
+    const { data: sessions, error } = await authResult.supabase
       .from('user_sessions')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', authResult.user.id)
       .eq('is_active', true)
       .order('last_activity', { ascending: false })
 

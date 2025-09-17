@@ -1,32 +1,29 @@
 // app/api/auth/2fa/status/route.js
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getVercelAuth } from '@/lib/vercelAuthHelper.js'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ 
-      cookies: () => cookieStore
-    })
-    
-    // Use the same auth method as the working debug endpoint
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const authResult = await getVercelAuth(request)
 
-    if (!user || userError) {
+    if (!authResult.user) {
       return NextResponse.json({ 
         error: 'Unauthorized',
-        debug: { userError: userError?.message, environment: 'vercel-production' }
+        debug: { 
+          authMethod: authResult.authMethod,
+          error: authResult.error,
+          environment: 'vercel-production' 
+        }
       }, { status: 401 })
     }
 
     // Get user profile to check 2FA settings
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await authResult.supabase
       .from('user_profiles')
       .select('two_factor_enabled, two_factor_secret')
-      .eq('user_id', user.id)
+      .eq('user_id', authResult.user.id)
       .maybeSingle()
 
     if (profileError) {
@@ -39,7 +36,8 @@ export async function GET(request) {
 
     return NextResponse.json({
       enabled: profile?.two_factor_enabled || false,
-      user: { id: user.id }
+      user: { id: authResult.user.id },
+      authMethod: authResult.authMethod
     })
 
   } catch (error) {

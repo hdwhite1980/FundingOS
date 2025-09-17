@@ -1,7 +1,6 @@
 // app/api/auth/devices/route.js
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getVercelAuth } from '@/lib/vercelAuthHelper.js'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -15,25 +14,26 @@ function generateDeviceFingerprint(userAgent, ip) {
 // Get all registered devices for the user
 export async function GET(request) {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ 
-      cookies: () => cookieStore
-    })
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const authResult = await getVercelAuth(request)
 
-    if (!user || userError) {
+    if (!authResult.user) {
       console.log('🔐 Devices API - User not authenticated')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        debug: { 
+          authMethod: authResult.authMethod,
+          error: authResult.error
+        }
+      }, { status: 401 })
     }
 
-    console.log('🔐 Devices API - Authenticated:', user.id)
+    console.log('🔐 Devices API - Authenticated:', authResult.user.id)
 
     // Get all registered devices for the user
-    const { data: devices, error } = await supabase
+    const { data: devices, error } = await authResult.supabase
       .from('user_devices')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', authResult.user.id)
       .eq('is_active', true)
       .order('last_seen', { ascending: false })
 
