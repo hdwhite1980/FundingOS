@@ -1,6 +1,6 @@
 // Enhanced CreateProjectModal with comprehensive project setup questions
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   X, 
@@ -114,6 +114,7 @@ export default function CreateProjectModal({
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [isEditMode] = useState(!!editProject)
+  const contentRef = useRef(null)
   
   const [formData, setFormData] = useState({
     // Project Basics
@@ -261,6 +262,16 @@ export default function CreateProjectModal({
       setCurrentStep(currentStep - 1)
     }
   }
+
+  useEffect(() => {
+    if (contentRef.current) {
+      try {
+        contentRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+      } catch {
+        contentRef.current.scrollTop = 0
+      }
+    }
+  }, [currentStep])
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -460,7 +471,7 @@ export default function CreateProjectModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -477,6 +488,7 @@ export default function CreateProjectModal({
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 flex justify-between">
           <button
+            type="button"
             onClick={handlePrevious}
             disabled={currentStep === 1}
             className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -487,6 +499,7 @@ export default function CreateProjectModal({
           
           {currentStep === steps.length ? (
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={loading}
               className="btn-primary flex items-center"
@@ -498,6 +511,7 @@ export default function CreateProjectModal({
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleNext}
               className="btn-primary flex items-center"
             >

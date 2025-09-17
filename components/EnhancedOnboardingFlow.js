@@ -1,6 +1,6 @@
 // Enhanced OnboardingFlow with comprehensive organization setup questions
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeft, 
@@ -44,6 +44,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
   const supabase = useSupabaseClient()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const contentRef = useRef(null)
   const [formData, setFormData] = useState({
     // Basic Info
     full_name: existingProfile?.full_name || user.user_metadata?.full_name || '',
@@ -131,6 +132,16 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
       setCurrentStep(currentStep - 1)
     }
   }
+
+  useEffect(() => {
+    if (contentRef.current) {
+      try {
+        contentRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+      } catch {
+        contentRef.current.scrollTop = 0
+      }
+    }
+  }, [currentStep])
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -300,6 +311,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
           
           <div className="card-footer flex justify-between">
             <button
+              type="button"
               onClick={handlePrevious}
               disabled={currentStep === 1}
               className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -310,6 +322,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
             
             {currentStep === steps.length ? (
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={loading}
                 className="btn-primary flex items-center"
@@ -321,6 +334,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
               </button>
             ) : (
               <button
+                type="button"
                 onClick={handleNext}
                 className="btn-primary flex items-center"
               >
