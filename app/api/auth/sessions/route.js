@@ -1,6 +1,6 @@
 ﻿// app/api/auth/sessions/route.js
 import { NextResponse } from 'next/server'
-import { getSimpleAuth } from '../../../../lib/simpleAuthHelper'
+import { getSimpleAuth } from '../../../../lib/simpleAuthHelper.js'
 
 export const dynamic = 'force-dynamic'
 
