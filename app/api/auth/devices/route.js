@@ -1,8 +1,9 @@
 // app/api/auth/devices/route.js
 import { NextResponse } from 'next/server'
-import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
-export const dynamic = 'force-dynamic'
+import { getSimpleAuth } from '../../../../lib/simpleAuthHelper'
 import crypto from 'crypto'
+
+export const dynamic = 'force-dynamic'
 
 function generateDeviceFingerprint(userAgent, ip) {
   // Create a device fingerprint based on user agent and other factors
@@ -13,7 +14,7 @@ function generateDeviceFingerprint(userAgent, ip) {
 // Get all registered devices for the user
 export async function GET(request) {
   try {
-    const { supabase, user } = await getVercelAuth(request)
+    const { supabase, user } = await getSimpleAuth(request)
 
     if (!user) {
       console.log('🔐 Devices API - User not authenticated')
@@ -68,14 +69,14 @@ export async function GET(request) {
 // Register a new device
 export async function POST(request) {
   try {
-    const { supabase, user } = await getVercelAuth(request)
+    const { supabase, user } = await getSimpleAuth(request)
 
     if (!user) {
       console.log('🔐 Devices POST API - User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('🔐 Devices POST API - Authenticated via:', authMethod, user.id)
+    console.log('🔐 Devices POST API - Authenticated:', user.id)
 
     const userAgent = request.headers.get('user-agent')
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
@@ -139,7 +140,7 @@ export async function POST(request) {
 // Update device trust status or remove device
 export async function PATCH(request) {
   try {
-    const { supabase, user } = await getVercelAuth(request)
+    const { supabase, user } = await getSimpleAuth(request)
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -189,7 +190,7 @@ export async function PATCH(request) {
 // Remove a device
 export async function DELETE(request) {
   try {
-    const { supabase, user } = await getVercelAuth()
+    const { supabase, user } = await getSimpleAuth(request)
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

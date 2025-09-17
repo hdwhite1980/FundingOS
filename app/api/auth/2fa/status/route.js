@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic'
 // app/api/auth/2fa/status/route.js
 import { NextResponse } from 'next/server'
-import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
+import { getSimpleAuth } from '../../../../lib/simpleAuthHelper'
 
 export async function GET(request) {
   try {
-    const { supabase, user, authMethod } = await getVercelAuth(request)
+    const { supabase, user, authMethod } = await getSimpleAuth(request)
 
     if (!user) {
       return NextResponse.json({ 
