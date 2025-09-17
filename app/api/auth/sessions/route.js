@@ -1,15 +1,21 @@
 ﻿// app/api/auth/sessions/route.js
 import { NextResponse } from 'next/server'
-import { getSimpleAuth } from '@/lib/simpleAuthHelper.js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
 // Get active sessions for the current user
 export async function GET(request) {
   try {
-    const { supabase, user } = await getSimpleAuth(request)
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || userError) {
       console.log('🔐 Sessions API - User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -58,9 +64,14 @@ export async function GET(request) {
 // Create a new session (usually handled by auth flow)
 export async function POST(request) {
   try {
-    const { supabase, user } = await getSimpleAuth(request)
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || userError) {
       console.log('🔐 Sessions POST API - User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -101,9 +112,14 @@ export async function POST(request) {
 // Revoke/terminate a session
 export async function DELETE(request) {
   try {
-    const { supabase, user } = await getSimpleAuth(request)
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || userError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

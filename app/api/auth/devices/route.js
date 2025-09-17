@@ -1,6 +1,7 @@
 // app/api/auth/devices/route.js
 import { NextResponse } from 'next/server'
-import { getSimpleAuth } from '@/lib/simpleAuthHelper.js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -14,9 +15,14 @@ function generateDeviceFingerprint(userAgent, ip) {
 // Get all registered devices for the user
 export async function GET(request) {
   try {
-    const { supabase, user } = await getSimpleAuth(request)
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || userError) {
       console.log('🔐 Devices API - User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -69,9 +75,14 @@ export async function GET(request) {
 // Register a new device
 export async function POST(request) {
   try {
-    const { supabase, user } = await getSimpleAuth(request)
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || userError) {
       console.log('🔐 Devices POST API - User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -140,9 +151,14 @@ export async function POST(request) {
 // Update device trust status or remove device
 export async function PATCH(request) {
   try {
-    const { supabase, user } = await getSimpleAuth(request)
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
     
-    if (!user) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (!user || userError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -190,9 +206,14 @@ export async function PATCH(request) {
 // Remove a device
 export async function DELETE(request) {
   try {
-    const { supabase, user } = await getSimpleAuth(request)
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user || userError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

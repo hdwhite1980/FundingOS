@@ -93,10 +93,12 @@ CREATE TABLE IF NOT EXISTS public.user_devices (
 ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_devices ENABLE ROW LEVEL SECURITY;
 
--- Create RLS policies for user_sessions
+-- Create RLS policies for user_sessions (with safe DROP IF EXISTS)
+DROP POLICY IF EXISTS "Users can manage their own sessions" ON public.user_sessions;
 CREATE POLICY "Users can manage their own sessions" ON public.user_sessions
   USING (auth.uid() = user_id);
 
--- Create RLS policies for user_devices  
+-- Create RLS policies for user_devices (with safe DROP IF EXISTS)
+DROP POLICY IF EXISTS "Users can manage their own devices" ON public.user_devices;
 CREATE POLICY "Users can manage their own devices" ON public.user_devices
   USING (auth.uid() = user_id);
