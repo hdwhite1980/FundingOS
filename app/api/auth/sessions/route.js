@@ -76,6 +76,9 @@ export async function GET(request) {
     }
     
     return NextResponse.json({ error: 'Failed to get sessions' }, { status: 500 })
+  } catch (error) {
+    console.error('Error getting sessions:', error)
+    return NextResponse.json({ error: 'Failed to get sessions' }, { status: 500 })
   }
 }
 

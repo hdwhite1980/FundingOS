@@ -5,104 +5,41 @@ import { getVercelAuth } from '../../../../lib/vercelAuthHelper'
 
 export async function GET(request) {
   try {
-    const { supabase, user } = await getVercelAuth(request)
+    const { supabase, user, authMethod } = await getVercelAuth(request)
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    let authMethod = 'none'
-    let debugInfo = {}
-    
-    // Method 1: getSession() first (often works better on Vercel)
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    debugInfo.session = { hasSession: !!session, error: sessionError?.message }
-    
-    if (session?.user) {
-      user = session.user
-      authMethod = 'getSession'
-    }
-    
-    // Method 2: getUser() fallback
-    if (!user) {
-      const { data: { user: user1 }, error: userError1 } = await supabase.auth.getUser()
-      debugInfo.getUser = { hasUser: !!user1, error: userError1?.message }
-      
-      if (user1) {
-        user = user1
-        authMethod = 'getUser'
-      }
-    }
-    
-    // Method 3: Try Authorization header for API calls
-    if (!user) {
-      const authHeader = request.headers.get('Authorization')
-      if (authHeader?.startsWith('Bearer ')) {
-        try {
-          const token = authHeader.substring(7)
-          const { data: { user: user3 }, error: bearerError } = await supabase.auth.getUser(token)
-          debugInfo.bearer = { hasUser: !!user3, error: bearerError?.message }
-          
-          if (user3) {
-            user = user3
-            authMethod = 'bearer'
-          }
-        } catch (e) {
-          debugInfo.bearer = { error: e.message }
-        }
-      }
-    }
-    
-    console.log('🔐 2FA API Auth Debug (Vercel):', { 
-      hasUser: !!user, 
-      userId: user?.id,
-      authMethod,
-      environment: 'vercel-production',
-      debugInfo
-    })
-
-    if (!user) {
-      console.log('❌ 2FA API - No user found with any auth method')
       return NextResponse.json({ 
         error: 'Unauthorized',
-        debug: { 
-          authMethod: 'none_worked',
-          environment: 'vercel-production',
-          debugInfo
-        }
+        debug: { authMethod, environment: 'vercel-production' }
       }, { status: 401 })
     }
 
-    console.log('✅ 2FA API - User authenticated via:', authMethod, user.id)
-
-    // Check if user has 2FA enabled in their profile
-    const { data: profile, error } = await supabase
+    // Get user profile to check 2FA settings
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('two_factor_enabled')
+      .select('two_factor_enabled, two_factor_secret')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (error) {
-      // Check if this is a schema error (2FA columns don't exist yet)
-      if (error.message?.includes('two_factor') || 
-          error.message?.includes('does not exist') ||
-          error.message?.includes('column')) {
-        console.log('2FA columns not ready yet - this is expected during database setup')
-        return NextResponse.json({ 
-          enabled: false,
-          message: '2FA feature not yet configured' 
-        })
-      }
-      
-      console.error('Error checking 2FA status:', error)
-      return NextResponse.json({ error: 'Failed to check 2FA status' }, { status: 500 })
+    if (profileError) {
+      console.error('Error fetching 2FA status:', profileError)
+      return NextResponse.json({ 
+        error: 'Failed to get 2FA status',
+        debug: { authMethod, profileError: profileError.message }
+      }, { status: 500 })
     }
 
-    return NextResponse.json({ 
-      enabled: profile?.two_factor_enabled || false 
+    return NextResponse.json({
+      enabled: profile?.two_factor_enabled || false,
+      authMethod,
+      user: { id: user.id }
     })
 
   } catch (error) {
     console.error('2FA status API error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      debug: { error: error.message }
+    }, { status: 500 })
   }
 }
