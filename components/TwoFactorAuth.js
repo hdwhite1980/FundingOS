@@ -87,6 +87,11 @@ export default function TwoFactorAuth() {
       }
 
       const data = await response.json()
+      console.log('✅ 2FA Setup Success:', {
+        qr_code_url: data.qr_code_url,
+        secret_length: data.secret?.length,
+        user_email: data.user?.email
+      })
       setQrCodeUrl(data.qr_code_url)
       setSecret(data.secret)
       setSetupStep('setup')
@@ -293,15 +298,27 @@ export default function TwoFactorAuth() {
               Use your authenticator app to scan this QR code
             </p>
             
-            {qrCodeUrl && (
-              <div className="inline-block p-4 bg-white border rounded-lg shadow-sm">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=192x192&data=${encodeURIComponent(qrCodeUrl)}`}
-                  alt="2FA QR Code" 
-                  className="w-48 h-48" 
-                />
-              </div>
-            )}
+            {qrCodeUrl && (() => {
+              const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=192x192&data=${encodeURIComponent(qrCodeUrl)}`;
+              console.log('🖼️ QR Code Debug:', {
+                originalUrl: qrCodeUrl,
+                qrImageUrl: qrImageUrl
+              });
+              return (
+                <div className="inline-block p-4 bg-white border rounded-lg shadow-sm">
+                  <img 
+                    src={qrImageUrl}
+                    alt="2FA QR Code" 
+                    className="w-48 h-48" 
+                    onLoad={() => console.log('✅ QR code image loaded')}
+                    onError={(e) => {
+                      console.error('❌ QR code image failed to load:', e);
+                      console.error('Failed URL:', qrImageUrl);
+                    }}
+                  />
+                </div>
+              );
+            })()}
           </div>
 
           <div className="bg-slate-50 p-4 rounded-lg">
