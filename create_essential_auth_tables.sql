@@ -1,32 +1,41 @@
 -- Essential Supabase Auth Tables Setup
--- Run this in your Supabase SQL editor to create the missing profiles table
+-- Run this in your Supabase SQL editor to create the missing auth tables
 
--- Create profiles table that extends auth.users
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  email TEXT,
+-- Create user_profiles table that the app actually uses (not 'profiles')
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  email TEXT NOT NULL,
   full_name TEXT,
+  organization_name TEXT,
+  organization_type TEXT DEFAULT 'nonprofit',
+  user_role TEXT DEFAULT 'company',
+  setup_completed BOOLEAN DEFAULT FALSE,
+  two_factor_enabled BOOLEAN DEFAULT FALSE,
+  two_factor_secret TEXT,
+  two_factor_secret_temp TEXT,
+  two_factor_backup_codes JSONB,
   avatar_url TEXT,
   website TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enable RLS on profiles
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+-- Enable RLS on user_profiles
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
--- Create policies for profiles table
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
-CREATE POLICY "Users can view their own profile" ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
+-- Create policies for user_profiles table
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.user_profiles;
+CREATE POLICY "Users can view their own profile" ON public.user_profiles
+  FOR SELECT USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-CREATE POLICY "Users can update their own profile" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;
+CREATE POLICY "Users can update their own profile" ON public.user_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
-CREATE POLICY "Users can insert their own profile" ON public.profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.user_profiles;
+CREATE POLICY "Users can insert their own profile" ON public.user_profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Create function to handle profile creation on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -35,11 +44,12 @@ LANGUAGE plpgsql
 SECURITY definer SET search_path = public
 AS $$
 begin
-  insert into public.profiles (id, email, full_name)
+  insert into public.user_profiles (user_id, email, full_name, user_role)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name')
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'),
+    coalesce(new.raw_user_meta_data->>'user_role', 'company')
   );
   return new;
 end;

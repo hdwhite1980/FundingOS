@@ -35,24 +35,24 @@ export async function GET(request) {
         
         // Test basic connection and check for required tables
         const { data, error } = await supabase
-          .from('profiles')
+          .from('user_profiles')
           .select('count')
           .limit(1)
         
         if (error && error.message?.includes('does not exist')) {
-          // Try alternative table names
+          // Try the old profiles table name
           const { data: altData, error: altError } = await supabase
-            .from('user_profiles')
+            .from('profiles')
             .select('count')
             .limit(1)
           
           envCheck.connection_test = {
-            success: !altError,
-            error: error.message + ' (tried user_profiles: ' + (altError?.message || 'success') + ')',
-            can_query_db: !!altData,
+            success: false,
+            error: 'user_profiles table does not exist (tried profiles: ' + (altError?.message || 'also missing') + ')',
+            can_query_db: false,
             table_status: {
-              profiles_exists: false,
-              user_profiles_exists: !altError,
+              user_profiles_exists: false,
+              profiles_exists: !altError,
               needs_schema_setup: true
             }
           }
@@ -62,8 +62,8 @@ export async function GET(request) {
             error: error?.message || null,
             can_query_db: !!data,
             table_status: {
-              profiles_exists: !error,
-              user_profiles_exists: null,
+              user_profiles_exists: !error,
+              profiles_exists: null,
               needs_schema_setup: !!error
             }
           }
