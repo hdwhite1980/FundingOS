@@ -1024,8 +1024,8 @@ function calculateComplianceScore(userProfile: any): number {
   // EIN/Tax ID
   if (userProfile.ein || userProfile.tax_id) score += 5
   
-  // DUNS/UEI number
-  if (userProfile.duns_uei) score += 5
+  // DUNS/UEI number (accept any of the common fields)
+  if (userProfile.duns_uei_number || userProfile.duns_uei || userProfile.duns_number) score += 5
   
   // SAM.gov registration
   if (userProfile.sam_registration === 'active') score += 10
