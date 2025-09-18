@@ -110,14 +110,43 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const resetPassword = async (email) => {
+  // Deprecated legacy link-based reset removed; use requestPasswordCode + verifyPasswordCode + finalizePasswordReset
+  const requestPasswordCode = async (email) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email)
-      if (error) throw error
-    } catch (error) {
-      console.error('Error resetting password:', error)
-      throw error
+      const response = await fetch('/api/auth/password-reset/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Failed to request code')
+      return result
+    } catch (e) {
+      console.error('Error requesting password code:', e)
+      throw e
     }
+  }
+
+  const verifyPasswordCode = async (email, code) => {
+    const response = await fetch('/api/auth/password-reset/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code })
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Verification failed')
+    return result
+  }
+
+  const finalizePasswordReset = async (email, code, newPassword) => {
+    const response = await fetch('/api/auth/password-reset/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, newPassword })
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Reset failed')
+    return result
   }
 
   const updatePassword = async (newPassword) => {
@@ -211,11 +240,13 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signUp,
     signOut,
-    resetPassword,
     updatePassword,
     forgotPassword,
     resetPasswordWithCode,
-    exchangeResetToken
+  exchangeResetToken,
+  requestPasswordCode,
+    verifyPasswordCode,
+    finalizePasswordReset
   }
 
   return (
