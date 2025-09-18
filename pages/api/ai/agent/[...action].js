@@ -1550,3 +1550,111 @@ async function createInitialGoals(userId, supabaseClient) {
     }))
   }
 }
+
+// Message Intent Analysis with conversation context
+function analyzeMessageIntent(message, conversationHistory = []) {
+  const intents = []
+  const lowerMessage = message.toLowerCase().trim()
+  
+  // Get the most recent agent message for context
+  const lastAgentMessage = conversationHistory
+    .filter(msg => msg.role === 'assistant')
+    .pop()
+  
+  // Detect follow-up responses
+  const isFollowUp = detectFollowUpResponse(lowerMessage, lastAgentMessage)
+  
+  if (isFollowUp) {
+    console.log('Detected follow-up response to:', lastAgentMessage?.content?.substring(0, 100) + '...')
+    
+    // Map follow-up intent based on previous agent context
+    const followUpIntent = mapFollowUpIntent(lowerMessage, lastAgentMessage)
+    if (followUpIntent) {
+      intents.push(followUpIntent)
+    }
+  } else {
+    // Standard intent analysis for new requests
+    if (lowerMessage.includes('analyz') || lowerMessage.includes('recommend') || lowerMessage.includes('should i apply')) {
+      intents.push('analyze_opportunities')
+    }
+    if (lowerMessage.includes('deadline') || lowerMessage.includes('due')) {
+      intents.push('check_deadlines')
+    }
+    if (lowerMessage.includes('status') || lowerMessage.includes('progress') || lowerMessage.includes('portfolio')) {
+      intents.push('check_status')
+    }
+    if (lowerMessage.includes('diversif') || lowerMessage.includes('balance') || lowerMessage.includes('spread')) {
+      intents.push('diversification_analysis')
+    }
+  }
+  
+  return intents
+}
+
+// Detect if message is a follow-up response
+function detectFollowUpResponse(lowerMessage, lastAgentMessage) {
+  const followUpPatterns = [
+    /^(yes|yeah|yep|sure|okay|ok|absolutely|definitely)$/,
+    /^(no|nope|nah|not really)$/,
+    /^(tell me more|more info|details|elaborate|explain)$/,
+    /^(continue|proceed|go ahead|next)$/,
+    /^(that sounds good|sounds great|i'm interested)$/,
+    /^(skip|pass|maybe later|not now)$/,
+    /^(help|assist|guide me)$/,
+  ]
+  
+  const isShortResponse = lowerMessage.length <= 25
+  const matchesPattern = followUpPatterns.some(pattern => pattern.test(lowerMessage))
+  const hasRecentAgentMessage = lastAgentMessage && 
+    (Date.now() - new Date(lastAgentMessage.timestamp).getTime()) < 10 * 60 * 1000 // 10 minutes
+  
+  return isShortResponse && matchesPattern && hasRecentAgentMessage
+}
+
+// Map follow-up responses to appropriate intents
+function mapFollowUpIntent(lowerMessage, lastAgentMessage) {
+  if (!lastAgentMessage) return null
+  
+  const lastContent = lastAgentMessage.content.toLowerCase()
+  const contextType = lastAgentMessage.metadata?.context_type
+  
+  // Positive responses
+  if (/^(yes|yeah|yep|sure|okay|ok|absolutely|definitely)$/.test(lowerMessage)) {
+    if (lastContent.includes('analyze') || lastContent.includes('opportunities')) {
+      return 'analyze_opportunities'
+    }
+    if (lastContent.includes('search') || lastContent.includes('find more')) {
+      return 'web_search'
+    }
+    if (lastContent.includes('deadline') || lastContent.includes('urgent')) {
+      return 'check_deadlines'
+    }
+    if (contextType === 'opportunity_analysis') {
+      return 'continue_analysis'
+    }
+    return 'continue_previous'
+  }
+  
+  // More info requests
+  if (/^(tell me more|more info|details|elaborate|explain)$/.test(lowerMessage)) {
+    if (contextType === 'opportunity_analysis') {
+      return 'expand_opportunity_analysis'
+    }
+    if (lastContent.includes('deadline') || contextType === 'deadline_check') {
+      return 'expand_deadline_info'
+    }
+    return 'expand_previous'
+  }
+  
+  // Continue/proceed responses
+  if (/^(continue|proceed|go ahead|next)$/.test(lowerMessage)) {
+    return 'continue_previous'
+  }
+  
+  // Negative responses
+  if (/^(no|nope|nah|not really|skip|pass|maybe later|not now)$/.test(lowerMessage)) {
+    return 'skip_previous'
+  }
+  
+  return null
+}
