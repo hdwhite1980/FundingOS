@@ -65,8 +65,10 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     full_name: userProfile?.full_name || '',
     email: user?.email || userProfile?.email || '',
     organization_name: userProfile?.organization_name || '',
-    organization_type: userProfile?.organization_type || 'nonprofit',
-    organization_types: userProfile?.organization_types || (userProfile?.organization_type ? [userProfile.organization_type] : []),
+    organization_type: userProfile?.organization_type || (Array.isArray(userProfile?.organization_types) && userProfile.organization_types.length > 0 ? userProfile.organization_types[0] : ''),
+    organization_types: Array.isArray(userProfile?.organization_types)
+      ? userProfile.organization_types
+      : (userProfile?.organization_type ? [userProfile.organization_type] : []),
     user_role: userProfile?.user_role || 'company',
     
     // Legal Foundation
@@ -138,8 +140,10 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       full_name: userProfile?.full_name || '',
       email: user?.email || userProfile?.email || '',
       organization_name: userProfile?.organization_name || '',
-      organization_type: userProfile?.organization_type || 'nonprofit',
-      organization_types: userProfile?.organization_types || (userProfile?.organization_type ? [userProfile.organization_type] : []),
+      organization_type: userProfile?.organization_type || (Array.isArray(userProfile?.organization_types) && userProfile.organization_types.length > 0 ? userProfile.organization_types[0] : ''),
+      organization_types: Array.isArray(userProfile?.organization_types)
+        ? userProfile.organization_types
+        : (userProfile?.organization_type ? [userProfile.organization_type] : []),
       user_role: userProfile?.user_role || 'company',
       
       // Legal Foundation

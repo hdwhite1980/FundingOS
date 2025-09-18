@@ -105,7 +105,7 @@ export const safeProfileLoader = {
         email: session.user.email,
         full_name: session.user.user_metadata?.full_name || '',
         organization_name: '',
-        organization_type: 'nonprofit',
+  organization_type: 'unknown',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         ...profileData

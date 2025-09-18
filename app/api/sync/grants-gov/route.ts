@@ -493,7 +493,7 @@ export async function GET(request: Request) {
       })
     }
 
-    // Transform data to match your exact schema with AI metadata
+  // Transform data to match your exact schema with AI metadata
     console.log('Processing opportunities for database insertion...')
     const processedOpportunities = allOpportunities.map((opp) => {
       const sponsor = opp.agencyName || opp.agencyCode || opp.agency || 'Federal Agency'
@@ -586,6 +586,90 @@ export async function GET(request: Request) {
     }
 
     console.log(`Successfully inserted ${inserted?.length || 0} opportunities`)
+
+    // Enrich: fetch eligibility details from Grants.gov detail pages
+    // Concurrency limit to avoid overwhelming remote site
+    const concurrency = 4
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+    type Enriched = {
+      id: string
+      eligibility_criteria?: string[]
+      organization_types?: string[]
+    }
+
+    const mapEligibilityToOrgTypes = (eligibilityText: string) => {
+      const lowered = eligibilityText.toLowerCase()
+      const types = new Set<string>()
+      if (/(institutions of higher education|ihe|university|college)/.test(lowered)) types.add('education_institution')
+      if (/non[- ]?profit/.test(lowered)) types.add('nonprofit')
+      if (/(for[- ]?profit|small business|sba|sbir|sttr|company|business)/.test(lowered)) types.add('for_profit')
+      if (/(state|county|city|municipal|government|tribal)/.test(lowered)) types.add('government')
+      if (/(tribal|american indian|alaska native)/.test(lowered)) types.add('tribal')
+      if (/(individuals?)/.test(lowered)) types.add('individual')
+      return Array.from(types)
+    }
+
+    const parseEligibilityFromHtml = (html: string): { criteria: string[]; orgTypes: string[] } => {
+      const text = html
+        .replace(/<\s*br\s*\/?>(?=\s*\w)/gi, '\n')
+        .replace(/<li[^>]*>/gi, '\n- ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;|&amp;|&lt;|&gt;|&quot;|&#39;/g, ' ')
+        .replace(/\s+/g, ' ')
+      const segments: string[] = []
+      const eligibleIdx = text.toLowerCase().indexOf('eligible applicants')
+      if (eligibleIdx >= 0) {
+        segments.push(text.slice(eligibleIdx, eligibleIdx + 1500))
+      }
+      const addlIdx = text.toLowerCase().indexOf('additional information on eligibility')
+      if (addlIdx >= 0) {
+        segments.push(text.slice(addlIdx, addlIdx + 3000))
+      }
+      const blob = segments.join(' ').trim()
+      const criteria: string[] = []
+      if (blob) criteria.push(blob)
+      const orgTypes = blob ? mapEligibilityToOrgTypes(blob) : []
+      return { criteria: criteria.length ? criteria : ['general'], orgTypes }
+    }
+
+    const toEnrich = validOpportunities.slice(0, 60) // cap per run
+    const enriched: Enriched[] = []
+
+    for (let i = 0; i < toEnrich.length; i += concurrency) {
+      const batch = toEnrich.slice(i, i + concurrency)
+      const results = await Promise.all(batch.map(async (opp) => {
+        try {
+          const url = opp.source_url as string
+          const resp = await fetch(url)
+          if (!resp.ok) return null
+          const html = await resp.text()
+          const parsed = parseEligibilityFromHtml(html)
+          return { id: opp.external_id as string, eligibility_criteria: parsed.criteria, organization_types: parsed.orgTypes }
+        } catch (e) {
+          return null
+        }
+      }))
+      results.forEach(r => { if (r) enriched.push(r) })
+      await sleep(500)
+    }
+
+    if (enriched.length > 0) {
+      console.log(`Enriched eligibility for ${enriched.length} opportunities`)
+      const updates = enriched.map(e => ({
+        external_id: e.id,
+        source: 'grants_gov',
+        eligibility_criteria: e.eligibility_criteria,
+        // Merge org types conservatively: if parsed has entries, use union with existing
+        organization_types: e.organization_types && e.organization_types.length > 0 ? e.organization_types : undefined,
+        updated_at: new Date().toISOString()
+      }))
+      // Upsert by external_id+source; only fields present will overwrite
+      const { error: enrichErr } = await supabaseServiceRole
+        .from('opportunities')
+        .upsert(updates, { onConflict: 'external_id,source' })
+      if (enrichErr) console.error('Eligibility enrichment upsert error:', enrichErr)
+    }
 
     return NextResponse.json({
       success: true,

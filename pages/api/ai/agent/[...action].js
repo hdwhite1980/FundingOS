@@ -1102,7 +1102,9 @@ async function performWebSearch(userId, message, projects, userProfile) {
     // If message is general, build query from user context
     if (message.length < 50 && projects?.length > 0) {
       const projectTypes = projects.map(p => p.project_type).join(' ')
-      const organizationType = userProfile?.organization_type || 'nonprofit'
+      const organizationType = (Array.isArray(userProfile?.organization_types) && userProfile.organization_types.length > 0)
+        ? userProfile.organization_types[0]
+        : (userProfile?.organization_type || 'unknown')
       searchQuery = `${projectTypes} grants ${organizationType} funding opportunities`
     }
     
