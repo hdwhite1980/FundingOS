@@ -3,14 +3,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
-// Create service role client that bypasses RLS
-const getSupabaseServiceClient = () => {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY // Service role key bypasses RLS
-  )
-}
-
 export async function POST(request) {
   try {
     console.log('🔧 Project creation API endpoint called')
@@ -31,11 +23,10 @@ export async function POST(request) {
     }
 
     // Create service role client (bypasses RLS)
-    // Service role client for operations that need to bypass RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
     
     // Prepare project data with proper timestamps
     const newProject = {
