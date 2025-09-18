@@ -118,7 +118,7 @@ export default function AuthPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const response = await fetch('/api/auth/password-reset/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resetData.email })
@@ -130,7 +130,7 @@ export default function AuthPage() {
         throw new Error(result.error)
       }
 
-      toast.success(result.message)
+      toast.success('Password reset code sent to your email')
       setShowResetPassword(true)
       setShowForgotPassword(false)
     } catch (error) {
@@ -157,11 +157,10 @@ export default function AuthPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const response = await fetch('/api/auth/password-reset/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'verify',
           email: resetData.email,
           code: resetData.code,
           newPassword: resetData.newPassword
@@ -174,7 +173,7 @@ export default function AuthPage() {
         throw new Error(result.error)
       }
 
-      toast.success(result.message)
+      toast.success('Password reset successfully!')
       setShowResetPassword(false)
       setShowForgotPassword(false)
       setResetData({ email: '', code: '', newPassword: '', confirmNewPassword: '' })
