@@ -519,12 +519,14 @@ function extractImportantWords(text: string): string[] {
 function checkHardStops(opportunity: any, project: any, userProfile: any) {
   const reasons: string[] = []
 
-  // Organization type check
+  // Organization type check - BE STRICT
   const orgTypes = safeArrayField(opportunity.organization_types)
-  if (orgTypes.length > 0 && 
-      !orgTypes.includes(userProfile.organization_type) && 
-      !orgTypes.includes('all')) {
-    reasons.push('Organization type not eligible')
+  if (orgTypes.length > 0) {
+    if (userProfile.organization_type === 'unknown' || !userProfile.organization_type) {
+      reasons.push('Organization type not specified - may not be eligible')
+    } else if (!orgTypes.includes(userProfile.organization_type) && !orgTypes.includes('all')) {
+      reasons.push(`${userProfile.organization_type} organizations not eligible - requires: ${orgTypes.join(', ')}`)
+    }
   }
 
   // Budget alignment check
@@ -796,15 +798,20 @@ function checkOrganizationType(opportunity: any, userProfile: any) {
   const weaknesses: string[] = []
 
   const orgTypesEligible = safeArrayField(opportunity.organization_types)
+  const userOrgType = userProfile.organization_type
+  
   if (!orgTypesEligible.length || orgTypesEligible.includes('all')) {
+    score = 15
+    strengths.push('Open to all organization types')
+  } else if (userOrgType && orgTypesEligible.includes(userOrgType)) {
     score = 20
-    strengths.push('Organization type eligible')
-  } else if (orgTypesEligible.includes(userProfile.organization_type)) {
-    score = 20
-    strengths.push(`${userProfile.organization_type} organizations explicitly eligible`)
+    strengths.push(`${userOrgType} organizations explicitly eligible`)
+  } else if (!userOrgType || userOrgType === 'unknown') {
+    score = 0
+    weaknesses.push('Organization type not specified - eligibility unclear')
   } else {
     score = 0
-    weaknesses.push(`${userProfile.organization_type} organizations may not be eligible`)
+    weaknesses.push(`${userOrgType} organizations not eligible - requires: ${orgTypesEligible.join(', ')}`)
   }
 
   return {
@@ -1192,14 +1199,24 @@ Target Demographics: ${orgContext.targetDemographics.length > 0 ? orgContext.tar
 Certifications: ${Object.entries(orgContext.certifications).filter(([_, value]) => value).map(([key, _]) => key).join(', ') || 'None'}
 
 ==== ANALYSIS REQUIREMENTS ====
-Provide a detailed, specific analysis that:
-1. Directly compares THIS project to THIS opportunity's specific requirements
-2. Identifies concrete alignment points or mismatches
-3. References specific details from both the opportunity and project descriptions
-4. Considers the organization's actual capabilities and experience
-5. Addresses real competitive factors and success probability
+You are a strict, objective funding analyst. DO NOT force matches or create false connections.
 
-CRITICAL: Base your analysis ONLY on the specific details provided above. Do not use generic language or template responses.
+CRITICAL INSTRUCTIONS:
+1. If there is NO clear alignment between the project and opportunity, score it low (0-30)
+2. Do NOT assume organization type - use ONLY what is explicitly provided
+3. If organization type is "unknown" or missing, factor this as a weakness
+4. Be skeptical - only score high (70+) if there's genuine, specific alignment
+5. Reference actual project details, not generic possibilities
+6. If the project description is vague or doesn't match the opportunity focus, penalize the score heavily
+
+OBJECTIVE EVALUATION CRITERIA:
+- Project description must clearly relate to opportunity focus areas
+- Organization type must match opportunity requirements (if specified)
+- Funding amount must be reasonable for opportunity size
+- Geographic requirements must be met
+- Any missing information should reduce the score
+
+Base your analysis ONLY on concrete facts provided. Do not infer, assume, or create connections that aren't explicitly evident.
 
 Response Format (JSON only):
 {

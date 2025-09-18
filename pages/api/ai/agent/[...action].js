@@ -876,8 +876,6 @@ async function getRecentConversationHistory(userId, limit = 20) {
 
 // Message Intent Analysis with conversation context
 function analyzeMessageIntent(message, conversationHistory = []) {
-// Message Intent Analysis with conversation context
-function analyzeMessageIntent(message, conversationHistory = []) {
   const intents = []
   const lowerMessage = message.toLowerCase().trim()
   
@@ -982,7 +980,6 @@ function mapFollowUpIntent(lowerMessage, lastAgentMessage) {
   }
   
   return null
-}
 }
 
 // Detect if user is requesting web search
@@ -1136,10 +1133,10 @@ async function analyzeAllOpportunities(userId, projects, opportunities, userProf
         reasoning: generateReasoning(project, opportunity, fitScore)
       }
       
-      if (fitScore >= 70) {
+      if (fitScore >= 60) {  // Lowered from 70 since we're being more strict
         analysis.topMatches.push(match)
         analysis.summary.highMatches++
-      } else if (fitScore >= 50) {
+      } else if (fitScore >= 40) {  // Lowered from 50
         analysis.summary.mediumMatches++
       }
       
@@ -1155,43 +1152,75 @@ async function analyzeAllOpportunities(userId, projects, opportunities, userProf
   return analysis
 }
 
-// Detailed Fit Score Calculation
+// Detailed Fit Score Calculation - OBJECTIVE EVALUATION ONLY
 function calculateDetailedFitScore(project, opportunity, userProfile) {
   let score = 0
   
-  // Project type alignment (25 points)
-  if (opportunity.project_types?.includes(project.project_type)) score += 25
-  else if (opportunity.project_types?.some(type => 
-    type.includes(project.project_type?.split('_')[0]) || 
-    project.project_type?.includes(type.split('_')[0])
-  )) score += 15
-  
-  // Organization type match (20 points)
-  if (opportunity.organization_types?.includes(userProfile.organization_type)) score += 20
-  
-  // Funding amount fit (20 points)
-  if (opportunity.amount_min && opportunity.amount_max && project.funding_needed) {
-    const needsRatio = project.funding_needed / opportunity.amount_max
-    if (needsRatio <= 1) score += 20
-    else if (needsRatio <= 1.5) score += 10
+  // Organization type match (STRICT) - 25 points
+  if (opportunity.organization_types && opportunity.organization_types.length > 0) {
+    if (!userProfile.organization_type || userProfile.organization_type === 'unknown') {
+      // No points if org type not specified
+      score += 0
+    } else if (opportunity.organization_types.includes(userProfile.organization_type)) {
+      score += 25
+    } else if (opportunity.organization_types.includes('all')) {
+      score += 20
+    } else {
+      // Org type doesn't match - this is a major issue
+      score += 0
+    }
+  } else {
+    // No org type requirements
+    score += 15
   }
   
-  // Geographic match (10 points)
-  if (opportunity.geography?.includes('nationwide')) score += 8
-  else if (opportunity.geography?.some(geo => 
-    project.location?.toLowerCase().includes(geo.toLowerCase())
-  )) score += 10
-  
-  // Special qualifications (15 points total)
-  if (opportunity.small_business_only && userProfile.small_business) score += 5
-  if (opportunity.minority_business && userProfile.minority_owned) score += 5
-  if (opportunity.woman_owned_business && userProfile.woman_owned) score += 5
-  if (opportunity.veteran_owned_business && userProfile.veteran_owned) score += 5
-  
-  // Industry alignment (10 points)
-  if (project.industry && opportunity.industry_focus?.includes(project.industry.toLowerCase())) {
+  // Project type alignment (STRICT) - 25 points
+  if (opportunity.project_types && opportunity.project_types.length > 0) {
+    if (opportunity.project_types.includes(project.project_type)) {
+      score += 25
+    } else if (opportunity.project_types.some(type => 
+      project.project_type && type.includes(project.project_type.split('_')[0])
+    )) {
+      score += 10 // Partial match only gets partial points
+    } else {
+      score += 0 // No match
+    }
+  } else {
+    // No specific project type requirements
     score += 10
   }
+  
+  // Funding amount fit (REALISTIC) - 25 points
+  if (opportunity.amount_min && opportunity.amount_max && project.funding_needed) {
+    if (project.funding_needed >= opportunity.amount_min && project.funding_needed <= opportunity.amount_max) {
+      score += 25 // Perfect fit
+    } else if (project.funding_needed <= opportunity.amount_max) {
+      score += 15 // Under max but might be under minimum
+    } else {
+      score += 0 // Over maximum
+    }
+  }
+  
+  // Geographic match - 15 points
+  if (opportunity.geography && opportunity.geography.length > 0) {
+    if (opportunity.geography.includes('nationwide') || opportunity.geography.includes('national')) {
+      score += 15
+    } else if (project.location && opportunity.geography.some(geo => 
+      project.location.toLowerCase().includes(geo.toLowerCase())
+    )) {
+      score += 15
+    } else {
+      score += 0 // No geographic match
+    }
+  }
+  
+  // Special qualifications (ONLY if explicitly specified) - 10 points max
+  let specialQualPoints = 0
+  if (opportunity.small_business_only && userProfile.small_business) specialQualPoints += 3
+  if (opportunity.minority_business && userProfile.minority_owned) specialQualPoints += 3
+  if (opportunity.woman_owned_business && userProfile.woman_owned) specialQualPoints += 2
+  if (opportunity.veteran_owned_business && userProfile.veteran_owned) specialQualPoints += 2
+  score += Math.min(specialQualPoints, 10)
   
   return Math.min(score, 100)
 }
@@ -1210,19 +1239,49 @@ function getRecommendation(fitScore, daysUntilDeadline) {
   return 'LOW_PRIORITY'
 }
 
-// Generate Reasoning for Matches
+// Generate HONEST Reasoning for Matches
 function generateReasoning(project, opportunity, fitScore) {
   const reasons = []
+  const issues = []
   
-  if (fitScore >= 80) {
-    reasons.push(`Strong alignment between your ${project.project_type} project and ${opportunity.sponsor}'s funding priorities`)
+  // Check organization type alignment
+  if (opportunity.organization_types && opportunity.organization_types.length > 0) {
+    if (!project.organization_type || project.organization_type === 'unknown') {
+      issues.push('Organization type not specified')
+    } else if (!opportunity.organization_types.includes(project.organization_type)) {
+      issues.push(`Requires ${opportunity.organization_types.join(' or ')} organizations`)
+    }
   }
   
-  if (project.funding_needed && opportunity.amount_max && project.funding_needed <= opportunity.amount_max) {
-    reasons.push(`Funding amount matches your need ($${project.funding_needed.toLocaleString()})`)
+  // Check project type alignment
+  if (opportunity.project_types && !opportunity.project_types.includes(project.project_type)) {
+    issues.push(`Focuses on ${opportunity.project_types.join(', ')} projects`)
   }
   
-  return reasons.join('. ')
+  // Check funding alignment
+  if (project.funding_needed && opportunity.amount_max && project.funding_needed > opportunity.amount_max) {
+    issues.push(`Request ($${project.funding_needed.toLocaleString()}) exceeds maximum ($${opportunity.amount_max.toLocaleString()})`)
+  }
+  
+  // Only mention strengths if score is decent
+  if (fitScore >= 60) {
+    if (project.funding_needed && opportunity.amount_max && project.funding_needed <= opportunity.amount_max) {
+      reasons.push(`Funding request fits within available amount`)
+    }
+    if (opportunity.project_types?.includes(project.project_type)) {
+      reasons.push(`Project type aligns with opportunity focus`)
+    }
+  }
+  
+  // Be honest about low scores
+  if (fitScore < 40) {
+    return `Limited alignment: ${issues.join(', ')}`
+  } else if (fitScore < 60) {
+    const allPoints = [...issues, ...reasons]
+    return allPoints.length > 0 ? allPoints.join('. ') : 'Moderate alignment with some gaps'
+  }
+  
+  return reasons.length > 0 ? reasons.join('. ') : 'Good alignment on key criteria'
 }
 
 // Create Agent Decisions
