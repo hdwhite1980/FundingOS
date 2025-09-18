@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import aiProviderService from '../../../../lib/aiProviderService'
 import { buildOrgContext, classifyAssistantIntent, generateAssistantResponse, getCachedOrgContext } from '../../../../lib/ai/contextBuilder'
 import { summarizeSessionIfNeeded, getSessionContextSummary } from '../../../../lib/ai/conversationSummarizer'
+import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 
 // Phase 1: Hybrid approach. We do lightweight heuristic routing; optionally call LLM for refinement.
 // Request body: { userId, message, mode?, useLLM? }
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
 
 async function ensureSession(userId: string, provided?: string) {
   if (provided) return provided
-  const { data: newSession, error } = await (await import('../../../../lib/supabase')).supabase
+  const { data: newSession, error } = await supabaseAdmin
     .from('assistant_sessions')
     .insert([{ user_id: userId }])
     .select('id')
@@ -123,7 +124,7 @@ async function ensureSession(userId: string, provided?: string) {
 
 async function logConversationTurn(sessionId: string, userId: string, role: string, content: string) {
   try {
-    await (await import('../../../../lib/supabase')).supabase
+    await supabaseAdmin
       .from('assistant_conversations')
       .insert([{ session_id: sessionId, user_id: userId, role, content }])
   } catch (e:any) {
