@@ -13,6 +13,7 @@ import { StatCard } from './ui/StatCard'
 import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './EnhancedCreateProjectModal'
+import AccountSettingsModal from './AccountSettingsModal'
 import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
 import ProactiveAssistantManager from './ProactiveAssistantManager'
 import { directUserServices } from '../lib/supabase'
@@ -60,6 +61,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   const [selectedProject, setSelectedProject] = useState(null)
   const [viewMode, setViewMode] = useState('dashboard') // 'dashboard' or 'project-detail'
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -1092,6 +1094,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                       opportunities={opportunities}
                       selectedProject={selectedProject}
                       userProfile={userProfile}
+                      onCompleteProfile={() => setShowAccountSettings(true)}
                     />
                   )}
 
@@ -1188,6 +1191,16 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             onProjectCreated={handleProjectCreated}
             onProjectUpdated={handleProjectUpdated}
             editProject={editingProject}
+          />
+        )}
+
+        {/* Account Settings Modal */}
+        {showAccountSettings && (
+          <AccountSettingsModal
+            user={user}
+            userProfile={userProfile}
+            onUpdated={handleProfileUpdate}
+            onClose={() => setShowAccountSettings(false)}
           />
         )}
 

@@ -31,7 +31,8 @@ export default function OpportunityList({
   opportunities: initialOpportunities, 
   selectedProject, 
   userProfile,
-  enableEligibilityCheck = true // Flag to enable/disable eligibility features
+  enableEligibilityCheck = true, // Flag to enable/disable eligibility features
+  onCompleteProfile // Callback to open profile completion modal
 }) {
   const [opportunities, setOpportunities] = useState(initialOpportunities || [])
   const [filteredOpportunities, setFilteredOpportunities] = useState([])
@@ -597,7 +598,7 @@ export default function OpportunityList({
             </div>
             <div className="mt-3 flex space-x-3">
               <button 
-                onClick={() => window.location.href = '/profile'}
+                onClick={() => onCompleteProfile && onCompleteProfile()}
                 className="text-xs bg-amber-100 text-amber-800 px-3 py-1 rounded hover:bg-amber-200"
               >
                 Complete Profile
@@ -944,7 +945,7 @@ export default function OpportunityList({
                       Show All Opportunities
                     </button>
                     <button 
-                      onClick={() => window.location.href = '/profile'}
+                      onClick={() => onCompleteProfile && onCompleteProfile()}
                       className="btn-primary btn-sm"
                     >
                       Complete Profile
