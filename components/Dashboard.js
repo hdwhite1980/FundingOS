@@ -137,10 +137,27 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         return
       }
 
-      // Load core data - using API method for projects to ensure consistency
+      // Load core data
       console.log('📊 Loading dashboard data for user:', user.id)
-      const [userProjects, allOpportunities, userSubmissions] = await Promise.all([
-        directUserServices.getProjectsViaAPI(user.id), // Use API method instead of direct Supabase
+      
+      // Try API-based project fetching first, fallback to direct method
+      let userProjects
+      try {
+        console.log('🔍 Trying API-based project fetching...')
+        const response = await fetch(`/api/projects?userId=${user.id}`)
+        if (response.ok) {
+          const result = await response.json()
+          userProjects = result.projects || []
+          console.log(`✅ Projects fetched via API: ${userProjects.length} items`)
+        } else {
+          throw new Error('API fetch failed')
+        }
+      } catch (apiError) {
+        console.log('⚠️ API fetch failed, falling back to direct method:', apiError.message)
+        userProjects = await directUserServices.projects.getProjects(user.id)
+      }
+      
+      const [allOpportunities, userSubmissions] = await Promise.all([
         directUserServices.opportunities.getOpportunities({
           organizationType: userProfile?.organization_type || 'nonprofit'
         }),
