@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { findUserByEmail, verifyCode, consumeCode, updateUserPassword } from '@/lib/passwordReset'
 
+export const runtime = 'nodejs'
+
 export async function POST(req: Request) {
   try {
     const { email, code, newPassword } = await req.json()
@@ -11,8 +13,12 @@ export async function POST(req: Request) {
     const ok = await verifyCode(user.id, code)
     if (!ok) return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
     const consumed = await consumeCode(user.id, code)
-    if (!consumed) return NextResponse.json({ error: 'Code already used or expired' }, { status: 400 })
+    if (!consumed) {
+      console.log('[password_reset:reset] consume_failed', { userId: user.id })
+      return NextResponse.json({ error: 'Code already used or expired' }, { status: 400 })
+    }
     await updateUserPassword(user.id, newPassword)
+    console.log('[password_reset:reset] password_updated', { userId: user.id })
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error('password reset reset error', e)

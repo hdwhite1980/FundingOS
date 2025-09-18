@@ -6,6 +6,18 @@ const sendgridKey = process.env.SENDGRID_API_KEY
 const defaultFrom = process.env.EMAIL_FROM || 'no-reply@wali-os.local'
 const passwordResetTemplateId = process.env.SENDGRID_PASSWORD_RESET_TEMPLATE_ID // optional dynamic template
 
+let emailInitLogged = false
+function logOnceInit() {
+  if (emailInitLogged) return
+  emailInitLogged = true
+  console.log('[email:init]', {
+    sendgridKeyPresent: !!sendgridKey,
+    passwordResetTemplateIdPresent: !!passwordResetTemplateId,
+    from: defaultFrom
+  })
+}
+logOnceInit()
+
 if (sendgridKey) {
   sgMail.setApiKey(sendgridKey)
 }
@@ -38,8 +50,7 @@ function render(template: string, vars: Record<string, string | number>) {
 export async function sendEmail(params: EmailParams) {
   const { to, subject, html, text, from, category } = params
   if (!sendgridKey) {
-    console.warn('[email] SENDGRID_API_KEY missing; logging email instead.')
-    console.log({ to, subject, html })
+    console.warn('[email] missing SENDGRID_API_KEY – mock send', { to, subject })
     return { mocked: true }
   }
   const msg: any = {
@@ -52,9 +63,11 @@ export async function sendEmail(params: EmailParams) {
   if (category) msg.categories = [category]
   try {
     const res = await sgMail.send(msg)
-    return { id: res[0]?.headers['x-message-id'] || null }
+    const messageId = res[0]?.headers['x-message-id'] || null
+    console.log('[email:sent]', { to, subject, category, messageId })
+    return { id: messageId }
   } catch (e: any) {
-    console.error('SendGrid send error', e?.response?.body || e)
+    console.error('[email:error]', e?.response?.body || e)
     throw new Error('EMAIL_SEND_FAILED')
   }
 }
@@ -79,10 +92,13 @@ export async function sendPasswordResetEmail(
         },
         categories: ['password_reset']
       }
+      console.log('[email:password_reset:dynamic_attempt]', { to: email, templateId: passwordResetTemplateId })
       const res = await sgMail.send(msg)
-      return { id: res[0]?.headers['x-message-id'] || null }
+      const messageId = res[0]?.headers['x-message-id'] || null
+      console.log('[email:password_reset:dynamic_sent]', { to: email, messageId })
+      return { id: messageId }
     } catch (e: any) {
-      console.warn('Dynamic template send failed, falling back to inline HTML', e?.response?.body || e)
+      console.warn('[email:password_reset:dynamic_failed] falling back', e?.response?.body || e)
       // Fall through to inline template fallback
     }
   }
@@ -90,6 +106,7 @@ export async function sendPasswordResetEmail(
   const html = base
     ? render(base, { first_name: firstName, email_address: email, reset_code: code, ttl_minutes: ttlMinutes })
     : `<p>Your password reset code:</p><p><strong>${code}</strong></p><p>This code expires in ${ttlMinutes} minutes.</p>`
+  console.log('[email:password_reset:fallback_attempt]', { to: email })
   return sendEmail({ to: email, subject: 'Your Password Reset Code', html, category: 'password_reset' })
 }
 

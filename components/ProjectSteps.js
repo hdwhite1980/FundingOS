@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import FieldHelpButton from './FieldHelpButton'
+import { getFieldDescription } from '../lib/fieldDescriptions'
 
 import { 
   PROJECT_CATEGORIES, 
@@ -36,7 +37,7 @@ export function ProjectBasics({ formData, onChange, userId }) {
       
       {/* Project Title */}
       <div>
-        <label className="form-label flex items-center">Project Title * <FieldHelpButton userId={userId} field="project_title" currentValue={formData.name} projectDraft={formData} /></label>
+  <label className="form-label flex items-center" title={getFieldDescription('project_title')}>Project Title * <FieldHelpButton userId={userId} field="project_title" currentValue={formData.name} projectDraft={formData} /></label>
         <input
           type="text"
           name="name"
@@ -51,7 +52,7 @@ export function ProjectBasics({ formData, onChange, userId }) {
 
       {/* Project Description */}
       <div>
-        <label className="form-label flex items-center">Project Description * <FieldHelpButton userId={userId} field="project_description" currentValue={formData.description} projectDraft={formData} /></label>
+  <label className="form-label flex items-center" title={getFieldDescription('project_description')}>Project Description * <FieldHelpButton userId={userId} field="project_description" currentValue={formData.description} projectDraft={formData} /></label>
         <textarea
           name="description"
           className="form-input h-32"
@@ -160,7 +161,7 @@ export function ScopeImpact({ formData, onChange, userId }) {
         <h4 className="font-semibold text-gray-900 mb-4">Specific Population This Project Serves</h4>
         <div className="space-y-4">
           <div>
-            <label className="form-label flex items-center">Target Population Description * <FieldHelpButton userId={userId} field="target_population_description" currentValue={formData.target_population_description} projectDraft={formData} /></label>
+            <label className="form-label flex items-center" title={getFieldDescription('target_population_description')}>Target Population Description * <FieldHelpButton userId={userId} field="target_population_description" currentValue={formData.target_population_description} projectDraft={formData} /></label>
             <textarea
               name="target_population_description"
               className="form-input h-24"
@@ -317,7 +318,7 @@ export function FundingRequirements({ formData, onChange, userId }) {
       
       {/* Total Budget */}
       <div className="bg-slate-50 rounded-lg p-6">
-  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">Total Project Budget * <FieldHelpButton userId={userId} field="total_project_budget" currentValue={formData.total_project_budget} projectDraft={formData} /></h4>
+  <h4 className="font-semibold text-gray-900 mb-4 flex items-center" title={getFieldDescription('total_project_budget')}>Total Project Budget * <FieldHelpButton userId={userId} field="total_project_budget" currentValue={formData.total_project_budget} projectDraft={formData} /></h4>
         <div>
           <div className="relative">
             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">$</span>
@@ -342,7 +343,7 @@ export function FundingRequirements({ formData, onChange, userId }) {
 
       {/* Budget Breakdown */}
       <div className="bg-blue-50 rounded-lg p-6">
-  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">Budget Breakdown (Percentages) <FieldHelpButton userId={userId} field="budget_breakdown" currentValue={''} projectDraft={formData} /></h4>
+  <h4 className="font-semibold text-gray-900 mb-4 flex items-center" title={getFieldDescription('budget_breakdown')}>Budget Breakdown (Percentages) <FieldHelpButton userId={userId} field="budget_breakdown" currentValue={''} projectDraft={formData} /></h4>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="form-label">Personnel (salaries/benefits) %</label>
@@ -646,7 +647,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
       
       {/* Primary Goals */}
       <div className="bg-slate-50 rounded-lg p-6">
-  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">Primary Goals (3-5 specific objectives) <FieldHelpButton userId={userId} field="primary_goals" currentValue={(formData.primary_goals||[]).join('; ')} projectDraft={formData} /></h4>
+  <h4 className="font-semibold text-gray-900 mb-4 flex items-center" title={getFieldDescription('primary_goals')}>Primary Goals (3-5 specific objectives) <FieldHelpButton userId={userId} field="primary_goals" currentValue={(formData.primary_goals||[]).join('; ')} projectDraft={formData} /></h4>
         {[0, 1, 2, 3, 4].map((index) => (
           <div key={index} className="mb-3">
             <label className="form-label">Goal {index + 1} {index < 3 ? '*' : ''}</label>
@@ -667,7 +668,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
         <h4 className="font-semibold text-gray-900 mb-4">Measurable Outcomes</h4>
         <div className="space-y-4">
           <div>
-            <label className="form-label flex items-center">Output Measures * <FieldHelpButton userId={userId} field="output_measures" currentValue={formData.output_measures} projectDraft={formData} /></label>
+            <label className="form-label flex items-center" title={getFieldDescription('output_measures')}>Output Measures * <FieldHelpButton userId={userId} field="output_measures" currentValue={formData.output_measures} projectDraft={formData} /></label>
             <textarea
               name="output_measures"
               className="form-input h-20"
@@ -681,7 +682,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
           </div>
           
           <div>
-            <label className="form-label flex items-center">Outcome Measures * <FieldHelpButton userId={userId} field="outcome_measures" currentValue={formData.outcome_measures} projectDraft={formData} /></label>
+            <label className="form-label flex items-center" title={getFieldDescription('outcome_measures')}>Outcome Measures * <FieldHelpButton userId={userId} field="outcome_measures" currentValue={formData.outcome_measures} projectDraft={formData} /></label>
             <textarea
               name="outcome_measures"
               className="form-input h-20"
@@ -695,7 +696,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
           </div>
           
           <div>
-            <label className="form-label flex items-center">Impact Measures <FieldHelpButton userId={userId} field="impact_measures" currentValue={formData.impact_measures} projectDraft={formData} /></label>
+            <label className="form-label flex items-center" title={getFieldDescription('impact_measures')}>Impact Measures <FieldHelpButton userId={userId} field="impact_measures" currentValue={formData.impact_measures} projectDraft={formData} /></label>
             <textarea
               name="impact_measures"
               className="form-input h-20"
