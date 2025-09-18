@@ -531,8 +531,7 @@ export async function GET(request: Request) {
         funding_instrument: 'grant',
         raw_data: opp,
         ai_metadata: opp._aiMetadata || null, // Store AI search context
-        last_updated: new Date().toISOString(),
-        updated_at: new Date().toISOString() // Add both fields for compatibility
+        last_updated: new Date().toISOString()
       }
     })
 
@@ -662,7 +661,7 @@ export async function GET(request: Request) {
         eligibility_criteria: e.eligibility_criteria,
         // Merge org types conservatively: if parsed has entries, use union with existing
         organization_types: e.organization_types && e.organization_types.length > 0 ? e.organization_types : undefined,
-        updated_at: new Date().toISOString()
+        last_updated: new Date().toISOString()
       }))
       // Upsert by external_id+source; only fields present will overwrite
       const { error: enrichErr } = await supabaseServiceRole
