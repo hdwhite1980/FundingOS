@@ -15,7 +15,7 @@ import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './EnhancedCreateProjectModal'
 import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
 import ProactiveAssistantManager from './ProactiveAssistantManager'
-import { directUserServices, projectService } from '../lib/supabase'
+import { directUserServices } from '../lib/supabase'
 import { 
   Plus, 
   Target, 
@@ -140,7 +140,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       // Load core data - using API method for projects to ensure consistency
       console.log('📊 Loading dashboard data for user:', user.id)
       const [userProjects, allOpportunities, userSubmissions] = await Promise.all([
-        projectService.getProjectsViaAPI(user.id), // Use API method instead of direct Supabase
+        directUserServices.getProjectsViaAPI(user.id), // Use API method instead of direct Supabase
         directUserServices.opportunities.getOpportunities({
           organizationType: userProfile?.organization_type || 'nonprofit'
         }),
