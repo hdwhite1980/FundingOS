@@ -38,6 +38,7 @@ export default function ClippyAssistant({
   onSuggestionApply
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [currentMessage, setCurrentMessage] = useState('')
   const [isThinking, setIsThinking] = useState(false)
   const [conversation, setConversation] = useState([])
@@ -46,6 +47,7 @@ export default function ClippyAssistant({
   const [assistantState, setAssistantState] = useState('idle') // idle, talking, listening, thinking
   const [currentAction, setCurrentAction] = useState(null)
   const inputRef = useRef(null)
+  const scrollRef = useRef(null)
 
   // Animation states for the Clippy character
   const [eyesBlink, setEyesBlink] = useState(false)
@@ -174,12 +176,12 @@ export default function ClippyAssistant({
     setIsThinking(true)
 
     // Add user message to conversation
-    setConversation(prev => [...prev, { type: 'user', content: input }])
+  setConversation(prev => [...prev, { type: 'user', content: input, id: Date.now() }])
 
     // Simulate processing time
     setTimeout(async () => {
       const response = await processUserInput(input)
-      setConversation(prev => [...prev, { type: 'assistant', content: response }])
+  setConversation(prev => [...prev, { type: 'assistant', content: response, id: Date.now()+1 }])
       
       showMessage(response, () => {
         // Offer follow-up after response
@@ -267,97 +269,89 @@ What would you like to focus on?`
   if (!isVisible) return null
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className={`fixed ${expanded ? 'inset-0 p-4 md:p-6' : 'bottom-6 right-6'} z-50 ${expanded ? 'flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}>
       <AnimatePresence>
         {isOpen && (
           <>
             {/* Speech Bubble */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              className="absolute bottom-20 right-0 bg-white rounded-2xl shadow-xl border border-gray-200 p-4 max-w-sm min-w-64"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : 'absolute bottom-20 right-0'} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col ${expanded ? 'p-4' : 'p-4'} max-w-sm min-w-64`}
             >
-              {/* Close button */}
-              <button
-                onClick={handleClose}
-                className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              {/* Message content */}
-              <div className="pr-6">
-                {isThinking ? (
-                  <div className="flex items-center space-x-2 text-gray-500">
-                    <div className="flex space-x-1">
-                      <motion.div
-                        animate={{ y: [0, -4, 0] }}
-                        transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                        className="w-2 h-2 bg-gray-400 rounded-full"
-                      />
-                      <motion.div
-                        animate={{ y: [0, -4, 0] }}
-                        transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                        className="w-2 h-2 bg-gray-400 rounded-full"
-                      />
-                      <motion.div
-                        animate={{ y: [0, -4, 0] }}
-                        transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                        className="w-2 h-2 bg-gray-400 rounded-full"
-                      />
-                    </div>
-                    <span className="text-sm">Thinking...</span>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-800 leading-relaxed">
-                    {currentMessage}
-                    {isAnimating && (
-                      <motion.span
-                        animate={{ opacity: [1, 0] }}
-                        transition={{ duration: 0.8, repeat: Infinity }}
-                        className="inline-block w-1 h-4 bg-gray-800 ml-1"
-                      />
-                    )}
-                  </div>
-                )}
-
-                {/* Input field */}
-                {showInput && !isThinking && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3 flex space-x-2"
+              <div className="flex items-start justify-between mb-2">
+                <div className="text-xs text-gray-500 font-medium">Funding Assistant</div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600 p-1" title={expanded ? 'Collapse' : 'Expand'}>
+                    {expanded ? <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 11h6v6H7v-4H3v-2zm14-2h-6V3h2v4h4v2z"/></svg> : <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3h2v6H3V7h4V3zm6 14h-2v-6h6v2h-4v4z"/></svg>}
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                    title="Close"
                   >
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleUserInput(inputValue)
-                        }
-                      }}
-                      placeholder="Type your response..."
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    />
-                    <button
-                      onClick={() => handleUserInput(inputValue)}
-                      disabled={!inputValue.trim()}
-                      className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </motion.div>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              {/* Conversation history */}
+              <div ref={scrollRef} className={`flex-1 overflow-y-auto pr-2 space-y-3 ${expanded ? 'mt-1' : 'mt-2'} custom-scrollbar`}> 
+                {conversation.map(msg => (
+                  <div key={msg.id} className={`text-sm leading-relaxed ${msg.type==='user' ? 'text-gray-900' : 'text-gray-800'}`}>
+                    <span className={`inline-block px-3 py-2 rounded-lg shadow-sm ${msg.type==='user' ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>{msg.content}</span>
+                  </div>
+                ))}
+                {/* Active typing / current streaming message */}
+                {(currentMessage || isThinking) && (
+                  <div className="text-sm text-gray-800">
+                    <span className="inline-block px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 shadow-sm">
+                      {isThinking ? (
+                        <span className="flex items-center gap-2">
+                          <span className="flex space-x-1">
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.2s]"></span>
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.1s]"></span>
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+                          </span>
+                          Thinking...
+                        </span>
+                      ) : (
+                        <>
+                          {currentMessage}
+                          {isAnimating && (
+                            <motion.span
+                              animate={{ opacity: [1, 0] }}
+                              transition={{ duration: 0.8, repeat: Infinity }}
+                              className="inline-block w-1 h-4 bg-gray-800 ml-1"
+                            />
+                          )}
+                        </>
+                      )}
+                    </span>
+                  </div>
                 )}
               </div>
-
-              {/* Speech bubble pointer */}
-              <div className="absolute bottom-0 right-6 transform translate-y-full">
-                <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white"></div>
-                <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-gray-200 -mt-px"></div>
-              </div>
+              {/* Input */}
+              {showInput && !isThinking && (
+                <div className="mt-3 flex space-x-2">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleUserInput(inputValue) }}
+                    placeholder="Ask anything about funding..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={() => handleUserInput(inputValue)}
+                    disabled={!inputValue.trim()}
+                    className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </motion.div>
 
             {/* Clippy Character */}
@@ -367,7 +361,7 @@ What would you like to focus on?`
               exit={{ scale: 0, rotate: 180 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full shadow-lg cursor-pointer flex items-center justify-center relative overflow-hidden"
+              className={`${expanded ? 'hidden md:flex absolute -bottom-6 right-4' : 'w-16 h-16'} bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full shadow-lg cursor-pointer flex items-center justify-center relative overflow-hidden ${expanded ? 'w-14 h-14' : ''}`}
               onClick={() => {
                 if (!showInput && !isThinking) {
                   setShowInput(true)
