@@ -126,8 +126,8 @@ export default function ProjectCreationWithUpload({
       if (editProject) {
         result = await directUserServices.projects.updateProject(user.id, editProject.id, projectData)
       } else {
-        // Use session-based service for proper RLS authentication
-        result = await projectService.createProject(projectData)
+        // Use API-based service that bypasses RLS issues
+        result = await projectService.createProjectViaAPI(user.id, projectData)
       }
 
       if (result) {

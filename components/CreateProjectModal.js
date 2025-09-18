@@ -89,8 +89,8 @@ export default function CreateProjectModal({
         onProjectUpdated(updatedProject)
         toast.success('Project updated successfully!')
       } else {
-        // Create new project using session-based service for proper RLS authentication
-        const newProject = await projectService.createProject(projectData)
+        // Create new project using API-based service that bypasses RLS issues
+        const newProject = await projectService.createProjectViaAPI(user.id, projectData)
         onProjectCreated(newProject)
         toast.success('Project created successfully!')
       }

@@ -314,17 +314,17 @@ export default function CreateProjectModal({
         onProjectUpdated?.(result)
       } else {
         console.log('Creating project with processed data:', projectData)
-        console.log('🔍 DEBUG: Using projectService.createProject for proper RLS authentication')
+        console.log('🔍 DEBUG: Using projectService.createProjectViaAPI for service role authentication')
         
         // Double-check we're using the right service
-        if (!projectService?.createProject) {
-          console.error('❌ projectService.createProject is not available!')
-          toast.error('Authentication service error. Please refresh and try again.')
+        if (!projectService?.createProjectViaAPI) {
+          console.error('❌ projectService.createProjectViaAPI is not available!')
+          toast.error('API service error. Please refresh and try again.')
           return
         }
         
-        // Use session-based service for proper RLS authentication
-        result = await projectService.createProject(projectData)
+        // Use API-based service that bypasses RLS issues (yesterday's solution)
+        result = await projectService.createProjectViaAPI(user.id, projectData)
         
         if (!result) {
           throw new Error('Project creation failed - no data returned from server')
