@@ -1,7 +1,7 @@
 /**
  * Proactive Assistant Triggers
  * 
- * Intelligent system that determines when the Clippy-style assistant should appear
+ * Intelligent system that determines when the Wali-OS Assistant should appear
  * with contextual advice and assistance for funding, compliance, and grant writing.
  */
 

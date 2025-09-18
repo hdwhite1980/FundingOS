@@ -1167,7 +1167,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           />
         )}
 
-        {/* Proactive MS Clippy-style Assistant - Appears contextually when needed */}
+  {/* Proactive Wali-OS Assistant - Appears contextually when needed */}
         <ProactiveAssistantManager
           user={user}
           userProfile={userProfile}

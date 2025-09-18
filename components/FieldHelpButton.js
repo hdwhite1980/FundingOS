@@ -20,8 +20,8 @@ export default function FieldHelpButton({ userId, field, currentValue, projectDr
       <button
         type="button"
         onClick={handleClick}
-        className="p-1.5 rounded-md border text-xs flex items-center gap-1 bg-white hover:bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm"
-        title="Get AI guidance"
+  className="p-1.5 rounded-md border text-xs flex items-center gap-1 bg-white hover:bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm"
+  title="Wali-OS Assistant: Improve this field"
       >
         <Sparkles className="w-4 h-4" /> AI
       </button>
@@ -30,7 +30,7 @@ export default function FieldHelpButton({ userId, field, currentValue, projectDr
           {loading && <div className="text-emerald-600">Thinking…</div>}
           {!loading && data && (
             <div className="space-y-2">
-              <div className="font-semibold text-emerald-700">Guidance</div>
+              <div className="font-semibold text-emerald-700">Wali-OS Guidance</div>
               <p className="text-gray-700 whitespace-pre-line">{data.explanation}</p>
               {data.what_great_looks_like?.length > 0 && (
                 <div>

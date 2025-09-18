@@ -193,7 +193,7 @@ const EnhancedUnifiedAIAgentInterface = () => {
     }
   };
 
-  const getClippyAnimation = () => {
+  const getAssistantAnimation = () => {
     if (isLoading) return 'animate-bounce';
     if (notifications.length > 0) return 'animate-pulse';
     return '';
@@ -218,14 +218,14 @@ const EnhancedUnifiedAIAgentInterface = () => {
       style={{ left: `${position.x}px`, top: `${position.y}px` }}
       onMouseDown={handleMouseDown}
     >
-      {/* Minimized State - Clippy-style floating assistant */}
+  {/* Minimized State - Wali-OS floating assistant */}
       {!isExpanded && (
         <div 
-          className={`relative cursor-pointer transform transition-all duration-300 hover:scale-110 ${getClippyAnimation()}`}
+          className={`relative cursor-pointer transform transition-all duration-300 hover:scale-110 ${getAssistantAnimation()}`}
           onClick={() => setIsExpanded(true)}
           title="Click to open AI Assistant (Ctrl+Shift+A)"
         >
-          {/* Main Clippy Character */}
+          {/* Main Wali-OS Assistant Avatar */}
           <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full shadow-lg border-4 border-white flex items-center justify-center">
             <div className="text-white text-2xl">🤖</div>
           </div>

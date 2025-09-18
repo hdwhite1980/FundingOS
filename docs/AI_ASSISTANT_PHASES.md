@@ -22,7 +22,7 @@
 
 ## Integration Points
 - Project creation modal fires analysis trigger after successful create
-- Clippy assistant uses cached context + persists sessions
+- Wali-OS Assistant uses cached context + persists sessions
 - Field help uses `/api/ai/assistant/field-help`
 
 ## Upgrade Path

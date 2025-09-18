@@ -80,7 +80,7 @@ export default function ApplicationAssistant({
   const initializeAssistant = async () => {
     setIsProcessing(true)
     
-    // Determine if this is proactive mode (Clippy-style) or manual mode
+  // Determine if this is proactive mode (Wali-OS proactive) or manual mode
     const welcomeMessage = {
       id: Date.now(),
       type: 'assistant',
