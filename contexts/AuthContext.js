@@ -64,7 +64,8 @@ export const AuthProvider = ({ children }) => {
       // Use our custom logout endpoint that handles chat session cleanup and email
       const response = await fetch('/api/chat/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include' // Include cookies for authentication
       })
       
       if (!response.ok) {

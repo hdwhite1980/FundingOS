@@ -9,11 +9,18 @@ const emailService = new MailgunEmailService()
 
 export async function POST(request) {
   try {
-    const { supabase, user } = await getVercelAuth()
+    const { supabase, user, authMethod } = await getVercelAuth(request)
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.log('[logout] No user found during logout, authMethod:', authMethod)
+      // Even if no user, we should allow logout to proceed gracefully
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Logged out (no active session found)' 
+      })
     }
+
+    console.log('[logout] Processing logout for user:', user.id, 'authMethod:', authMethod)
 
     // Get user profile for email
     const { data: profile } = await supabase
