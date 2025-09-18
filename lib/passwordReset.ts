@@ -15,7 +15,7 @@ export function hashCode(code: string): string {
   return crypto.createHash('sha256').update(code).digest('hex')
 }
 
-export async function storeResetCode(userId: string, code: string, ttlMinutes = 10) {
+export async function storeResetCode(userId: string, code: string, ttlMinutes = 15) {
   const expires_at = new Date(Date.now() + ttlMinutes * 60000).toISOString()
   const { error } = await admin.from('password_reset_codes').insert({
     user_id: userId,
@@ -75,9 +75,14 @@ export async function updateUserPassword(userId: string, newPassword: string) {
   return data
 }
 
-export async function sendResetEmail(email: string, code: string) {
+export async function sendResetEmail(email: string, code: string, userId?: string) {
+  let firstName = 'there'
+  if (userId) {
+    const { data: profile } = await admin.from('user_profiles').select('first_name').eq('user_id', userId).maybeSingle()
+    if (profile?.first_name) firstName = profile.first_name
+  }
   try {
-    await sendPasswordResetEmail(email, code)
+    await sendPasswordResetEmail(email, code, { firstName, ttlMinutes: 15 })
     return { sent: true }
   } catch (e) {
     console.error('sendResetEmail failed', e)

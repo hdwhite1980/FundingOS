@@ -1,7 +1,10 @@
 import sgMail from '@sendgrid/mail'
+import fs from 'fs'
+import path from 'path'
 
 const sendgridKey = process.env.SENDGRID_API_KEY
 const defaultFrom = process.env.EMAIL_FROM || 'no-reply@wali-os.local'
+const passwordResetTemplateId = process.env.SENDGRID_PASSWORD_RESET_TEMPLATE_ID // optional dynamic template
 
 if (sendgridKey) {
   sgMail.setApiKey(sendgridKey)
@@ -14,6 +17,22 @@ export interface EmailParams {
   text?: string
   from?: string
   category?: string
+}
+
+function loadTemplate(name: string) {
+  try {
+    const p = path.join(process.cwd(), 'lib', 'emailTemplates', name)
+    return fs.readFileSync(p, 'utf8')
+  } catch {
+    return ''
+  }
+}
+
+function render(template: string, vars: Record<string, string | number>) {
+  return Object.keys(vars).reduce(
+    (acc, k) => acc.replace(new RegExp(`{{${k}}}`, 'g'), String(vars[k])),
+    template
+  )
 }
 
 export async function sendEmail(params: EmailParams) {
@@ -40,8 +59,37 @@ export async function sendEmail(params: EmailParams) {
   }
 }
 
-export async function sendPasswordResetEmail(email: string, code: string) {
-  const html = `<p>Your password reset code:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p><p>Expires in 10 minutes.</p>`
+export async function sendPasswordResetEmail(
+  email: string,
+  code: string,
+  { firstName = 'there', ttlMinutes = 15 }: { firstName?: string; ttlMinutes?: number } = {}
+) {
+  // Prefer SendGrid dynamic template if configured
+  if (sendgridKey && passwordResetTemplateId) {
+    try {
+      const msg: any = {
+        to: email,
+        from: defaultFrom,
+        templateId: passwordResetTemplateId,
+        dynamicTemplateData: {
+          first_name: firstName,
+            email_address: email,
+            reset_code: code,
+            ttl_minutes: ttlMinutes
+        },
+        categories: ['password_reset']
+      }
+      const res = await sgMail.send(msg)
+      return { id: res[0]?.headers['x-message-id'] || null }
+    } catch (e: any) {
+      console.warn('Dynamic template send failed, falling back to inline HTML', e?.response?.body || e)
+      // Fall through to inline template fallback
+    }
+  }
+  const base = loadTemplate('passwordReset.html')
+  const html = base
+    ? render(base, { first_name: firstName, email_address: email, reset_code: code, ttl_minutes: ttlMinutes })
+    : `<p>Your password reset code:</p><p><strong>${code}</strong></p><p>This code expires in ${ttlMinutes} minutes.</p>`
   return sendEmail({ to: email, subject: 'Your Password Reset Code', html, category: 'password_reset' })
 }
 
