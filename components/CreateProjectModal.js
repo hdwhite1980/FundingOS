@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { X, Building, MapPin, DollarSign, Calendar, FileText, Users, Leaf } from 'lucide-react'
-import { directUserServices } from '../lib/supabase'
+import { directUserServices, projectService } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 const PROJECT_TYPES = [
@@ -89,8 +89,8 @@ export default function CreateProjectModal({
         onProjectUpdated(updatedProject)
         toast.success('Project updated successfully!')
       } else {
-        // Create new project
-        const newProject = await directUserServices.projects.createProject(user.id, projectData)
+        // Create new project using session-based service for proper RLS authentication
+        const newProject = await projectService.createProject(projectData)
         onProjectCreated(newProject)
         toast.success('Project created successfully!')
       }

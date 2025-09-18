@@ -15,7 +15,7 @@ import {
 import toast from 'react-hot-toast'
 import EnhancedDocumentUploadModal from './EnhancedDocumentUploadModal'
 import { useAuth } from '../contexts/AuthContext'
-import { directUserServices } from '../lib/supabase'
+import { directUserServices, projectService } from '../lib/supabase'
 
 export default function ProjectCreationWithUpload({ 
   isOpen, 
@@ -126,7 +126,8 @@ export default function ProjectCreationWithUpload({
       if (editProject) {
         result = await directUserServices.projects.updateProject(user.id, editProject.id, projectData)
       } else {
-        result = await directUserServices.projects.createProject(user.id, projectData)
+        // Use session-based service for proper RLS authentication
+        result = await projectService.createProject(projectData)
       }
 
       if (result) {

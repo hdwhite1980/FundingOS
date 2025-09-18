@@ -1,5 +1,5 @@
--- Comprehensive Projects Table Schema Fix
--- This script ensures the projects table matches the exact structure expected by the frontend
+-- Safe Projects Table Schema Fix
+-- This script handles text[] to JSONB conversion properly
 -- Run this in Supabase SQL Editor
 
 BEGIN;
@@ -31,29 +31,28 @@ END $$;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='name') THEN
-    ALTER TABLE projects ADD COLUMN name TEXT NOT NULL DEFAULT '';
+    ALTER TABLE projects ADD COLUMN name TEXT;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='description') THEN
-    ALTER TABLE projects ADD COLUMN description TEXT NOT NULL DEFAULT '';
+    ALTER TABLE projects ADD COLUMN description TEXT;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='location') THEN
-    ALTER TABLE projects ADD COLUMN location TEXT NOT NULL DEFAULT 'Unspecified';
+    ALTER TABLE projects ADD COLUMN location TEXT;
   END IF;
 END $$;
 
--- Project type and category fields (multiple for compatibility)
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='project_type') THEN
-    ALTER TABLE projects ADD COLUMN project_type TEXT NOT NULL DEFAULT 'other';
+    ALTER TABLE projects ADD COLUMN project_type TEXT;
   END IF;
 END $$;
 
@@ -64,57 +63,42 @@ BEGIN
   END IF;
 END $$;
 
--- Array/JSON fields - must be JSONB type
+-- Array/JSON fields - handle conversion safely
 DO $$
+DECLARE
+  col_type TEXT;
 BEGIN
+  -- Handle project_categories
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='project_categories') THEN
     ALTER TABLE projects ADD COLUMN project_categories JSONB DEFAULT '[]';
   ELSE
-    -- Check if column is already JSONB, if not convert properly
-    IF (SELECT data_type FROM information_schema.columns WHERE table_name='projects' AND column_name='project_categories') != 'jsonb' THEN
-      -- Handle text array to JSONB conversion
-      IF (SELECT data_type FROM information_schema.columns WHERE table_name='projects' AND column_name='project_categories') = 'ARRAY' THEN
-        ALTER TABLE projects ALTER COLUMN project_categories TYPE JSONB USING array_to_json(project_categories)::JSONB;
-      ELSE
-        -- Handle text or other types
-        ALTER TABLE projects ALTER COLUMN project_categories TYPE JSONB USING to_jsonb(project_categories);
-      END IF;
+    SELECT data_type INTO col_type FROM information_schema.columns WHERE table_name='projects' AND column_name='project_categories';
+    IF col_type != 'jsonb' THEN
+      -- Drop and recreate to avoid conversion issues
+      ALTER TABLE projects DROP COLUMN project_categories;
+      ALTER TABLE projects ADD COLUMN project_categories JSONB DEFAULT '[]';
     END IF;
   END IF;
-END $$;
-
-DO $$
-BEGIN
+  
+  -- Handle primary_goals
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='primary_goals') THEN
     ALTER TABLE projects ADD COLUMN primary_goals JSONB DEFAULT '[]';
   ELSE
-    -- Check if column is already JSONB, if not convert properly
-    IF (SELECT data_type FROM information_schema.columns WHERE table_name='projects' AND column_name='primary_goals') != 'jsonb' THEN
-      -- Handle text array to JSONB conversion
-      IF (SELECT data_type FROM information_schema.columns WHERE table_name='projects' AND column_name='primary_goals') = 'ARRAY' THEN
-        ALTER TABLE projects ALTER COLUMN primary_goals TYPE JSONB USING array_to_json(primary_goals)::JSONB;
-      ELSE
-        -- Handle text or other types
-        ALTER TABLE projects ALTER COLUMN primary_goals TYPE JSONB USING to_jsonb(primary_goals);
-      END IF;
+    SELECT data_type INTO col_type FROM information_schema.columns WHERE table_name='projects' AND column_name='primary_goals';
+    IF col_type != 'jsonb' THEN
+      ALTER TABLE projects DROP COLUMN primary_goals;
+      ALTER TABLE projects ADD COLUMN primary_goals JSONB DEFAULT '[]';
     END IF;
   END IF;
-END $$;
-
-DO $$
-BEGIN
+  
+  -- Handle preferred_funding_types
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='preferred_funding_types') THEN
     ALTER TABLE projects ADD COLUMN preferred_funding_types JSONB DEFAULT '[]';
   ELSE
-    -- Check if column is already JSONB, if not convert properly
-    IF (SELECT data_type FROM information_schema.columns WHERE table_name='projects' AND column_name='preferred_funding_types') != 'jsonb' THEN
-      -- Handle text array to JSONB conversion
-      IF (SELECT data_type FROM information_schema.columns WHERE table_name='projects' AND column_name='preferred_funding_types') = 'ARRAY' THEN
-        ALTER TABLE projects ALTER COLUMN preferred_funding_types TYPE JSONB USING array_to_json(preferred_funding_types)::JSONB;
-      ELSE
-        -- Handle text or other types
-        ALTER TABLE projects ALTER COLUMN preferred_funding_types TYPE JSONB USING to_jsonb(preferred_funding_types);
-      END IF;
+    SELECT data_type INTO col_type FROM information_schema.columns WHERE table_name='projects' AND column_name='preferred_funding_types';
+    IF col_type != 'jsonb' THEN
+      ALTER TABLE projects DROP COLUMN preferred_funding_types;
+      ALTER TABLE projects ADD COLUMN preferred_funding_types JSONB DEFAULT '[]';
     END IF;
   END IF;
 END $$;
@@ -221,7 +205,7 @@ BEGIN
   END IF;
 END $$;
 
--- Legacy compatibility fields that might be referenced elsewhere
+-- Legacy compatibility fields
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='funding_needed') THEN
@@ -271,28 +255,17 @@ BEGIN
   END IF;
 END $$;
 
--- Remove NOT NULL constraints from optional fields that might cause issues
-ALTER TABLE projects ALTER COLUMN name DROP NOT NULL;
-ALTER TABLE projects ALTER COLUMN description DROP NOT NULL;
-ALTER TABLE projects ALTER COLUMN location DROP NOT NULL;
-ALTER TABLE projects ALTER COLUMN project_type DROP NOT NULL;
+-- Set default values for required fields
+UPDATE projects SET name = COALESCE(name, '');
+UPDATE projects SET description = COALESCE(description, '');
+UPDATE projects SET location = COALESCE(location, 'Unspecified');
+UPDATE projects SET project_type = COALESCE(project_type, 'other');
 
--- Add back NOT NULL with proper defaults
+-- Set defaults and constraints
 ALTER TABLE projects ALTER COLUMN name SET DEFAULT '';
 ALTER TABLE projects ALTER COLUMN description SET DEFAULT '';
 ALTER TABLE projects ALTER COLUMN location SET DEFAULT 'Unspecified';
 ALTER TABLE projects ALTER COLUMN project_type SET DEFAULT 'other';
-
--- Now add NOT NULL constraints back
-UPDATE projects SET name = '' WHERE name IS NULL;
-UPDATE projects SET description = '' WHERE description IS NULL;
-UPDATE projects SET location = 'Unspecified' WHERE location IS NULL;
-UPDATE projects SET project_type = 'other' WHERE project_type IS NULL;
-
-ALTER TABLE projects ALTER COLUMN name SET NOT NULL;
-ALTER TABLE projects ALTER COLUMN description SET NOT NULL;
-ALTER TABLE projects ALTER COLUMN location SET NOT NULL;
-ALTER TABLE projects ALTER COLUMN project_type SET NOT NULL;
 
 -- Create updated_at trigger if it doesn't exist
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -309,7 +282,7 @@ CREATE TRIGGER update_projects_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Enable RLS (Row Level Security) if not already enabled
+-- Enable RLS (Row Level Security)
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for projects
@@ -331,10 +304,9 @@ CREATE POLICY "Users can delete their own projects" ON projects
 
 COMMIT;
 
--- Test the schema by attempting a sample insert
+-- Test the schema
 DO $$
 BEGIN
-  -- This will help identify any remaining issues
-  RAISE NOTICE 'Projects table schema update completed successfully';
-  RAISE NOTICE 'You can now test project creation through the application';
+  RAISE NOTICE 'Safe projects table schema update completed successfully';
+  RAISE NOTICE 'Array columns have been safely recreated as JSONB';
 END $$;

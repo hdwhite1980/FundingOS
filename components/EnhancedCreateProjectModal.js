@@ -19,7 +19,7 @@ import {
   Lightbulb,
   Upload
 } from 'lucide-react'
-import { directUserServices } from '../lib/supabase'
+import { directUserServices, projectService } from '../lib/supabase'
 import toast from 'react-hot-toast'
 import EnhancedDocumentUploadModal from './EnhancedDocumentUploadModal'
 import {
@@ -314,7 +314,8 @@ export default function CreateProjectModal({
         onProjectUpdated?.(result)
       } else {
         console.log('Creating project with processed data:', projectData)
-        result = await directUserServices.projects.createProject(user.id, projectData)
+        // Use session-based service for proper RLS authentication
+        result = await projectService.createProject(projectData)
         
         if (!result) {
           throw new Error('Project creation failed - no data returned from server')
