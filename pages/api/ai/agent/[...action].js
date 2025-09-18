@@ -108,48 +108,127 @@ export default async function handler(req, res) {
           }
           
           // Handle opportunity analysis requests
-          if (messageIntent.includes('analyze_opportunities') && opportunities?.length > 0 && projects?.length > 0) {
-            console.log('Performing comprehensive opportunity analysis...')
+          if (messageIntent.includes('analyze_opportunities')) {
+            console.log('Handling opportunity analysis request...')
             
-            // Trigger comprehensive opportunity analysis
-            const analysis = await analyzeAllOpportunities(userId, projects, opportunities, userContext.profile)
-            
-            // Create decisions for top opportunities
-            if (analysis.topMatches.length > 0) {
-              await createOpportunityDecisions(userId, analysis.topMatches)
-              console.log(`Created ${analysis.topMatches.length} opportunity decisions`)
-            }
-            
-            // Generate response with analysis
-            const response = await generateOpportunityAnalysisResponse(analysis, projects)
-            
-            // Store conversation with analysis context
-            await supabase.from('agent_conversations').insert([
-              {
-                user_id: userId,
-                role: 'user',
-                content: message,
-                metadata: { 
-                  context_type: 'opportunity_analysis',
-                  timestamp: new Date().toISOString() 
-                },
-                created_at: new Date().toISOString()
-              },
-              {
-                user_id: userId,
-                role: 'assistant',
-                content: response,
-                metadata: { 
-                  context_type: 'opportunity_analysis',
-                  context_data: { analysis_summary: analysis.summary },
-                  timestamp: new Date().toISOString() 
-                },
-                created_at: new Date().toISOString()
+            // Check if user has opportunities and projects
+            if (opportunities?.length > 0 && projects?.length > 0) {
+              console.log('Performing comprehensive opportunity analysis...')
+              
+              // Trigger comprehensive opportunity analysis
+              const analysis = await analyzeAllOpportunities(userId, projects, opportunities, userContext.profile)
+              
+              // Create decisions for top opportunities
+              if (analysis.topMatches.length > 0) {
+                await createOpportunityDecisions(userId, analysis.topMatches)
+                console.log(`Created ${analysis.topMatches.length} opportunity decisions`)
               }
-            ])
-            
-            res.json({ message: response })
-            return
+              
+              // Generate response with analysis
+              const response = await generateOpportunityAnalysisResponse(analysis, projects)
+              
+              // Store conversation with analysis context
+              await supabase.from('agent_conversations').insert([
+                {
+                  user_id: userId,
+                  role: 'user',
+                  content: message,
+                  metadata: { 
+                    context_type: 'opportunity_analysis',
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                },
+                {
+                  user_id: userId,
+                  role: 'assistant',
+                  content: response,
+                  metadata: { 
+                    context_type: 'opportunity_analysis',
+                    context_data: { analysis_summary: analysis.summary },
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                }
+              ])
+              
+              res.json({ message: response })
+              return
+            } else if (opportunities?.length > 0 && (!projects || projects.length === 0)) {
+              // User has opportunities but no projects - guide them to create a project
+              const response = `I'd be happy to help you find grant opportunities! However, I notice you don't have any projects created yet. To provide the most relevant grant recommendations, I need to understand your project details.
+
+Would you like me to help you create your first project? I can guide you through:
+- Describing your project idea and goals
+- Identifying your organization type and location
+- Setting your funding needs and timeline
+
+Once you have a project created, I can analyze thousands of grant opportunities and show you the best matches for your specific needs. Would you like to get started with creating a project?`
+
+              // Store conversation
+              await supabase.from('agent_conversations').insert([
+                {
+                  user_id: userId,
+                  role: 'user',
+                  content: message,
+                  metadata: { 
+                    context_type: 'opportunity_analysis_no_projects',
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                },
+                {
+                  user_id: userId,
+                  role: 'assistant',
+                  content: response,
+                  metadata: { 
+                    context_type: 'opportunity_analysis_no_projects',
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                }
+              ])
+              
+              res.json({ message: response })
+              return
+            } else {
+              // No opportunities or projects - guide user to complete onboarding
+              const response = `I'd love to help you find grant opportunities! To get started, I need to understand more about you and your project.
+
+It looks like you might need to complete your profile setup first. Here's what I'll need:
+- Your organization type (nonprofit, for-profit, individual, etc.)
+- Your location
+- Your project idea and funding needs
+
+Once you complete your onboarding, I can search through thousands of grant opportunities and show you the best matches for your specific situation. Would you like me to guide you through setting up your profile?`
+
+              // Store conversation
+              await supabase.from('agent_conversations').insert([
+                {
+                  user_id: userId,
+                  role: 'user',
+                  content: message,
+                  metadata: { 
+                    context_type: 'opportunity_analysis_setup_needed',
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                },
+                {
+                  user_id: userId,
+                  role: 'assistant',
+                  content: response,
+                  metadata: { 
+                    context_type: 'opportunity_analysis_setup_needed',
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                }
+              ])
+              
+              res.json({ message: response })
+              return
+            }
           }
           
           // Enhanced context for regular chat
