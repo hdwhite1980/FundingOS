@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ profile: null })
       }
       
-      // Create minimal profile with required email field
+      // Create minimal profile with required email field (DO NOT include 'id', let it auto-generate)
       const minimalProfile = {
-        user_id: userId,  // Changed from 'id' to 'user_id'
+        user_id: userId,
         email: authUser.user.email,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -112,19 +112,46 @@ export async function PUT(req: NextRequest) {
       sanitizedUpdates[key] = val
     }
 
-    const payload = { 
-      user_id: userId,  // Changed from 'id' to 'user_id'
-      email: authUser.user.email, // Always include email to satisfy NOT NULL constraint
-      ...sanitizedUpdates, 
-      updated_at: new Date().toISOString() 
-    }
-    const { data, error } = await supabase
+    // Check if profile exists first
+    const { data: existingProfile } = await supabase
       .from('user_profiles')
-      .upsert(payload, { onConflict: 'user_id' })  // Changed conflict column
-      .select()
-      .single()
-    if (error) throw error
-    return NextResponse.json({ profile: data })
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (existingProfile) {
+      // Profile exists - update it
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({ 
+          ...sanitizedUpdates, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('user_id', userId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return NextResponse.json({ profile: data })
+    } else {
+      // Profile doesn't exist - create it (DO NOT include 'id' field, let it auto-generate)
+      const payload = { 
+        user_id: userId,
+        email: authUser.user.email,
+        ...sanitizedUpdates, 
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString() 
+      }
+      
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .insert(payload)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return NextResponse.json({ profile: data })
+    }
   } catch (e: any) {
     console.error('PUT /api/account/profile error:', e)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

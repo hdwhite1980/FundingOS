@@ -42,8 +42,12 @@ export default async function handler(req, res) {
           // Get enhanced user context from database
           const userContext = await getUserContext(userId)
           
-          // Analyze message intent
-          const messageIntent = analyzeMessageIntent(message)
+          // Get recent conversation history for context
+          const conversationHistory = await getRecentConversationHistory(userId)
+          console.log(`Retrieved ${conversationHistory.length} recent messages for context`)
+          
+          // Analyze message intent with conversation context
+          const messageIntent = analyzeMessageIntent(message, conversationHistory)
           console.log('Message intent:', messageIntent)
 
           // Check if user is requesting web search or if we need more opportunities
@@ -62,18 +66,33 @@ export default async function handler(req, res) {
                 const response = await generateWebSearchResponse(message, searchResults, projects)
                 
                 // Store conversation with search context
-                await supabase.from('agent_conversations').insert([{
-                  user_id: userId,
-                  user_message: message,
-                  agent_response: response,
-                  context_type: 'web_search',
-                  context_data: { 
-                    search_query: searchResults.query,
-                    results_found: searchResults.opportunitiesFound,
-                    search_sources: searchResults.searchSources
+                await supabase.from('agent_conversations').insert([
+                  {
+                    user_id: userId,
+                    role: 'user',
+                    content: message,
+                    metadata: { 
+                      context_type: 'web_search',
+                      timestamp: new Date().toISOString() 
+                    },
+                    created_at: new Date().toISOString()
                   },
-                  created_at: new Date().toISOString()
-                }])
+                  {
+                    user_id: userId,
+                    role: 'assistant',
+                    content: response,
+                    metadata: { 
+                      context_type: 'web_search',
+                      context_data: {
+                        search_query: searchResults.query,
+                        results_found: searchResults.opportunitiesFound,
+                        search_sources: searchResults.searchSources
+                      },
+                      timestamp: new Date().toISOString() 
+                    },
+                    created_at: new Date().toISOString()
+                  }
+                ])
                 
                 res.json({ 
                   message: response,
@@ -105,14 +124,29 @@ export default async function handler(req, res) {
             const response = await generateOpportunityAnalysisResponse(analysis, projects)
             
             // Store conversation with analysis context
-            await supabase.from('agent_conversations').insert([{
-              user_id: userId,
-              user_message: message,
-              agent_response: response,
-              context_type: 'opportunity_analysis',
-              context_data: { analysis_summary: analysis.summary },
-              created_at: new Date().toISOString()
-            }])
+            await supabase.from('agent_conversations').insert([
+              {
+                user_id: userId,
+                role: 'user',
+                content: message,
+                metadata: { 
+                  context_type: 'opportunity_analysis',
+                  timestamp: new Date().toISOString() 
+                },
+                created_at: new Date().toISOString()
+              },
+              {
+                user_id: userId,
+                role: 'assistant',
+                content: response,
+                metadata: { 
+                  context_type: 'opportunity_analysis',
+                  context_data: { analysis_summary: analysis.summary },
+                  timestamp: new Date().toISOString() 
+                },
+                created_at: new Date().toISOString()
+              }
+            ])
             
             res.json({ message: response })
             return
@@ -124,6 +158,8 @@ export default async function handler(req, res) {
             userContext,
             projects: projects || [],
             opportunities: opportunities || [],
+            conversationHistory, // Add conversation history to context
+            messageIntent, // Add intent analysis to context
             // Add formatted opportunity details for better AI understanding
             opportunityDetails: opportunities?.map(opp => ({
               title: opp.title,
@@ -141,12 +177,29 @@ export default async function handler(req, res) {
           const response = await generateEnhancedAgentResponse(message, enhancedContext)
           
           // Store conversation in database
-          await supabase.from('agent_conversations').insert([{
-            user_id: userId,
-            user_message: message,
-            agent_response: response,
-            created_at: new Date().toISOString()
-          }])
+          await supabase.from('agent_conversations').insert([
+            {
+              user_id: userId,
+              role: 'user',
+              content: message,
+              metadata: { 
+                messageIntent: messageIntent,
+                timestamp: new Date().toISOString() 
+              },
+              created_at: new Date().toISOString()
+            },
+            {
+              user_id: userId,
+              role: 'assistant',
+              content: response,
+              metadata: { 
+                projects_count: projects?.length || 0,
+                opportunities_count: opportunities?.length || 0,
+                timestamp: new Date().toISOString() 
+              },
+              created_at: new Date().toISOString()
+            }
+          ])
           
           res.json({ message: response })
         } catch (error) {
@@ -345,14 +398,22 @@ export default async function handler(req, res) {
   }
 }
 
-// NEW: Enhanced response generator with better opportunity formatting
+// NEW: Enhanced response generator with better opportunity formatting and conversation context
 async function generateEnhancedAgentResponse(message, context) {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('AI service not configured')
   }
   
-  const { userContext, projects, opportunities, opportunityDetails } = context
+  const { userContext, projects, opportunities, opportunityDetails, conversationHistory, messageIntent } = context
   const { profile, fundingStats, summary } = userContext
+  
+  // Format conversation history for AI context
+  const conversationContext = formatConversationHistory(conversationHistory)
+  
+  // Detect if this is a follow-up response
+  const isFollowUp = messageIntent.some(intent => 
+    ['continue_previous', 'continue_analysis', 'expand_opportunity_analysis', 'expand_deadline_info'].includes(intent)
+  )
   
   // Format projects clearly - filter out null/invalid projects
   const validProjects = (projects || []).filter(p => p && typeof p === 'object' && p.name)
@@ -386,32 +447,6 @@ Recent Activity:
 - Grant applications: ${fundingStats?.totalApplications || 0} submitted, ${fundingStats?.approvedApplications || 0} approved
 - Active campaigns: ${fundingStats?.activeCampaigns || 0} crowdfunding campaigns`
 
-  const prompt = `You are an AI funding strategist providing specific, actionable advice.
-
-USER MESSAGE: "${message}"
-
-ORGANIZATION: ${profile?.organization_name || 'Organization'} (${profile?.organization_type || 'Type not specified'})
-LOCATION: ${profile?.city && profile?.state ? `${profile.city}, ${profile.state}` : 'Location not specified'}
-
-PROJECTS:
-${projectSummary}
-
-FUNDING STATUS:
-${fundingOverview}
-
-AVAILABLE OPPORTUNITIES:
-${opportunitySummary}
-
-INSTRUCTIONS:
-- Be specific and use actual data from their profile
-- Reference real opportunity titles, deadlines, and amounts
-- Provide actionable recommendations based on their funding gap and project needs
-- If discussing deadlines, use the actual dates provided
-- Be conversational but data-driven
-- Use line breaks for readability
-
-Respond with specific, personalized advice based on their actual data.`
-
   try {
     // Detect simple data queries for direct answers
     const isSimpleQuery = detectSimpleDataQuery(message)
@@ -425,19 +460,47 @@ Respond with specific, personalized advice based on their actual data.`
 
 QUESTION: "${message}"
 
+CONVERSATION CONTEXT:
+${conversationContext}
+
 FUNDING DATA:
 - Individual donations: ${fundingStats?.totalRaised?.toLocaleString() || '0'} from ${fundingStats?.totalDonors || 0} donors
-- Grant funding awarded: ${fundingStats?.totalAwarded?.toLocaleString() || '0'} from ${fundingStats?.approvedApplications || 0} approved applications  
+- Grant funding awarded: ${fundingStats?.totalAwarded?.toLocaleString() || '0'} from ${fundingStats?.approvedApplicationions || 0} approved applications  
 - Crowdfunding raised: ${fundingStats?.totalCampaignRaised?.toLocaleString() || '0'} from ${fundingStats?.activeCampaigns || 0} active campaigns
 - Total funding secured: ${summary?.totalSecured?.toLocaleString() || '0'}
 - Total funding needed: ${summary?.totalFundingNeeded?.toLocaleString() || '0'}
 - Funding gap: ${summary?.fundingGap?.toLocaleString() || '0'}
 
 Give a direct, factual answer. Be brief and specific. Do not provide strategy advice unless asked.`
+    } else if (isFollowUp) {
+      // Special handling for follow-up responses
+      prompt = `You are continuing a conversation with a user. They just responded with "${message}" to your previous message. 
+
+CONVERSATION HISTORY:
+${conversationContext}
+
+USER PROFILE:
+- Organization: ${profile?.organization_name || 'Organization'} (${profile?.organization_type || 'Type not specified'})
+- Location: ${profile?.city && profile?.state ? `${profile.city}, ${profile.state}` : 'Location not specified'}
+
+CURRENT STATUS:
+${fundingOverview}
+
+PROJECTS:
+${projectSummary}
+
+AVAILABLE OPPORTUNITIES:
+${opportunitySummary}
+
+Provide a natural, conversational response that continues the discussion contextually. If they said "yes" or agreed to something, proceed with what you offered. If they asked for "more details", expand on the topic you were discussing. Be specific and reference their actual data.`
     } else {
+      // Standard comprehensive response
       prompt = `You are an AI funding strategist providing specific, actionable advice.
 
 USER MESSAGE: "${message}"
+
+CONVERSATION CONTEXT:
+${conversationContext}
 
 ORGANIZATION: ${profile?.organization_name || 'Organization'} (${profile?.organization_type || 'Type not specified'})
 LOCATION: ${profile?.city && profile?.state ? `${profile.city}, ${profile.state}` : 'Location not specified'}
@@ -458,8 +521,9 @@ INSTRUCTIONS:
 - If discussing deadlines, use the actual dates provided
 - Be conversational but data-driven
 - Use line breaks for readability
+- Consider the conversation history when formulating your response
 
-Respond with specific, personalized advice based on their actual data.`
+Respond with specific, personalized advice based on their actual data and conversation context.`
     }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -475,6 +539,8 @@ Respond with specific, personalized advice based on their actual data.`
             role: 'system',
             content: isSimpleQuery ? 
               'You are a data assistant. Provide direct, factual answers using only the data provided. Be concise and specific. Do not give advice unless requested.' :
+              isFollowUp ?
+              'You are an expert funding strategist continuing a conversation. Be natural and contextual. Reference the conversation history and respond appropriately to their follow-up. Never use placeholder text like "[Insert Deadline]" - always use the actual data provided.' :
               'You are an expert funding strategist. Provide specific, actionable advice using the user\'s actual data. Reference real opportunity titles, amounts, and deadlines. Be conversational and helpful. Never use placeholder text like "[Insert Deadline]" - always use the actual data provided.'
           },
           {
@@ -506,6 +572,22 @@ Respond with specific, personalized advice based on their actual data.`
     console.error('AI response error:', error)
     return `I'm analyzing your funding situation. I can see you have ${projects.length} project(s) and ${opportunities.length} opportunity(ies) to review. Let me continue processing this information and get back to you with specific recommendations.`
   }
+}
+
+// Format conversation history for AI context
+function formatConversationHistory(conversationHistory) {
+  if (!conversationHistory || conversationHistory.length === 0) {
+    return "This is the start of our conversation."
+  }
+  
+  // Get last 6 messages for context (3 exchanges)
+  const recentHistory = conversationHistory.slice(-6)
+  
+  return recentHistory.map(msg => {
+    const role = msg.role === 'user' ? 'User' : 'Assistant'
+    const timestamp = new Date(msg.timestamp).toLocaleTimeString()
+    return `${role} (${timestamp}): ${msg.content.substring(0, 200)}${msg.content.length > 200 ? '...' : ''}`
+  }).join('\n')
 }
 
 // Enhanced AI Response Function with Data-Driven Context
@@ -760,25 +842,147 @@ function detectSimpleDataQuery(message) {
   return hasPattern || hasPhrase
 }
 
-// Message Intent Analysis
-function analyzeMessageIntent(message) {
+// Get recent conversation history for context
+async function getRecentConversationHistory(userId, limit = 20) {
+  try {
+    const { data: conversations, error } = await supabase
+      .from('agent_conversations')
+      .select('role, content, metadata, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error('Error fetching conversation history:', error)
+      return []
+    }
+
+    if (!conversations || conversations.length === 0) {
+      return []
+    }
+
+    // Reverse to get chronological order and format for AI context
+    return conversations.reverse().map(conv => ({
+      role: conv.role,
+      content: conv.content,
+      timestamp: conv.created_at,
+      metadata: conv.metadata || {}
+    }))
+  } catch (error) {
+    console.error('Error in getRecentConversationHistory:', error)
+    return []
+  }
+}
+
+// Message Intent Analysis with conversation context
+function analyzeMessageIntent(message, conversationHistory = []) {
+// Message Intent Analysis with conversation context
+function analyzeMessageIntent(message, conversationHistory = []) {
   const intents = []
-  const lowerMessage = message.toLowerCase()
+  const lowerMessage = message.toLowerCase().trim()
   
-  if (lowerMessage.includes('analyz') || lowerMessage.includes('recommend') || lowerMessage.includes('should i apply')) {
-    intents.push('analyze_opportunities')
-  }
-  if (lowerMessage.includes('deadline') || lowerMessage.includes('due')) {
-    intents.push('check_deadlines')
-  }
-  if (lowerMessage.includes('status') || lowerMessage.includes('progress') || lowerMessage.includes('portfolio')) {
-    intents.push('check_status')
-  }
-  if (lowerMessage.includes('diversif') || lowerMessage.includes('balance') || lowerMessage.includes('spread')) {
-    intents.push('diversification_analysis')
+  // Get the most recent agent message for context
+  const lastAgentMessage = conversationHistory
+    .filter(msg => msg.role === 'assistant')
+    .pop()
+  
+  // Detect follow-up responses
+  const isFollowUp = detectFollowUpResponse(lowerMessage, lastAgentMessage)
+  
+  if (isFollowUp) {
+    console.log('Detected follow-up response to:', lastAgentMessage?.content?.substring(0, 100) + '...')
+    
+    // Map follow-up intent based on previous agent context
+    const followUpIntent = mapFollowUpIntent(lowerMessage, lastAgentMessage)
+    if (followUpIntent) {
+      intents.push(followUpIntent)
+    }
+  } else {
+    // Standard intent analysis for new requests
+    if (lowerMessage.includes('analyz') || lowerMessage.includes('recommend') || lowerMessage.includes('should i apply')) {
+      intents.push('analyze_opportunities')
+    }
+    if (lowerMessage.includes('deadline') || lowerMessage.includes('due')) {
+      intents.push('check_deadlines')
+    }
+    if (lowerMessage.includes('status') || lowerMessage.includes('progress') || lowerMessage.includes('portfolio')) {
+      intents.push('check_status')
+    }
+    if (lowerMessage.includes('diversif') || lowerMessage.includes('balance') || lowerMessage.includes('spread')) {
+      intents.push('diversification_analysis')
+    }
   }
   
   return intents
+}
+
+// Detect if message is a follow-up response
+function detectFollowUpResponse(lowerMessage, lastAgentMessage) {
+  const followUpPatterns = [
+    /^(yes|yeah|yep|sure|okay|ok|absolutely|definitely)$/,
+    /^(no|nope|nah|not really)$/,
+    /^(tell me more|more info|details|elaborate|explain)$/,
+    /^(continue|proceed|go ahead|next)$/,
+    /^(that sounds good|sounds great|i'm interested)$/,
+    /^(skip|pass|maybe later|not now)$/,
+    /^(help|assist|guide me)$/,
+  ]
+  
+  const isShortResponse = lowerMessage.length <= 25
+  const matchesPattern = followUpPatterns.some(pattern => pattern.test(lowerMessage))
+  const hasRecentAgentMessage = lastAgentMessage && 
+    (Date.now() - new Date(lastAgentMessage.timestamp).getTime()) < 10 * 60 * 1000 // 10 minutes
+  
+  return isShortResponse && matchesPattern && hasRecentAgentMessage
+}
+
+// Map follow-up responses to appropriate intents
+function mapFollowUpIntent(lowerMessage, lastAgentMessage) {
+  if (!lastAgentMessage) return null
+  
+  const lastContent = lastAgentMessage.content.toLowerCase()
+  const contextType = lastAgentMessage.metadata?.context_type
+  
+  // Positive responses
+  if (/^(yes|yeah|yep|sure|okay|ok|absolutely|definitely)$/.test(lowerMessage)) {
+    if (lastContent.includes('analyze') || lastContent.includes('opportunities')) {
+      return 'analyze_opportunities'
+    }
+    if (lastContent.includes('search') || lastContent.includes('find more')) {
+      return 'web_search'
+    }
+    if (lastContent.includes('deadline') || lastContent.includes('urgent')) {
+      return 'check_deadlines'
+    }
+    if (contextType === 'opportunity_analysis') {
+      return 'continue_analysis'
+    }
+    return 'continue_previous'
+  }
+  
+  // More info requests
+  if (/^(tell me more|more info|details|elaborate|explain)$/.test(lowerMessage)) {
+    if (contextType === 'opportunity_analysis') {
+      return 'expand_opportunity_analysis'
+    }
+    if (lastContent.includes('deadline') || contextType === 'deadline_check') {
+      return 'expand_deadline_info'
+    }
+    return 'expand_previous'
+  }
+  
+  // Continue/proceed responses
+  if (/^(continue|proceed|go ahead|next)$/.test(lowerMessage)) {
+    return 'continue_previous'
+  }
+  
+  // Negative responses
+  if (/^(no|nope|nah|not really|skip|pass|maybe later|not now)$/.test(lowerMessage)) {
+    return 'skip_previous'
+  }
+  
+  return null
+}
 }
 
 // Detect if user is requesting web search
