@@ -162,24 +162,8 @@ export const AuthProvider = ({ children }) => {
   }
 
   const forgotPassword = async (email) => {
-    try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.error)
-      }
-
-      return result
-    } catch (error) {
-      console.error('Error requesting password reset:', error)
-      throw error
-    }
+    // Alias to new code-based flow for backward compatibility
+    return requestPasswordCode(email)
   }
 
   const resetPasswordWithCode = async (email, code, newPassword) => {
