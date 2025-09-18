@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { createClient } from '@supabase/supabase-js'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
@@ -74,11 +75,12 @@ export async function updateUserPassword(userId: string, newPassword: string) {
   return data
 }
 
-// Placeholder: integrate actual email service later
 export async function sendResetEmail(email: string, code: string) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[DEV] Password reset code for', email, code)
+  try {
+    await sendPasswordResetEmail(email, code)
+    return { sent: true }
+  } catch (e) {
+    console.error('sendResetEmail failed', e)
+    return { sent: false }
   }
-  // TODO integrate with real provider (Resend, Postmark, etc.)
-  return { sent: true }
 }
