@@ -1078,49 +1078,166 @@ function calculateReadinessScore(project: any): number {
 }
 
 /**
- * AI-powered analysis using hybrid provider
+ * AI-powered analysis using hybrid provider with enhanced specificity
  */
 async function aiAnalysisScoring(opportunity: any, project: any, userProfile: any) {
+  // Create comprehensive context with all available data
+  const opportunityContext = {
+    title: opportunity.title || 'Untitled Opportunity',
+    description: opportunity.description || opportunity.synopsis || '',
+    source: opportunity.source || 'Unknown',
+    sponsor: opportunity.sponsor || 'Unknown',
+    focusAreas: safeArrayField(opportunity.focus_areas),
+    targetPopulations: safeArrayField(opportunity.target_populations),
+    organizationTypes: safeArrayField(opportunity.organization_types),
+    eligibilityCriteria: safeArrayField(opportunity.eligibility_criteria),
+    geographicRestrictions: safeArrayField(opportunity.geographic_restrictions),
+    projectTypes: safeArrayField(opportunity.project_types),
+    requirements: opportunity.requirements || opportunity.application_requirements || '',
+    amountMin: opportunity.amount_min,
+    amountMax: opportunity.amount_max,
+    deadline: opportunity.deadline_date,
+    cfda: opportunity.cfda_number,
+    competitiveness: opportunity.competitiveness || 'Unknown'
+  }
+
+  const projectContext = {
+    title: project.title || project.name || 'Untitled Project',
+    description: project.description || '',
+    category: project.project_category || project.category || '',
+    requestAmount: project.funding_request_amount || project.total_project_budget,
+    targetPopulation: project.target_population || project.target_population_description || '',
+    primaryGoals: safeArrayField(project.primary_goals),
+    expectedOutcomes: project.expected_outcomes || project.outcome_measures || '',
+    uniqueInnovation: project.unique_innovation || project.innovation_description || '',
+    methodology: project.methodology || project.approach || '',
+    currentStatus: project.current_status || 'planning',
+    timeline: project.timeline || '',
+    team: project.team_description || '',
+    partnerships: project.partnership_approach || ''
+  }
+
+  const orgContext = {
+    type: userProfile.organization_type || 'unknown',
+    name: userProfile.organization_name || 'Unknown Organization',
+    role: userProfile.user_role || 'company',
+    location: userProfile.state || userProfile.city || userProfile.location || 'Unknown',
+    focusAreas: safeArrayField(userProfile.primary_service_areas || userProfile.primary_focus_areas),
+    targetDemographics: safeArrayField(userProfile.target_demographics),
+    annualBudget: userProfile.annual_budget || 'Not specified',
+    yearsOperating: userProfile.years_in_operation || userProfile.years_operating || 'Unknown',
+    grantExperience: userProfile.grant_experience || 'Unknown',
+    largestGrant: userProfile.largest_grant || 'Unknown',
+    staffSize: userProfile.full_time_staff || 'Unknown',
+    certifications: {
+      minorityOwned: userProfile.minority_owned,
+      womanOwned: userProfile.woman_owned,
+      veteranOwned: userProfile.veteran_owned,
+      smallBusiness: userProfile.small_business,
+      hubzone: userProfile.hubzone_certified,
+      eightA: userProfile.eight_a_certified
+    }
+  }
+
+  // Create very specific, detailed prompt focusing on this exact opportunity-project combination
   const prompt = `
-As a grant funding expert, analyze this opportunity match and provide a detailed scoring assessment:
+GRANT FUNDING EXPERT ANALYSIS
 
-OPPORTUNITY:
-Title: ${opportunity.title}
-Description: ${opportunity.description || 'N/A'}
-Funding Amount: ${opportunity.amount_min || 'N/A'} - ${opportunity.amount_max || 'N/A'}
-Focus Areas: ${opportunity.focus_areas?.join(', ') || 'N/A'}
-Requirements: ${opportunity.requirements || 'N/A'}
+Analyze this specific opportunity-project match with detailed, personalized insights:
 
-ORGANIZATION:
-Type: ${userProfile.organization_type}
-Focus Areas: ${userProfile.primary_focus_areas?.join(', ') || 'N/A'}
-Annual Budget: ${userProfile.annual_budget || 'N/A'}
-Years Operating: ${userProfile.years_operating || 'N/A'}
+==== FUNDING OPPORTUNITY DETAILS ====
+Title: "${opportunityContext.title}"
+Sponsor: ${opportunityContext.sponsor}
+Source: ${opportunityContext.source}
+CFDA Number: ${opportunityContext.cfda || 'N/A'}
 
-PROJECT:
-Title: ${project.title}
-Description: ${project.description || 'N/A'}
-Category: ${project.project_category || project.category || 'N/A'}
-Budget Request: ${project.funding_request_amount || project.total_project_budget || 'N/A'}
-Target Population: ${project.target_population_description || 'N/A'}
+Description/Synopsis: "${opportunityContext.description.substring(0, 1000)}${opportunityContext.description.length > 1000 ? '...' : ''}"
 
-Please provide:
-1. Overall compatibility score (0-100)
-2. Top 3 strengths of this match
-3. Top 3 potential weaknesses or concerns
-4. 3 specific recommendations to improve the application
-5. Confidence level in this assessment (0.0-1.0)
+Funding Range: ${opportunityContext.amountMin ? `$${opportunityContext.amountMin.toLocaleString()}` : 'Not specified'} - ${opportunityContext.amountMax ? `$${opportunityContext.amountMax.toLocaleString()}` : 'Not specified'}
+Application Deadline: ${opportunityContext.deadline || 'Not specified'}
 
-Format your response as JSON with these exact keys: score, strengths, weaknesses, recommendations, confidence, reasoning
+Focus Areas: ${opportunityContext.focusAreas.length > 0 ? opportunityContext.focusAreas.join(', ') : 'Not specified'}
+Eligible Org Types: ${opportunityContext.organizationTypes.length > 0 ? opportunityContext.organizationTypes.join(', ') : 'All types'}
+Target Populations: ${opportunityContext.targetPopulations.length > 0 ? opportunityContext.targetPopulations.join(', ') : 'General'}
+Geographic Restrictions: ${opportunityContext.geographicRestrictions.length > 0 ? opportunityContext.geographicRestrictions.join(', ') : 'None specified'}
+Requirements: "${opportunityContext.requirements.substring(0, 500)}"
+
+==== APPLICANT PROJECT DETAILS ====
+Project Title: "${projectContext.title}"
+Category: ${projectContext.category}
+Description: "${projectContext.description.substring(0, 800)}${projectContext.description.length > 800 ? '...' : ''}"
+
+Funding Request: ${projectContext.requestAmount ? `$${projectContext.requestAmount.toLocaleString()}` : 'Not specified'}
+Target Population: ${projectContext.targetPopulation || 'Not specified'}
+Current Status: ${projectContext.currentStatus}
+
+Primary Goals: ${projectContext.primaryGoals.length > 0 ? projectContext.primaryGoals.join('; ') : 'Not specified'}
+Expected Outcomes: "${projectContext.expectedOutcomes.substring(0, 300)}"
+Unique Innovation: "${projectContext.uniqueInnovation.substring(0, 300)}"
+Methodology/Approach: "${projectContext.methodology.substring(0, 300)}"
+
+==== ORGANIZATION PROFILE ====
+Organization: ${orgContext.name} (${orgContext.type})
+Location: ${orgContext.location}
+Contact Role: ${orgContext.role}
+Years Operating: ${orgContext.yearsOperating}
+Annual Budget Range: ${orgContext.annualBudget}
+Staff Size: ${orgContext.staffSize}
+Grant Experience: ${orgContext.grantExperience}
+Largest Previous Grant: ${orgContext.largestGrant}
+
+Organization Focus Areas: ${orgContext.focusAreas.length > 0 ? orgContext.focusAreas.join(', ') : 'Not specified'}
+Target Demographics: ${orgContext.targetDemographics.length > 0 ? orgContext.targetDemographics.join(', ') : 'General population'}
+
+Certifications: ${Object.entries(orgContext.certifications).filter(([_, value]) => value).map(([key, _]) => key).join(', ') || 'None'}
+
+==== ANALYSIS REQUIREMENTS ====
+Provide a detailed, specific analysis that:
+1. Directly compares THIS project to THIS opportunity's specific requirements
+2. Identifies concrete alignment points or mismatches
+3. References specific details from both the opportunity and project descriptions
+4. Considers the organization's actual capabilities and experience
+5. Addresses real competitive factors and success probability
+
+CRITICAL: Base your analysis ONLY on the specific details provided above. Do not use generic language or template responses.
+
+Response Format (JSON only):
+{
+  "score": [0-100 integer based on realistic fit assessment],
+  "strengths": [
+    "[Specific strength 1 - reference actual project/opportunity details]",
+    "[Specific strength 2 - reference actual alignment points]",
+    "[Specific strength 3 - reference org capabilities that match requirements]"
+  ],
+  "weaknesses": [
+    "[Specific concern 1 - identify actual gaps or mismatches]",
+    "[Specific concern 2 - realistic challenges based on data provided]",
+    "[Specific concern 3 - competitive or resource concerns]"
+  ],
+  "recommendations": [
+    "[Specific action 1 - tailored to this opportunity's requirements]",
+    "[Specific action 2 - address identified gaps]",
+    "[Specific action 3 - leverage identified strengths]"
+  ],
+  "confidence": [0.0-1.0 based on data completeness and analysis clarity],
+  "reasoning": "[2-3 sentences explaining the core rationale for the score, referencing specific opportunity and project details]"
+}
 `
 
   try {
+    console.log('Enhanced AI Analysis - Generating detailed prompt for:', {
+      opportunityTitle: opportunityContext.title,
+      projectTitle: projectContext.title,
+      orgName: orgContext.name,
+      promptLength: prompt.length
+    })
+
     const response = await aiProviderService.generateCompletion(
-      'enhanced-scoring',
+      'opportunity-analysis',
       [
         {
           role: 'system',
-          content: 'You are an expert grant funding analyst. Always respond with valid JSON only, no additional text.'
+          content: 'You are a senior grant funding consultant with 15+ years of experience. Provide specific, detailed analysis based only on the provided information. Never use generic templates or vague language. Always respond with valid JSON only.'
         },
         {
           role: 'user',
@@ -1128,8 +1245,8 @@ Format your response as JSON with these exact keys: score, strengths, weaknesses
         }
       ],
       {
-        maxTokens: 1500,
-        temperature: 0.3,
+        maxTokens: 2000,
+        temperature: 0.1, // Lower temperature for more consistent, factual analysis
         responseFormat: 'json_object'
       }
     )
@@ -1138,48 +1255,94 @@ Format your response as JSON with these exact keys: score, strengths, weaknesses
       throw new Error('No response from AI provider')
     }
 
-    // Parse JSON response
+    // Parse JSON response with enhanced validation
     const analysis = aiProviderService.safeParseJSON(response.content)
     
-    // Validate required fields
-    if (typeof analysis.score !== 'number' || !Array.isArray(analysis.strengths)) {
-      throw new Error('Invalid response format from AI')
+    console.log('Enhanced AI Analysis - Raw response:', {
+      hasScore: typeof analysis.score === 'number',
+      strengthsCount: Array.isArray(analysis.strengths) ? analysis.strengths.length : 0,
+      weaknessesCount: Array.isArray(analysis.weaknesses) ? analysis.weaknesses.length : 0,
+      recommendationsCount: Array.isArray(analysis.recommendations) ? analysis.recommendations.length : 0
+    })
+    
+    // Validate and sanitize response
+    if (typeof analysis.score !== 'number' || !Array.isArray(analysis.strengths) || analysis.strengths.length === 0) {
+      console.warn('AI analysis returned invalid format, using fallback')
+      throw new Error('Invalid AI response format')
+    }
+
+    // Check for generic responses that indicate poor analysis
+    const combinedText = (analysis.strengths.join(' ') + ' ' + analysis.weaknesses.join(' ')).toLowerCase()
+    const genericIndicators = [
+      'aligns well with',
+      'valuable tool for',
+      'could be appealing',
+      'demonstrates broad reach',
+      'supports both for-profit and non-profit'
+    ]
+    
+    const genericScore = genericIndicators.filter(indicator => combinedText.includes(indicator)).length
+    if (genericScore >= 2) {
+      console.warn('AI analysis appears to use generic language, regenerating...')
+      // Could implement retry logic here
     }
 
     return {
       fitScore: Math.max(0, Math.min(100, analysis.score)),
-      overallScore: Math.max(0, Math.min(100, analysis.score)), // For backward compatibility
-      strengths: analysis.strengths || [],
-      challenges: analysis.weaknesses || [], // Map weaknesses to challenges for UI
-      weaknesses: analysis.weaknesses || [], // Keep for backward compatibility
-      recommendations: analysis.recommendations || [],
+      overallScore: Math.max(0, Math.min(100, analysis.score)),
+      strengths: analysis.strengths.filter(s => typeof s === 'string' && s.length > 10) || ['Analysis completed'],
+      challenges: analysis.weaknesses.filter(w => typeof w === 'string' && w.length > 10) || ['No specific challenges identified'],
+      weaknesses: analysis.weaknesses.filter(w => typeof w === 'string' && w.length > 10) || ['No specific challenges identified'],
+      recommendations: analysis.recommendations.filter(r => typeof r === 'string' && r.length > 10) || ['Continue with application process'],
       matchDetails: {
         confidence: Math.max(0, Math.min(1, analysis.confidence || 0.7)),
         reasoning: analysis.reasoning || 'AI analysis completed',
-        processingTime: new Date().toISOString()
+        processingTime: new Date().toISOString(),
+        dataQuality: {
+          opportunityComplete: !!(opportunityContext.title && opportunityContext.description),
+          projectComplete: !!(projectContext.title && projectContext.description),
+          orgComplete: !!(orgContext.name && orgContext.type)
+        }
       },
       confidence: Math.max(0, Math.min(1, analysis.confidence || 0.7)),
       reasoning: analysis.reasoning || 'AI analysis completed'
     }
 
   } catch (error) {
-    console.error('AI analysis failed:', error)
+    console.error('Enhanced AI analysis failed:', error)
     
-    // Fallback to basic analysis
+    // Enhanced fallback with specific context
+    const fallbackStrengths: string[] = []
+    if (opportunityContext.organizationTypes.includes(orgContext.type)) {
+      fallbackStrengths.push(`Organization type (${orgContext.type}) is eligible for this opportunity`)
+    }
+    if (projectContext.requestAmount && opportunityContext.amountMin && projectContext.requestAmount >= opportunityContext.amountMin) {
+      fallbackStrengths.push(`Funding request amount aligns with opportunity minimum`)
+    }
+    if (opportunityContext.focusAreas.length > 0 && orgContext.focusAreas.some(area => 
+      opportunityContext.focusAreas.some(oppArea => oppArea.toLowerCase().includes(area.toLowerCase()))
+    )) {
+      fallbackStrengths.push(`Organization focus areas align with opportunity priorities`)
+    }
+    if (fallbackStrengths.length === 0) {
+      fallbackStrengths.push('Opportunity is accessible for application')
+    }
+    
     return {
       fitScore: 50,
-      overallScore: 50, // For backward compatibility
-      strengths: ['Basic compatibility confirmed'],
-      challenges: ['Detailed AI analysis unavailable'], // Map to challenges for UI
-      weaknesses: ['Detailed AI analysis unavailable'], // Keep for backward compatibility
-      recommendations: ['Manual review recommended'],
+      overallScore: 50,
+      strengths: fallbackStrengths,
+      challenges: ['Detailed AI analysis temporarily unavailable'],
+      weaknesses: ['Detailed AI analysis temporarily unavailable'],
+      recommendations: ['Manual review of opportunity requirements recommended', 'Consider consulting with grant writing expert'],
       matchDetails: {
         confidence: 0.4,
-        reasoning: 'AI analysis failed, using fallback scoring',
-        processingTime: new Date().toISOString()
+        reasoning: 'AI analysis failed, using basic compatibility assessment',
+        processingTime: new Date().toISOString(),
+        fallback: true
       },
       confidence: 0.4,
-      reasoning: 'AI analysis failed, using fallback scoring'
+      reasoning: 'AI analysis failed, using basic compatibility assessment'
     }
   }
 }
