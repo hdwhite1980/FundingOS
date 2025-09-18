@@ -1,4 +1,4 @@
-// Service role API endpoint for project creation
+// Service role API endpoint for application/submission creation
 // This bypasses RLS issues by using service role authentication
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
@@ -7,20 +7,20 @@ import { NextRequest, NextResponse } from 'next/server'
 const getSupabaseServiceClient = () => {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY // Service role key bypasses RLS
+    process.env.SUPABASE_SERVICE_ROLE_KEY
   )
 }
 
 export async function POST(request) {
   try {
-    console.log('🔧 Project creation API endpoint called')
+    console.log('🔧 Application creation API endpoint called')
     
     // Get the request data
-    const projectData = await request.json()
-    console.log('📝 Project data received:', projectData)
+    const applicationData = await request.json()
+    console.log('📝 Application data received:', applicationData)
 
     // Get user ID from the request (passed from frontend)
-    const { user_id, ...projectFields } = projectData
+    const { user_id, ...applicationFields } = applicationData
     
     if (!user_id) {
       console.error('❌ No user_id provided')
@@ -31,38 +31,31 @@ export async function POST(request) {
     }
 
     // Create service role client (bypasses RLS)
-    // Service role client for operations that need to bypass RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+    const supabase = getSupabaseServiceClient()
     
-    // Prepare project data with proper timestamps
-    const newProject = {
-      ...projectFields,
+    // Prepare application data with proper timestamps
+    const newApplication = {
+      ...applicationFields,
       user_id: user_id,
+      status: applicationFields.status || 'submitted',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
 
-    console.log('💾 Inserting project with service role:', {
-      user_id: newProject.user_id,
-      name: newProject.name,
-      fieldCount: Object.keys(newProject).length
-    })
+    console.log('💾 Inserting application with service role')
 
-    // Insert project using service role (bypasses RLS)
+    // Insert application using service role (bypasses RLS)
     const { data, error } = await supabase
-      .from('projects')
-      .insert([newProject])
+      .from('submissions')
+      .insert([newApplication])
       .select()
       .single()
 
     if (error) {
-      console.error('❌ Project creation error:', error)
+      console.error('❌ Application creation error:', error)
       return NextResponse.json(
         { 
-          error: 'Failed to create project', 
+          error: 'Failed to create application', 
           details: error.message,
           code: error.code 
         },
@@ -70,8 +63,8 @@ const supabaseAdmin = createClient(
       )
     }
 
-    console.log('✅ Project created successfully:', data.id)
-    return NextResponse.json({ success: true, project: data })
+    console.log('✅ Application created successfully:', data.id)
+    return NextResponse.json({ success: true, application: data })
 
   } catch (error) {
     console.error('❌ API endpoint error:', error)

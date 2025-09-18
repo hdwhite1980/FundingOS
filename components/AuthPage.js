@@ -5,6 +5,7 @@ import { Mail, Lock, User, Building2, ArrowRight, CheckCircle } from 'lucide-rea
 import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import toast from 'react-hot-toast'
 import Logo from './Logo'
+import { directUserServices } from '../lib/supabase'
 
 export default function AuthPage() {
   const supabase = useSupabaseClient()
@@ -61,20 +62,17 @@ export default function AuthPage() {
         if (formData.userRole === 'angel_investor' && data.user) {
           try {
             const userId = data.user.id
-            // Create user_profile row if not yet created (race-safe upsert)
-            await supabase.from('user_profiles').upsert({
-              user_id: userId,  // Changed from 'id' to 'user_id'
+            // Create user_profile row if not yet created (race-safe upsert) using API
+            await directUserServices.upsertUserProfileViaAPI(userId, {
               email: formData.email,
               full_name: formData.fullName,
               organization_name: formData.organizationName,
               organization_type: 'startup',
               user_role: 'angel_investor',
               setup_completed: true, // Skip general onboarding
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' })  // Changed conflict column
+            })
 
-            // Create angel_investors row with empty preferences (triggers angel onboarding)
+            // Check if angel investor already exists
             const { data: existingAngel } = await supabase
               .from('angel_investors')
               .select('id')
@@ -82,15 +80,13 @@ export default function AuthPage() {
               .maybeSingle()
 
             if (!existingAngel) {
-              await supabase.from('angel_investors').insert([{
-                user_id: userId,
+              // Create angel_investors row with empty preferences (triggers angel onboarding) using API
+              await directUserServices.createAngelInvestorViaAPI(userId, {
                 name: formData.fullName || 'Angel Investor',
                 email: formData.email,
                 accredited_status: false,
                 investment_preferences: {}, // Empty triggers onboarding
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }])
+              })
             }
             console.log('AuthPage: Angel investor bootstrap completed')
           } catch (bootErr) {
