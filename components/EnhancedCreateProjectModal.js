@@ -31,6 +31,7 @@ import {
   FundingStrategy,
   InnovationReview
 } from './ProjectSteps'
+import FieldHelpButton from './FieldHelpButton'
 
 const PROJECT_CATEGORIES = [
   { value: 'program_expansion', label: 'Program Expansion/Enhancement' },
@@ -333,6 +334,14 @@ export default function CreateProjectModal({
         console.log('Project creation successful:', result)
         toast.success('Project created successfully!')
         onProjectCreated?.(result)
+        // Fire-and-forget AI analysis trigger
+        try {
+          fetch('/api/ai/projects/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId: result.id, userId: user.id, force: false })
+          }).catch(()=>{})
+        } catch {}
       }
 
       onClose()
@@ -358,17 +367,17 @@ export default function CreateProjectModal({
     
     switch (currentStep) {
       case 1:
-        return <ProjectBasics key="step-1" formData={formData} onChange={handleInputChange} />
+        return <ProjectBasics key="step-1" formData={formData} onChange={handleInputChange} userId={user?.id} />
       case 2:
-        return <ScopeImpact key="step-2" formData={formData} onChange={handleInputChange} />
+        return <ScopeImpact key="step-2" formData={formData} onChange={handleInputChange} userId={user?.id} />
       case 3:
-        return <FundingRequirements key="step-3" formData={formData} onChange={handleInputChange} />
+        return <FundingRequirements key="step-3" formData={formData} onChange={handleInputChange} userId={user?.id} />
       case 4:
-        return <ProjectReadiness key="step-4" formData={formData} onChange={handleInputChange} />
+        return <ProjectReadiness key="step-4" formData={formData} onChange={handleInputChange} userId={user?.id} />
       case 5:
-        return <OutcomesEvaluation key="step-5" formData={formData} onChange={handleInputChange} onArrayChange={handleArrayChange} onGoalsChange={handleGoalsChange} />
+        return <OutcomesEvaluation key="step-5" formData={formData} onChange={handleInputChange} onArrayChange={handleArrayChange} onGoalsChange={handleGoalsChange} userId={user?.id} />
       case 6:
-        return <FundingStrategy key="step-6" formData={formData} onChange={handleInputChange} onFundingTypesChange={handleFundingTypesChange} />
+        return <FundingStrategy key="step-6" formData={formData} onChange={handleInputChange} onFundingTypesChange={handleFundingTypesChange} userId={user?.id} />
       case 7:
         return <InnovationReview key="step-7" formData={formData} onChange={handleInputChange} />
       case 8:
@@ -440,6 +449,9 @@ export default function CreateProjectModal({
               <p className="text-gray-600 mt-1">
                 Step {currentStep} of {steps.length}: {steps[currentStep - 1].title}
               </p>
+              {currentStep === 1 && (
+                <div className="mt-2 text-xs text-emerald-700 flex items-center">AI guidance available on key fields.</div>
+              )}
             </div>
             <button
               onClick={onClose}

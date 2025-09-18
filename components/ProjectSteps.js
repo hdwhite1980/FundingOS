@@ -10,6 +10,7 @@ import {
   HelpCircle,
   AlertCircle
 } from 'lucide-react'
+import FieldHelpButton from './FieldHelpButton'
 
 import { 
   PROJECT_CATEGORIES, 
@@ -22,7 +23,7 @@ import {
 } from './EnhancedCreateProjectModal'
 
 // Step 1: Project Basics
-export function ProjectBasics({ formData, onChange }) {
+export function ProjectBasics({ formData, onChange, userId }) {
   return (
     <div className="space-y-8">
       <div>
@@ -35,7 +36,7 @@ export function ProjectBasics({ formData, onChange }) {
       
       {/* Project Title */}
       <div>
-        <label className="form-label">Project Title *</label>
+        <label className="form-label flex items-center">Project Title * <FieldHelpButton userId={userId} field="project_title" currentValue={formData.name} projectDraft={formData} /></label>
         <input
           type="text"
           name="name"
@@ -50,7 +51,7 @@ export function ProjectBasics({ formData, onChange }) {
 
       {/* Project Description */}
       <div>
-        <label className="form-label">Project Description *</label>
+        <label className="form-label flex items-center">Project Description * <FieldHelpButton userId={userId} field="project_description" currentValue={formData.description} projectDraft={formData} /></label>
         <textarea
           name="description"
           className="form-input h-32"
@@ -123,7 +124,7 @@ export function ProjectBasics({ formData, onChange }) {
 }
 
 // Step 2: Scope & Impact
-export function ScopeImpact({ formData, onChange }) {
+export function ScopeImpact({ formData, onChange, userId }) {
   // Helper function to format numbers with commas
   const formatNumber = (value) => {
     if (!value || isNaN(value)) return ''
@@ -159,7 +160,7 @@ export function ScopeImpact({ formData, onChange }) {
         <h4 className="font-semibold text-gray-900 mb-4">Specific Population This Project Serves</h4>
         <div className="space-y-4">
           <div>
-            <label className="form-label">Target Population Description *</label>
+            <label className="form-label flex items-center">Target Population Description * <FieldHelpButton userId={userId} field="target_population_description" currentValue={formData.target_population_description} projectDraft={formData} /></label>
             <textarea
               name="target_population_description"
               className="form-input h-24"
@@ -257,7 +258,7 @@ export function ScopeImpact({ formData, onChange }) {
 }
 
 // Step 3: Funding Requirements
-export function FundingRequirements({ formData, onChange }) {
+export function FundingRequirements({ formData, onChange, userId }) {
   const calculatePercentages = () => {
     const total = [
       formData.personnel_percentage,
@@ -316,7 +317,7 @@ export function FundingRequirements({ formData, onChange }) {
       
       {/* Total Budget */}
       <div className="bg-slate-50 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-4">Total Project Budget *</h4>
+  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">Total Project Budget * <FieldHelpButton userId={userId} field="total_project_budget" currentValue={formData.total_project_budget} projectDraft={formData} /></h4>
         <div>
           <div className="relative">
             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium">$</span>
@@ -341,7 +342,7 @@ export function FundingRequirements({ formData, onChange }) {
 
       {/* Budget Breakdown */}
       <div className="bg-blue-50 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-4">Budget Breakdown (Percentages)</h4>
+  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">Budget Breakdown (Percentages) <FieldHelpButton userId={userId} field="budget_breakdown" currentValue={''} projectDraft={formData} /></h4>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="form-label">Personnel (salaries/benefits) %</label>
@@ -507,7 +508,7 @@ export function FundingRequirements({ formData, onChange }) {
 }
 
 // Step 4: Project Readiness
-export function ProjectReadiness({ formData, onChange }) {
+export function ProjectReadiness({ formData, onChange, userId }) {
   return (
     <div className="space-y-8">
       <div>
@@ -632,7 +633,7 @@ export function ProjectReadiness({ formData, onChange }) {
 }
 
 // Step 5: Outcomes & Evaluation
-export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsChange }) {
+export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsChange, userId }) {
   return (
     <div className="space-y-8">
       <div>
@@ -645,7 +646,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
       
       {/* Primary Goals */}
       <div className="bg-slate-50 rounded-lg p-6">
-        <h4 className="font-semibold text-gray-900 mb-4">Primary Goals (3-5 specific objectives)</h4>
+  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">Primary Goals (3-5 specific objectives) <FieldHelpButton userId={userId} field="primary_goals" currentValue={(formData.primary_goals||[]).join('; ')} projectDraft={formData} /></h4>
         {[0, 1, 2, 3, 4].map((index) => (
           <div key={index} className="mb-3">
             <label className="form-label">Goal {index + 1} {index < 3 ? '*' : ''}</label>
@@ -666,7 +667,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
         <h4 className="font-semibold text-gray-900 mb-4">Measurable Outcomes</h4>
         <div className="space-y-4">
           <div>
-            <label className="form-label">Output Measures *</label>
+            <label className="form-label flex items-center">Output Measures * <FieldHelpButton userId={userId} field="output_measures" currentValue={formData.output_measures} projectDraft={formData} /></label>
             <textarea
               name="output_measures"
               className="form-input h-20"
@@ -680,7 +681,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
           </div>
           
           <div>
-            <label className="form-label">Outcome Measures *</label>
+            <label className="form-label flex items-center">Outcome Measures * <FieldHelpButton userId={userId} field="outcome_measures" currentValue={formData.outcome_measures} projectDraft={formData} /></label>
             <textarea
               name="outcome_measures"
               className="form-input h-20"
@@ -694,7 +695,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
           </div>
           
           <div>
-            <label className="form-label">Impact Measures</label>
+            <label className="form-label flex items-center">Impact Measures <FieldHelpButton userId={userId} field="impact_measures" currentValue={formData.impact_measures} projectDraft={formData} /></label>
             <textarea
               name="impact_measures"
               className="form-input h-20"
@@ -730,7 +731,7 @@ export function OutcomesEvaluation({ formData, onChange, onArrayChange, onGoalsC
 }
 
 // Step 6: Funding Strategy
-export function FundingStrategy({ formData, onChange, onFundingTypesChange }) {
+export function FundingStrategy({ formData, onChange, onFundingTypesChange, userId }) {
   return (
     <div className="space-y-8">
       <div>

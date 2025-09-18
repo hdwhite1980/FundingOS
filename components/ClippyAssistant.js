@@ -195,8 +195,25 @@ export default function ClippyAssistant({
 
   const processUserInput = async (input) => {
     const lowerInput = input.toLowerCase()
-    
-    // Intent recognition
+    try {
+      // Call new unified assistant endpoint (Phase 1)
+      if (userProfile?.user_id || userProfile?.id) {
+        const userId = userProfile.user_id || userProfile.id
+        const resp = await fetch('/api/ai/assistant', {
+          method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, message: input, useLLM: true })
+        })
+        if (resp.ok) {
+          const json = await resp.json()
+          return json.data?.message || 'I am processing your request.'
+        }
+      }
+    } catch (e) {
+      console.warn('Assistant API failed, falling back to legacy heuristics', e)
+    }
+
+    // Legacy fallback heuristics if API failed
     if (lowerInput.includes('deadline') || lowerInput.includes('due date')) {
       const upcomingDeadlines = opportunities.filter(opp => {
         const deadline = new Date(opp.deadline || opp.application_deadline)
@@ -204,14 +221,12 @@ export default function ClippyAssistant({
         const diffDays = (deadline - now) / (1000 * 60 * 60 * 24)
         return diffDays <= 30 && diffDays > 0
       })
-      
       if (upcomingDeadlines.length > 0) {
         return `📅 You have ${upcomingDeadlines.length} upcoming deadlines in the next 30 days. The closest is ${upcomingDeadlines[0]?.title} due ${new Date(upcomingDeadlines[0]?.deadline).toLocaleDateString()}.`
       } else {
         return `✅ Good news! No urgent deadlines in the next 30 days. You're on track!`
       }
     }
-    
     if (lowerInput.includes('application') || lowerInput.includes('apply')) {
       const incompleteApps = submissions.filter(s => s.status === 'draft' || s.status === 'in_progress')
       if (incompleteApps.length > 0) {
@@ -220,7 +235,6 @@ export default function ClippyAssistant({
         return `💪 All your applications are submitted! Want me to find new opportunities for you?`
       }
     }
-    
     if (lowerInput.includes('opportunity') || lowerInput.includes('grant') || lowerInput.includes('funding')) {
       const highMatchOpps = opportunities.filter(o => o.fit_score > 80)
       if (highMatchOpps.length > 0) {
@@ -229,7 +243,6 @@ export default function ClippyAssistant({
         return `🔍 Let me search for new opportunities that match your projects. I'll analyze the web for fresh funding sources.`
       }
     }
-    
     if (lowerInput.includes('help') || lowerInput.includes('what can you do')) {
       return `🤖 I can help you with:
 • Finding and matching funding opportunities
@@ -241,8 +254,6 @@ export default function ClippyAssistant({
 
 What would you like to focus on?`
     }
-    
-    // Default response
     return `🤔 I understand you're asking about "${input}". Let me analyze your portfolio and see how I can help with that specifically.`
   }
 
