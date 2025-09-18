@@ -1,14 +1,14 @@
 /**
  * Proactive Assistant Manager
  * 
- * Central component that manages when and how the MS Clippy-style assistant appears
+ * Central component that manages when and how the Wali-OS Assistant appears
  * throughout the application with contextual help and guidance.
  */
 
 'use client'
 import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import ClippyAssistant from './ClippyAssistant'
+import WaliOSAssistant from './WaliOSAssistant'
 import { useProactiveAssistantTriggers, shouldShowProactiveAssistant } from './ProactiveAssistantTriggers'
 
 export default function ProactiveAssistantManager({ 
@@ -143,7 +143,7 @@ export default function ProactiveAssistantManager({
   }
 
   return (
-    <ClippyAssistant
+  <WaliOSAssistant
       isVisible={isAssistantOpen}
       onClose={handleCloseAssistant}
       userProfile={userProfile}
@@ -184,7 +184,7 @@ export const useManualAssistantTrigger = () => {
 }
 
 /**
- * Floating trigger button for manual assistant access (Clippy-style)
+ * Floating trigger button for manual assistant access (Wali-OS Assistant)
  */
 export const FloatingAssistantButton = ({ onClick, disabled = false }) => {
   return (
@@ -196,7 +196,7 @@ export const FloatingAssistantButton = ({ onClick, disabled = false }) => {
       whileTap={{ scale: 0.95 }}
       title="Open Your Funding Assistant"
     >
-      {/* Clippy-like character */}
+  {/* Wali-OS assistant avatar */}
       <div className="relative">
         <div className="w-8 h-10 bg-white rounded-lg relative">
           {/* Eyes */}

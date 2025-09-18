@@ -1,0 +1,3 @@
+// Wali-OS Assistant (renamed from ClippyAssistant)
+// ...content copied from original component with name updated...
+export { default } from './ClippyAssistant'
