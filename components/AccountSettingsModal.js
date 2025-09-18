@@ -449,13 +449,13 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
                       <button
                         onClick={async () => {
                           try {
-                            const response = await fetch('/api/auth/forgot-password', {
+                            const response = await fetch('/api/auth/password-reset/request', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ email: user?.email })
                             })
                             if (response.ok) {
-                              toast.success('Password reset instructions sent to your email')
+                              toast.success('Password reset code sent to your email')
                             }
                           } catch (error) {
                             toast.error('Failed to send reset email')

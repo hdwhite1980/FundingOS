@@ -98,14 +98,14 @@ export default function ResetPasswordPage() {
     }
     try {
       setResendLoading(true)
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetch('/api/auth/password-reset/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send reset email')
-      setSuccess('Reset email sent. Please check your inbox.')
+      setSuccess('Reset code sent. Please check your inbox.')
     } catch (e: any) {
       setError(e.message || 'Failed to send reset email')
     } finally {
