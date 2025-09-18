@@ -213,7 +213,7 @@ export function ScopeImpact({ formData, onChange, userId }) {
         <h4 className="font-semibold text-gray-900 mb-4">Project Timeline</h4>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="form-label">Proposed Start Date</label>
+            <label className="form-label">Proposed Start Date <span className="text-gray-500">(Optional)</span></label>
             <input
               type="date"
               name="proposed_start_date"
@@ -778,7 +778,7 @@ export function FundingStrategy({ formData, onChange, onFundingTypesChange, user
           </div>
           
           <div>
-            <label className="form-label">Latest start date that would still be useful</label>
+            <label className="form-label">Latest start date that would still be useful <span className="text-gray-500">(Optional)</span></label>
             <input
               type="date"
               name="latest_useful_start"

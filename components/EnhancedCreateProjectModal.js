@@ -183,6 +183,12 @@ export default function CreateProjectModal({
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
+    
+    // Debug date fields
+    if (name.includes('date') || name.includes('_date') || name === 'funding_decision_needed' || name === 'latest_useful_start') {
+      console.log(`📅 Date field changed: ${name} = "${value}" (type: ${type})`)
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -287,6 +293,13 @@ export default function CreateProjectModal({
         throw new Error('User not authenticated')
       }
 
+      // Validate required date fields
+      if (!formData.funding_decision_needed || formData.funding_decision_needed === '') {
+        toast.error('Please specify when you need a funding decision. This helps us prioritize opportunities for you.')
+        setLoading(false)
+        return
+      }
+
       const projectData = {
         ...formData,
         // Map form fields to database fields
@@ -296,6 +309,11 @@ export default function CreateProjectModal({
         project_categories: formData.project_categories || [],
         // Ensure project_type is set from project_categories for database compatibility
         project_type: formData.project_categories?.length > 0 ? formData.project_categories[0] : 'other',
+        // Convert empty date strings to null (HTML date inputs can send empty strings)
+        proposed_start_date: formData.proposed_start_date === '' ? null : formData.proposed_start_date,
+        funding_decision_needed: formData.funding_decision_needed === '' ? null : formData.funding_decision_needed,
+        latest_useful_start: formData.latest_useful_start === '' ? null : formData.latest_useful_start,
+        // Handle numeric fields
         total_project_budget: formData.total_project_budget ? parseFloat(formData.total_project_budget.toString().replace(/[^\d.]/g, '')) : null,
         funding_request_amount: formData.funding_request_amount ? parseFloat(formData.funding_request_amount.toString().replace(/[^\d.]/g, '')) : null,
         cash_match_available: formData.cash_match_available ? parseFloat(formData.cash_match_available.toString().replace(/[^\d.]/g, '')) : null,
@@ -307,6 +325,13 @@ export default function CreateProjectModal({
         indirect_percentage: formData.indirect_percentage ? parseFloat(formData.indirect_percentage) : null,
         other_percentage: formData.other_percentage ? parseFloat(formData.other_percentage) : null
       }
+      
+      // Debug the date fields being sent
+      console.log('📅 Date fields in projectData:', {
+        proposed_start_date: projectData.proposed_start_date,
+        funding_decision_needed: projectData.funding_decision_needed,
+        latest_useful_start: projectData.latest_useful_start
+      })
 
       let result
       if (isEditMode && editProject) {
@@ -333,15 +358,25 @@ export default function CreateProjectModal({
         
         console.log('Project creation successful:', result)
         toast.success('Project created successfully!')
-        onProjectCreated?.(result)
+        onProjectCreated?.(result.project || result) // Handle both API response formats
+        
         // Fire-and-forget AI analysis trigger
         try {
-          fetch('/api/ai/projects/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ projectId: result.id, userId: user.id, force: false })
-          }).catch(()=>{})
-        } catch {}
+          const projectId = result.project?.id || result.id
+          if (projectId) {
+            fetch('/api/ai/projects/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projectId: projectId, userId: user.id, force: false })
+            }).catch(err => {
+              console.log('AI analysis failed (non-critical):', err.message)
+            })
+          } else {
+            console.log('No project ID found for AI analysis')
+          }
+        } catch (err) {
+          console.log('AI analysis trigger failed (non-critical):', err.message)
+        }
       }
 
       onClose()
