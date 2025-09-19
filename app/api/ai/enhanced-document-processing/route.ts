@@ -244,9 +244,3 @@ function generateRecommendations(analysis: any, qualityAnalysis: any): string[] 
 
   return recommendations;
 }
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
