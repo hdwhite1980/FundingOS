@@ -77,8 +77,8 @@ export async function PUT(request, { params }) {
 
     // Smart cache invalidation - only invalidate if significant changes
     try {
-      const { default: scoringCache } = await import('../../../../lib/scoringCache.js')
-      await scoringCache.smartInvalidateOnProjectUpdate(userId, projectId, currentProject, data)
+      const scoringCache = await import('../../../../lib/scoringCache.js')
+      await scoringCache.default.smartInvalidateOnProjectUpdate(userId, projectId, currentProject, data)
     } catch (cacheError) {
       console.warn('⚠️ Cache invalidation failed (non-critical):', cacheError.message)
       // Don't fail the update if cache invalidation fails
