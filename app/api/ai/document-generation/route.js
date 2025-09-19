@@ -297,7 +297,7 @@ Always respond with valid JSON matching the exact structure requested.`
       }
     ],
     {
-      maxTokens: 6000,
+      maxTokens: 4000,
       temperature: 0.1,
       responseFormat: 'json_object'
     }
