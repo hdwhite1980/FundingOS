@@ -239,7 +239,7 @@ export default function UnifiedAIAgentInterface({ user, userProfile, projects, o
     }
 
     try {
-      const response = await fetch(resolveApiUrl('/api/ai/unified-agent/chat'), {
+      const response = await fetch(resolveApiUrl('/api/ai/agent/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
