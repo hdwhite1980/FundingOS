@@ -2,6 +2,7 @@
 // Production-optimized AI agent with comprehensive user context and opportunity analysis
 
 import { supabase } from '../../../../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
   const { action } = req.query
@@ -1284,7 +1285,19 @@ I'll continue monitoring and will alert you when new opportunities become availa
   
   topResults.forEach((opp, index) => {
     response += `${index + 1}. **${opp.title}**\n`
-    response += `   • Source: ${new URL(opp.source_url).hostname}\n`
+    
+    // Handle both database results (source_url) and web search results (url)
+    const sourceUrl = opp.source_url || opp.url
+    if (sourceUrl) {
+      try {
+        response += `   • Source: ${new URL(sourceUrl).hostname}\n`
+      } catch (e) {
+        response += `   • Source: ${opp.domain || 'Web Search'}\n`
+      }
+    } else {
+      response += `   • Source: ${opp.domain || 'Database'}\n`
+    }
+    
     response += `   • Relevance: ${opp.relevance_score || 'High'} match\n`
     if (opp.amount_info) {
       response += `   • Funding: ${opp.amount_info}\n`
@@ -1872,7 +1885,16 @@ async function searchWithSerperAPIDirect(query, projectType, organizationType) {
         position: item.position || 0,
         domain: item.displayLink || '',
         relevance_score: 0.8
-      })).filter(opp => opp.url)
+      })).filter(opp => {
+        // Only return opportunities with valid URLs
+        try {
+          if (!opp.url || opp.url === '') return false
+          new URL(opp.url) // Test if URL is valid
+          return true
+        } catch {
+          return false
+        }
+      })
     }
     
     return []
