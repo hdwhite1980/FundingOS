@@ -278,9 +278,6 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
       
       if (existing) {
         setProjectOpportunity(existing)
-        if (existing.application_draft) {
-          setApplicationDraft(existing.application_draft)
-        }
       }
 
     } catch (error) {

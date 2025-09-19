@@ -32,6 +32,7 @@ import documentAnalysisService from '../lib/documentAnalysisService'
 import documentGenerationService from '../lib/documentGenerationService' // Add this import
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
+import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
 
 export default function EnhancedApplicationTracker({ 
   projects, 
@@ -54,6 +55,7 @@ export default function EnhancedApplicationTracker({
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentFileName, setCurrentFileName] = useState('')
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false)
+  const [showAIDocumentAnalysisModal, setShowAIDocumentAnalysisModal] = useState(false)
   const [analysisData, setAnalysisData] = useState(null)
   const [dynamicFormStructure, setDynamicFormStructure] = useState(null) // Add this state
 
@@ -214,7 +216,7 @@ export default function EnhancedApplicationTracker({
       }
 
       setAnalysisData(analysisDataForModal)
-      setShowAIAnalysisModal(true)
+      setShowAIDocumentAnalysisModal(true)
       
       // Check if we have a blank application that needs missing info collection
       if (completion.formStatus?.isBlank && completion.questionsForUser?.length > 0) {
@@ -377,6 +379,11 @@ export default function EnhancedApplicationTracker({
     if (step === 'analyze') {
       setStep('complete')
     }
+  }
+
+  const handleAIDocumentAnalysisModalClose = () => {
+    setShowAIDocumentAnalysisModal(false)
+    setAnalysisData(null)
   }
   const handleFinalSubmit = () => {
     const finalData = {
@@ -799,6 +806,16 @@ export default function EnhancedApplicationTracker({
           userProfile={analysisData.userProfile}
           quickMatchScore={analysisData.quickMatchScore}
           onClose={handleAIAnalysisModalClose}
+        />
+      )}
+
+      {/* AI Document Analysis Modal */}
+      {showAIDocumentAnalysisModal && analysisData && (
+        <AIDocumentAnalysisModal
+          opportunity={analysisData.opportunity}
+          project={analysisData.project}
+          userProfile={analysisData.userProfile}
+          onClose={handleAIDocumentAnalysisModalClose}
         />
       )}
     </div>
