@@ -34,7 +34,7 @@ export async function POST(request) {
 
     // Get user profile to check if 2FA is enabled
     const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('user_id, two_factor_enabled')
       .eq('user_id', userId)
       .maybeSingle()
@@ -56,7 +56,7 @@ export async function POST(request) {
 
     // Disable 2FA and clear secrets
     const { error: updateError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update({ 
         two_factor_enabled: false,
         two_factor_secret: null,

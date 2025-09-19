@@ -35,7 +35,7 @@ export async function POST(request) {
 
     // Get user profile to verify the secret matches
     const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('user_id, two_factor_secret, two_factor_enabled')
       .eq('user_id', userId)
       .maybeSingle()
@@ -74,7 +74,7 @@ export async function POST(request) {
 
     // Enable 2FA and store backup codes
     const { error: updateError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update({ 
         two_factor_enabled: true,
         two_factor_backup_codes: JSON.stringify(backupCodes),

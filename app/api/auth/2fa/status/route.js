@@ -21,7 +21,7 @@ export async function GET(request) {
 
     // Get user profile to check 2FA settings
     const { data: profile, error: profileError } = await authResult.supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('two_factor_enabled, two_factor_secret')
       .eq('user_id', authResult.user.id)
       .maybeSingle()

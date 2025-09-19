@@ -35,7 +35,7 @@ export async function GET(request) {
         
         // Test basic connection and check for required tables
         const { data, error } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .select('count')
           .limit(1)
         
@@ -48,7 +48,7 @@ export async function GET(request) {
           
           envCheck.connection_test = {
             success: false,
-            error: 'user_profiles table does not exist (tried profiles: ' + (altError?.message || 'also missing') + ')',
+            error: 'profiles table does not exist (tried profiles: ' + (altError?.message || 'also missing') + ')',
             can_query_db: false,
             table_status: {
               user_profiles_exists: false,

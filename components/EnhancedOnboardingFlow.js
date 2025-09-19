@@ -158,7 +158,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
         id: user.id,
         email: user.email,
         setup_completed: true,
-        // Sanitize all known numeric fields in user_profiles table
+        // Sanitize all known numeric fields in profiles table
         annual_budget: sanitizeNumericField(formData.annual_budget),
         years_in_operation: sanitizeNumericField(formData.years_in_operation),
         full_time_staff: sanitizeNumericField(formData.full_time_staff),
@@ -185,7 +185,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
 
       // Use direct supabase call with proper sanitization
       const { data: profile, error: upsertError } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .upsert(cleanedProfileData, { onConflict: 'user_id' })  // Changed from 'id' to 'user_id'
         .select()
         .single()

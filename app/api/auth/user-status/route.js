@@ -34,7 +34,7 @@ export async function POST(request) {
 
     // Get user profile and security settings using service role
     const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('user_id, two_factor_enabled, two_factor_secret')
       .eq('user_id', userId)
       .maybeSingle()

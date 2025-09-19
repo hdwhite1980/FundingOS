@@ -1616,7 +1616,7 @@ async function getUserContext(userId) {
       campaignsResult,
       applicationsResult
     ] = await Promise.allSettled([
-      supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
       supabase.from('projects').select('*').eq('user_id', userId),
       supabase.from('donors').select('*').eq('user_id', userId).limit(10),
       supabase.from('donations').select(`

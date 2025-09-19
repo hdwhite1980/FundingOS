@@ -102,7 +102,7 @@ export async function DELETE(request) {
       console.log('✓ Deleted security data')
 
       // 9. Delete User Profile (this will cascade to related data)
-      await supabaseAdmin.from('user_profiles').delete().eq('id', userId)
+      await supabaseAdmin.from('profiles').delete().eq('id', userId)
       console.log('✓ Deleted user profile')
 
       // 10. Finally, delete the auth user (this is the most critical step)

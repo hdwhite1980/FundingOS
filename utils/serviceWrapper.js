@@ -90,7 +90,7 @@ export const safeProfileLoader = {
       
       // Try to get existing profile
       const { data: existingProfile } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .maybeSingle()
@@ -112,7 +112,7 @@ export const safeProfileLoader = {
       }
 
       const { data: newProfile, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .insert([defaultProfile])
         .select()
         .single()

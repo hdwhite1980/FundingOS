@@ -13,7 +13,7 @@ export async function POST(request) {
 
     // Disable 2FA for the user
     const { error: updateError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update({
         two_factor_enabled: false,
         two_factor_secret: null,

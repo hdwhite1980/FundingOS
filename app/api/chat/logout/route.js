@@ -24,7 +24,7 @@ export async function POST(request) {
 
     // Get user profile for email
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('full_name, email')
       .eq('id', user.id)
       .maybeSingle()

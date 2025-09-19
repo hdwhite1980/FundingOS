@@ -49,7 +49,7 @@ export async function POST(request) {
 
     // Enable 2FA for the user
     const { error: updateError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update({
         two_factor_enabled: true,
         two_factor_secret: secret,

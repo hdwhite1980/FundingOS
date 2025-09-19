@@ -24,7 +24,7 @@ export async function POST(request) {
 
     // Store the temporary secret in the database (before verification)
     const { error: updateError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update({
         two_factor_secret_temp: secret.base32,
         updated_at: new Date().toISOString()

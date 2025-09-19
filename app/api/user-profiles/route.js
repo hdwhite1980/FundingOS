@@ -20,7 +20,7 @@ export async function GET(request) {
     console.log('🔍 Service role API: Getting user profile for user:', userId)
 
     const { data: profile, error } = await supabaseAdmin
-      .from('user_profiles')
+      .from('profiles')
       .select('*')
       .eq('user_id', userId)
       .maybeSingle()
@@ -66,7 +66,7 @@ export async function POST(request) {
     }
 
     const { data: profile, error } = await supabaseAdmin
-      .from('user_profiles')
+      .from('profiles')
       .upsert(profileToUpsert, { onConflict: 'user_id' })
       .select()
       .single()
@@ -109,7 +109,7 @@ export async function PUT(request) {
     }
 
     const { data: profile, error } = await supabaseAdmin
-      .from('user_profiles')
+      .from('profiles')
       .update(updateData)
       .eq('user_id', user_id)
       .select()

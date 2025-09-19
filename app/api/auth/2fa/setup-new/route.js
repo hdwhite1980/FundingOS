@@ -34,7 +34,7 @@ export async function POST(request) {
 
     // Get user profile to check if 2FA is already enabled
     const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('user_id, two_factor_enabled, two_factor_secret')
       .eq('user_id', userId)
       .maybeSingle()
@@ -95,7 +95,7 @@ export async function POST(request) {
 
     // Store the secret temporarily (not enabled yet)
     const { error: updateError } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update({ 
         two_factor_secret: secret,
         updated_at: new Date().toISOString()
