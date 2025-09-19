@@ -67,32 +67,193 @@ export async function POST(request: NextRequest) {
 }
 
 async function performAIAnalysis(text: string, documentType: string, context: any) {
-  const analysisPrompt = buildEnhancedAnalysisPrompt(text, documentType, context);
-  
-  const response = await aiProviderService.generateCompletion(
-    'document-analysis',
-    [
+  try {
+    const analysisPrompt = buildEnhancedAnalysisPrompt(text, documentType, context);
+    
+    const response = await aiProviderService.generateCompletion(
+      'document-analysis',
+      [
+        {
+          role: 'system',
+          content: getEnhancedSystemPrompt(documentType)
+        },
+        {
+          role: 'user',
+          content: analysisPrompt
+        }
+      ],
       {
-        role: 'system',
-        content: getEnhancedSystemPrompt(documentType)
-      },
-      {
-        role: 'user',
-        content: analysisPrompt
+        maxTokens: 4000,
+        temperature: 0.1,
+        responseFormat: 'json_object'
       }
-    ],
-    {
-      maxTokens: 4000,
-      temperature: 0.1,
-      responseFormat: 'json_object'
+    );
+
+    if (!response?.content) {
+      throw new Error('No response received from AI provider');
     }
-  );
 
-  if (!response?.content) {
-    throw new Error('No response received from AI provider');
+    const analysis = aiProviderService.safeParseJSON(response.content);
+    
+    // Validate that we got meaningful field extraction
+    if (!analysis.formFields || Object.keys(analysis.formFields).length === 0) {
+      console.warn('AI analysis returned no fields, attempting fallback extraction');
+      return generateFallbackFormStructure(text, documentType, context);
+    }
+    
+    return analysis;
+    
+  } catch (error) {
+    console.error('AI analysis failed, using fallback:', error);
+    return generateFallbackFormStructure(text, documentType, context);
   }
+}
 
-  return aiProviderService.safeParseJSON(response.content);
+function generateFallbackFormStructure(text: string, documentType: string, context: any) {
+  console.log('🔄 Generating fallback form structure for document type:', documentType);
+  
+  // Common Grant Application Form Structure
+  const fallbackFields = {
+    // Applicant Information Section
+    "organization_name": {
+      "label": "Organization Name",
+      "type": "text",
+      "required": true,
+      "section": "Applicant Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Legal name of organization"
+    },
+    "contact_person": {
+      "label": "Contact Person",
+      "type": "text",
+      "required": true,
+      "section": "Applicant Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Primary contact name"
+    },
+    "organization_address": {
+      "label": "Organization Address",
+      "type": "textarea",
+      "required": true,
+      "section": "Applicant Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Complete mailing address"
+    },
+    "phone_number": {
+      "label": "Phone Number",
+      "type": "phone",
+      "required": true,
+      "section": "Applicant Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Primary phone number"
+    },
+    "email_address": {
+      "label": "Email Address",
+      "type": "email",
+      "required": true,
+      "section": "Applicant Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Primary email contact"
+    },
+    
+    // Project Information Section
+    "project_title": {
+      "label": "Project Title",
+      "type": "text",
+      "required": true,
+      "section": "Project Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Descriptive project name"
+    },
+    "project_description": {
+      "label": "Project Description",
+      "type": "textarea",
+      "required": true,
+      "section": "Project Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Detailed project description"
+    },
+    "project_start_date": {
+      "label": "Project Start Date",
+      "type": "date",
+      "required": true,
+      "section": "Project Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "MM/DD/YYYY"
+    },
+    "project_end_date": {
+      "label": "Project End Date",
+      "type": "date",
+      "required": true,
+      "section": "Project Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "MM/DD/YYYY"
+    },
+    
+    // Financial Information Section
+    "total_budget": {
+      "label": "Total Project Budget",
+      "type": "currency",
+      "required": true,
+      "section": "Financial Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Total project cost"
+    },
+    "amount_requested": {
+      "label": "Amount Requested",
+      "type": "currency",
+      "required": true,
+      "section": "Financial Information",
+      "validation": "",
+      "value": "",
+      "placeholder": "Grant amount requested"
+    },
+    
+    // Signature Section
+    "authorized_signature": {
+      "label": "Authorized Signature",
+      "type": "text",
+      "required": true,
+      "section": "Certification",
+      "validation": "",
+      "value": "",
+      "placeholder": "Signature of authorized official"
+    },
+    "signature_date": {
+      "label": "Date Signed",
+      "type": "date",
+      "required": true,
+      "section": "Certification",
+      "validation": "",
+      "value": "",
+      "placeholder": "MM/DD/YYYY"
+    }
+  };
+
+  return {
+    formFields: fallbackFields,
+    documentStructure: {
+      title: "Grant Application Form",
+      sections: ["Applicant Information", "Project Information", "Financial Information", "Certification"],
+      totalFields: Object.keys(fallbackFields).length
+    },
+    extractionQuality: {
+      confidence: 0.5,
+      issues: ["Used fallback form structure due to poor OCR quality or analysis failure"],
+      fieldCount: Object.keys(fallbackFields).length,
+      fallbackUsed: true
+    }
+  };
 }
 
 function buildEnhancedAnalysisPrompt(text: string, documentType: string, context: any): string {
@@ -101,38 +262,46 @@ ENHANCED DOCUMENT ANALYSIS - PRECISE FORM FIELD EXTRACTION
 
 You are analyzing OCR-extracted text from a form document. Your CRITICAL task is to identify EVERY SINGLE form field exactly as it appears in the original document.
 
+⚠️  OCR TEXT QUALITY HANDLING:
+The text may contain encoding artifacts, corrupted characters, or poor OCR quality. Your job is to:
+1. INTERPRET corrupted text and infer the intended field labels
+2. RECONSTRUCT meaningful field names from partial/garbled text
+3. FALLBACK to standard form patterns when text is unreadable
+4. PROVIDE field structure even with poor input quality
+
 FIELD EXTRACTION STRATEGY - MULTI-PASS ANALYSIS:
 
-PASS 1 - EXPLICIT FIELD PATTERNS:
-Look for these EXACT patterns in the OCR text:
+PASS 1 - EXPLICIT FIELD PATTERNS (even with OCR artifacts):
+Look for these EXACT patterns, accounting for OCR corruption:
 - "Field Name: ____________________" (any length of underscores/dashes/dots)
 - "Field Name: $_____" (currency fields)
-- "Field Name: [____]" (bracketed fields) 
+- "Field Name: [____]" or corrupted versions like "[��__]"
 - "Field Name: (" or "Field Name: (_____)" (parenthetical fields)
 - "Field Name: □" or "Field Name: ☐" (checkbox fields)
 - "Field Name:" followed by blank lines or whitespace
 - Table rows with labels and empty cells/spaces
 
-PASS 2 - CONTEXTUAL FIELD DETECTION:
-- Lines ending with colons (:) followed by blank space
-- Labels adjacent to form elements: "Name [____]", "Address _____"
-- Numbered/lettered lists requesting information: "1. Organization Name ____"
-- Section headers followed by blank input areas
-- Words like "Enter", "Provide", "List" followed by field descriptions
-- Date patterns: "Date: ___/___/___" or "MM/DD/YYYY"
+PASS 2 - CORRUPTED TEXT INTERPRETATION:
+When you see garbled text like "�� d�� { , 9   9 b����", try to identify:
+- Common form field words: "Name", "Address", "Organization", "Project", "Date", "Amount"
+- Positional clues: text near colons, underscores, or form boundaries
+- Contextual patterns: words that typically appear in grant applications
+- Length indicators: longer garbled sections likely represent longer field names
 
-PASS 3 - STRUCTURAL FIELD IDENTIFICATION:
-- Multi-line fields indicated by multiple blank lines
-- Table structures with headers and empty data cells
-- Signature lines: "Signature: ________________" 
-- Contact information blocks (Name, Address, Phone, Email sections)
-- Financial fields grouped together (Budget, Amount, Cost sections)
+PASS 3 - INTELLIGENT FIELD RECONSTRUCTION:
+If OCR text is too corrupted, use STANDARD GRANT FORM patterns:
+- Applicant Information: Organization Name, Contact Person, Address, Phone, Email
+- Project Information: Project Title, Description, Start Date, End Date
+- Financial Information: Total Budget, Amount Requested, Match Funding
+- Narrative Sections: Project Description, Goals, Outcomes, Evaluation
+- Certifications: Authorized Signature, Title, Date
 
-PASS 4 - VALIDATION AND COMPLETION CHECK:
-- Re-scan text for any missed patterns like "Please provide...", "Enter your...", "Attach..."
-- Check for fields split across multiple lines due to OCR errors
-- Look for fields at document beginning, middle, and end
-- Ensure all form sections have corresponding fields extracted
+PASS 4 - FALLBACK FIELD GENERATION:
+If field extraction fails completely, generate a STANDARD FORM STRUCTURE:
+- Use common grant application fields based on document context
+- Create logical field groupings and ordering
+- Provide appropriate field types for each category
+- Ensure comprehensive coverage of typical form sections
 
 OCR ARTIFACT HANDLING:
 - Underscores may appear as: "____", "----", "....", "━━━━", "____"  
