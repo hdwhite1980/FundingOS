@@ -1188,6 +1188,8 @@ function detectWebSearchIntent(message) {
 // Perform web search for opportunities
 async function performWebSearch(userId, message, projects, userProfile) {
   try {
+    console.log('🔍 Starting direct web search for opportunities...')
+    
     // Build search query based on message and user context
     let searchQuery = message
     
@@ -1200,45 +1202,60 @@ async function performWebSearch(userId, message, projects, userProfile) {
       searchQuery = `${projectTypes} grants ${organizationType} funding opportunities`
     }
     
-    // Call our search API endpoint
-    const searchUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai/agent/search-opportunities`
-    console.log('🔍 Calling search endpoint:', searchUrl)
-    console.log('📋 Search payload:', JSON.stringify({
-      userId,
-      searchQuery,
-      projectType: projects?.[0]?.project_type,
-      organizationType: userProfile?.organization_type,
-      location: userProfile?.city && userProfile?.state ? `${userProfile.city}, ${userProfile.state}` : null,
-      fundingAmount: projects?.[0]?.funding_needed,
-      searchDepth: 'thorough'
-    }, null, 2))
+    console.log('🔍 Executing direct search for:', searchQuery)
     
-    const response = await fetch(searchUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    // Execute both searches in parallel (directly, no HTTP calls)
+    const [webResults, dbResults] = await Promise.all([
+      searchWithSerperAPIDirect(searchQuery, projects?.[0]?.project_type, userProfile?.organization_type),
+      searchDatabaseDirect(searchQuery, projects?.[0]?.project_type, userProfile?.organization_type)
+    ])
+    
+    // Combine results
+    const allOpportunities = [...webResults, ...dbResults]
+    
+    const searchSources = []
+    if (webResults.length > 0) searchSources.push('serper_web_search')
+    if (dbResults.length > 0) searchSources.push('database_search')
+    
+    console.log('✅ Direct search complete:', webResults.length, 'web +', dbResults.length, 'database =', allOpportunities.length, 'total')
+
+    return {
+      success: true,
+      query: searchQuery,
+      opportunitiesFound: allOpportunities.length,
+      opportunities: allOpportunities,
+      searchSources,
+      searchBreakdown: {
+        webResults: webResults.length,
+        databaseResults: dbResults.length,
+        serperApiEnabled: !!process.env.SERPER_API_KEY
       },
-      body: JSON.stringify({
-        userId,
-        searchQuery,
-        projectType: projects?.[0]?.project_type,
-        organizationType: userProfile?.organization_type,
-        location: userProfile?.city && userProfile?.state ? `${userProfile.city}, ${userProfile.state}` : null,
-        fundingAmount: projects?.[0]?.funding_needed,
-        searchDepth: 'thorough'
-      })
-    })
-    
-    if (response.ok) {
-      return await response.json()
-    } else {
-      const errorText = await response.text()
-      console.error('Search API failed with status:', response.status, 'Response:', errorText)
-      throw new Error(`Search API request failed: ${response.status} - ${errorText}`)
+      timestamp: new Date().toISOString(),
+      searchMethod: 'direct_serper_plus_database'
     }
+    
   } catch (error) {
     console.error('Web search error:', error)
-    return { success: false, opportunities: [] }
+    
+    // Fallback to database search only
+    try {
+      const fallbackResults = await searchDatabaseDirect(message, projects?.[0]?.project_type, userProfile?.organization_type)
+      
+      return {
+        success: true,
+        query: message,
+        opportunitiesFound: fallbackResults?.length || 0,
+        opportunities: fallbackResults || [],
+        searchSources: ['emergency_database_fallback'],
+        timestamp: new Date().toISOString(),
+        searchMethod: 'emergency_fallback',
+        note: 'Web search failed, showing database results',
+        error: error.message
+      }
+    } catch (fallbackError) {
+      console.error('All search methods failed:', fallbackError)
+      return { success: false, opportunities: [], error: 'All search methods failed' }
+    }
   }
 }
 
@@ -1803,5 +1820,110 @@ async function createInitialGoals(userId, supabaseClient) {
       ...goal,
       id: `fallback_${Date.now()}_${index}`
     }))
+  }
+}
+
+// Direct Serper API search function (no HTTP calls)
+async function searchWithSerperAPIDirect(query, projectType, organizationType) {
+  if (!process.env.SERPER_API_KEY) {
+    console.warn('⚠️ SERPER_API_KEY not found - web search disabled')
+    return []
+  }
+  
+  try {
+    console.log('🔍 Searching Serper API for:', query)
+    
+    // Build enhanced search query
+    let searchTerms = query
+    if (projectType && projectType !== 'unknown') {
+      searchTerms += ' ' + projectType.replace(/_/g, ' ')
+    }
+    if (organizationType && organizationType !== 'unknown') {
+      searchTerms += ' ' + organizationType
+    }
+    searchTerms += ' grants funding opportunities'
+    
+    const response = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': process.env.SERPER_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        q: searchTerms,
+        num: 15
+      })
+    })
+    
+    if (!response.ok) {
+      throw new Error('Serper API responded with status: ' + response.status)
+    }
+    
+    const data = await response.json()
+    console.log('📊 Serper API returned results:', data.organic?.length || 0)
+    
+    if (data.organic && data.organic.length > 0) {
+      return data.organic.map(item => ({
+        title: item.title || 'No title',
+        url: item.link || '',
+        description: item.snippet || 'No description available',
+        source: 'web_search',
+        search_engine: 'google',
+        position: item.position || 0,
+        domain: item.displayLink || '',
+        relevance_score: 0.8
+      })).filter(opp => opp.url)
+    }
+    
+    return []
+  } catch (error) {
+    console.error('❌ Serper API search failed:', error.message)
+    return []
+  }
+}
+
+// Direct database search function (no HTTP calls)
+async function searchDatabaseDirect(query, projectType, organizationType) {
+  try {
+    console.log('🗄️ Searching database for:', query)
+    
+    // Use the existing supabase client from the main handler
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+    
+    const searchTerms = query.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(' ')
+      .filter(term => term.length > 2)
+    
+    let dbQuery = supabase.from('opportunities').select('*')
+    
+    if (searchTerms.length > 0) {
+      const searchConditions = []
+      searchTerms.forEach(term => {
+        searchConditions.push('title.ilike.%' + term + '%')
+        searchConditions.push('description.ilike.%' + term + '%')
+        searchConditions.push('sponsor.ilike.%' + term + '%')
+      })
+      dbQuery = dbQuery.or(searchConditions.join(','))
+    }
+    
+    const { data: opportunities, error } = await dbQuery
+      .order('created_at', { ascending: false })
+      .limit(20)
+    
+    if (error) {
+      console.error('Database search error:', error)
+      return []
+    }
+    
+    console.log('📊 Database search found:', opportunities?.length || 0)
+    return opportunities || []
+    
+  } catch (error) {
+    console.error('❌ Database search failed:', error)
+    return []
   }
 }
