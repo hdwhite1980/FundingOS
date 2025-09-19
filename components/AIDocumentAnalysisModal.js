@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, FileText, Target, Download, Sparkles } from 'lucide-react'
+import { X, FileText, Target, Download, Sparkles, Upload, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react'
 import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveApiUrl } from '../lib/apiUrlUtils'
@@ -13,6 +13,9 @@ export default function AIDocumentAnalysisModal({ opportunity, project, userProf
   const { user } = useAuth()
   const [generating, setGenerating] = useState(false)
   const [analysis, setAnalysis] = useState(null)
+  const [missingFieldRecommendations, setMissingFieldRecommendations] = useState([])
+  const [processingOCR, setProcessingOCR] = useState(false)
+  const [documentQuality, setDocumentQuality] = useState(null)
 
   useEffect(() => {
     if (user?.id) {
@@ -29,7 +32,13 @@ export default function AIDocumentAnalysisModal({ opportunity, project, userProf
       
       if (existing?.ai_analysis) {
         try {
-          setAnalysis(typeof existing.ai_analysis === 'string' ? JSON.parse(existing.ai_analysis) : existing.ai_analysis)
+          const parsedAnalysis = typeof existing.ai_analysis === 'string' ? JSON.parse(existing.ai_analysis) : existing.ai_analysis
+          setAnalysis(parsedAnalysis)
+          
+          // Generate missing field recommendations if we have form fields
+          if (parsedAnalysis?.formFields) {
+            generateMissingFieldRecommendations(parsedAnalysis.formFields)
+          }
         } catch (e) {
           console.warn('Could not parse existing analysis:', e)
         }
@@ -37,6 +46,110 @@ export default function AIDocumentAnalysisModal({ opportunity, project, userProf
     } catch (error) {
       console.error('Error loading existing analysis:', error)
     }
+  }
+
+  const handleEnhancedDocumentUpload = async (files) => {
+    if (!files || files.length === 0) return
+    
+    setProcessingOCR(true)
+    try {
+      const file = files[0]
+      console.log(`🔍 Processing ${file.name} with enhanced OCR analysis...`)
+      
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('context', JSON.stringify({
+        userProfile,
+        project,
+        opportunity
+      }))
+      
+      const response = await fetch(resolveApiUrl('/api/ai/enhanced-document-processing'), {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Document processing failed')
+      }
+      
+      const result = await response.json()
+      console.log('Enhanced document processing result:', result)
+      
+      if (result.success) {
+        setAnalysis(result.analysis)
+        setDocumentQuality(result.extraction.quality)
+        
+        // Generate recommendations for missing fields
+        if (result.analysis?.formFields) {
+          generateMissingFieldRecommendations(result.analysis.formFields)
+        }
+        
+        toast.success(`Document processed! Extracted ${result.extraction.cleanedText.length} characters with ${result.extraction.quality.quality} quality`)
+        
+        // Show quality warnings if needed
+        if (result.extraction.quality.issues?.length > 0) {
+          result.extraction.quality.issues.forEach(issue => {
+            toast.warning(issue, { duration: 4000 })
+          })
+        }
+      } else {
+        throw new Error(result.error || 'Processing failed')
+      }
+      
+    } catch (error) {
+      console.error('Enhanced document upload error:', error)
+      toast.error('Document processing failed: ' + error.message)
+    } finally {
+      setProcessingOCR(false)
+    }
+  }
+
+  const generateMissingFieldRecommendations = (formFields) => {
+    const recommendations = []
+    
+    Object.entries(formFields).forEach(([fieldName, fieldData]) => {
+      if (!fieldData.value || fieldData.value === '' || fieldData.value === '____' || fieldData.value === '_________') {
+        let recommendation = `Missing: ${fieldData.label || fieldName}`
+        
+        // Add AI suggestions based on field type and user profile
+        switch (fieldData.type) {
+          case 'email':
+            if (userProfile?.contact_email) {
+              recommendation += ` → Suggested: ${userProfile.contact_email}`
+            }
+            break
+          case 'phone':
+            if (userProfile?.phone) {
+              recommendation += ` → Suggested: ${userProfile.phone}`
+            }
+            break
+          case 'text':
+            if (fieldName.toLowerCase().includes('organization') && userProfile?.organization_name) {
+              recommendation += ` → Suggested: ${userProfile.organization_name}`
+            } else if (fieldName.toLowerCase().includes('address') && userProfile?.address) {
+              recommendation += ` → Suggested: ${userProfile.address}`
+            }
+            break
+          case 'currency':
+            if (fieldName.toLowerCase().includes('amount') && project?.funding_amount) {
+              recommendation += ` → Suggested: $${project.funding_amount.toLocaleString()}`
+            }
+            break
+        }
+        
+        recommendations.push({
+          field: fieldName,
+          label: fieldData.label || fieldName,
+          type: fieldData.type || 'text',
+          suggestion: recommendation,
+          required: fieldData.required || false
+        })
+      }
+    })
+    
+    setMissingFieldRecommendations(recommendations)
   }
 
   const handleGenerateDocument = async () => {
@@ -336,19 +449,99 @@ export default function AIDocumentAnalysisModal({ opportunity, project, userProf
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Enhanced Document Upload Section */}
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-6">
+                <div className="text-center">
+                  <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                  <h4 className="text-lg font-medium text-slate-900 mb-2">Upload Application Form (OCR Enabled)</h4>
+                  <p className="text-slate-600 mb-4">
+                    Upload a PDF or image of your application form. Our AI will extract text using OCR and identify all form fields.
+                  </p>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                    onChange={(e) => handleEnhancedDocumentUpload(e.target.files)}
+                    className="hidden"
+                    id="enhanced-document-upload"
+                  />
+                  <label
+                    htmlFor="enhanced-document-upload"
+                    className={`cursor-pointer inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors ${processingOCR ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {processingOCR ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-2" />
+                        Processing with OCR...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Choose Document
+                      </>
+                    )}
+                  </label>
+                </div>
+                
+                {documentQuality && (
+                  <div className={`mt-4 p-3 rounded-lg ${documentQuality.quality === 'good' ? 'bg-green-50 border border-green-200' : documentQuality.quality === 'fair' ? 'bg-yellow-50 border border-yellow-200' : 'bg-red-50 border border-red-200'}`}>
+                    <div className="flex items-center">
+                      <CheckCircle className={`w-4 h-4 mr-2 ${documentQuality.quality === 'good' ? 'text-green-600' : documentQuality.quality === 'fair' ? 'text-yellow-600' : 'text-red-600'}`} />
+                      <span className={`font-medium ${documentQuality.quality === 'good' ? 'text-green-900' : documentQuality.quality === 'fair' ? 'text-yellow-900' : 'text-red-900'}`}>
+                        Document Quality: {documentQuality.quality.toUpperCase()}
+                      </span>
+                    </div>
+                    {documentQuality.suggestions?.length > 0 && (
+                      <div className="mt-2">
+                        {documentQuality.suggestions.map((suggestion, index) => (
+                          <p key={index} className="text-sm text-slate-600">• {suggestion}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Missing Field Recommendations */}
+              {missingFieldRecommendations.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mr-2" />
+                    <h4 className="font-medium text-amber-900">Missing Information Detected</h4>
+                  </div>
+                  <p className="text-amber-800 text-sm mb-4">
+                    AI has identified {missingFieldRecommendations.length} fields that need completion. Here are intelligent suggestions:
+                  </p>
+                  <div className="space-y-3 max-h-40 overflow-y-auto">
+                    {missingFieldRecommendations.map((rec, index) => (
+                      <div key={index} className={`flex items-start p-3 rounded-lg ${rec.required ? 'bg-red-50 border border-red-200' : 'bg-slate-50 border border-slate-200'}`}>
+                        <Lightbulb className={`w-4 h-4 mt-0.5 mr-2 flex-shrink-0 ${rec.required ? 'text-red-600' : 'text-slate-600'}`} />
+                        <div className="flex-1">
+                          <p className={`font-medium ${rec.required ? 'text-red-900' : 'text-slate-900'}`}>
+                            {rec.label} {rec.required && <span className="text-red-600">*</span>}
+                          </p>
+                          <p className="text-sm text-slate-600">{rec.suggestion}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="text-center">
                 <div className="p-4 bg-blue-50 rounded-full w-16 h-16 mx-auto mb-6 flex items-center justify-center">
                   <FileText className="w-8 h-8 text-blue-600" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Generate Application Document</h3>
                 <p className="text-slate-600 mb-6">
-                  Generate a customized application document based on uploaded forms and project information
+                  Generate a customized application document {analysis ? 'with extracted fields and AI recommendations' : 'based on your project information'}
                 </p>
                 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <h4 className="font-medium text-blue-900 mb-2">What this includes:</h4>
                   <ul className="text-sm text-blue-800 text-left space-y-1">
                     <li>• Automatically filled form fields based on your project data</li>
+                    {analysis && <li>• OCR-extracted fields with intelligent completion</li>}
+                    <li>• AI recommendations for missing information</li>
                     <li>• Professional PDF formatting</li>
                     <li>• Integration with your organization profile</li>
                     <li>• Saved to your applications for tracking</li>
