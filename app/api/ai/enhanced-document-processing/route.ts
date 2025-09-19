@@ -1,96 +1,64 @@
 /**
- * Enhanced Document Processing API with OCR support
- * Handles text extraction from PDFs and images, then performs AI analysis
+ * Enhanced Document Processing API - Text Analysis Only
+ * Performs AI analysis on pre-extracted text from client-side OCR
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import enhancedDocumentProcessor from '../../../../lib/enhancedDocumentProcessor';
 import aiProviderService from '../../../../lib/aiProviderService';
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const context = JSON.parse(formData.get('context') as string || '{}');
+    const { extractedText, documentType, context } = await request.json();
     
-    if (!file) {
+    if (!extractedText || typeof extractedText !== 'string') {
       return NextResponse.json(
-        { error: 'No file provided' },
+        { error: 'Extracted text is required' },
         { status: 400 }
       );
     }
 
-    // Check file size
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` },
-        { status: 400 }
-      );
-    }
-
-    console.log(`📄 Processing ${file.name} (${file.type}, ${Math.round(file.size / 1024)}KB)`);
-
-    // Extract text using OCR or PDF parsing
-    const extractedText = await enhancedDocumentProcessor.extractText(file, file.type);
-    
-    if (!extractedText || extractedText.length < 10) {
+    if (extractedText.length < 10) {
       return NextResponse.json({
         success: false,
-        error: 'No text could be extracted from the document',
+        error: 'Text too short for meaningful analysis',
         suggestions: [
-          'Ensure the document is clearly readable',
-          'Try uploading a higher resolution image',
-          'Check if the document is properly oriented'
+          'Ensure the document contains readable text',
+          'Try uploading a higher quality image',
+          'Check if OCR extraction was successful'
         ]
       }, { status: 400 });
     }
 
-    // Clean up OCR artifacts
-    const cleanedText = enhancedDocumentProcessor.cleanOCRText(extractedText);
-    
-    // Analyze document quality
-    const qualityAnalysis = enhancedDocumentProcessor.analyzeQuality(cleanedText, 100);
-
-    console.log(`✅ Extracted ${cleanedText.length} characters. Quality: ${qualityAnalysis.quality}`);
+    console.log(`🤖 Analyzing ${extractedText.length} characters of extracted text`);
 
     // Perform AI analysis on the extracted text
-    const aiAnalysis = await performAIAnalysis(cleanedText, file.type, context);
+    const aiAnalysis = await performAIAnalysis(extractedText, documentType || 'unknown', context || {});
 
-    // Combine extraction results with AI analysis
     const result = {
       success: true,
-      extraction: {
-        originalText: extractedText,
-        cleanedText: cleanedText,
-        quality: qualityAnalysis,
-        metadata: {
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          extractedLength: cleanedText.length,
-          processedAt: new Date().toISOString()
-        }
-      },
       analysis: aiAnalysis,
-      recommendations: generateRecommendations(aiAnalysis, qualityAnalysis)
+      metadata: {
+        textLength: extractedText.length,
+        documentType: documentType || 'unknown',
+        processedAt: new Date().toISOString()
+      },
+      recommendations: generateRecommendations(aiAnalysis)
     };
 
     return NextResponse.json(result);
 
   } catch (error) {
-    console.error('Enhanced document processing error:', error);
+    console.error('Document analysis error:', error);
     
     return NextResponse.json(
       { 
         success: false,
-        error: 'Document processing failed', 
+        error: 'Document analysis failed', 
         message: error instanceof Error ? error.message : 'Unknown error',
         suggestions: [
-          'Try a different file format (PDF or common image formats)',
-          'Ensure the file is not corrupted',
-          'Check that text in the document is clearly readable'
+          'Ensure the text was properly extracted',
+          'Try with a different document',
+          'Check that the document contains meaningful content'
         ]
       },
       { status: 500 }
@@ -98,9 +66,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function performAIAnalysis(text: string, fileType: string, context: any) {
-  const documentType = inferDocumentType(text, fileType);
-  
+async function performAIAnalysis(text: string, documentType: string, context: any) {
   const analysisPrompt = buildEnhancedAnalysisPrompt(text, documentType, context);
   
   const response = await aiProviderService.generateCompletion(
@@ -129,27 +95,11 @@ async function performAIAnalysis(text: string, fileType: string, context: any) {
   return aiProviderService.safeParseJSON(response.content);
 }
 
-function inferDocumentType(text: string, fileType: string): string {
-  const lowerText = text.toLowerCase();
-  
-  if (lowerText.includes('application') || lowerText.includes('form')) {
-    return 'application';
-  } else if (lowerText.includes('rfp') || lowerText.includes('request for proposal')) {
-    return 'rfp';
-  } else if (lowerText.includes('guidelines') || lowerText.includes('instructions')) {
-    return 'guidelines';
-  } else if (lowerText.includes('contract') || lowerText.includes('agreement')) {
-    return 'contract';
-  }
-  
-  return 'unknown';
-}
-
 function buildEnhancedAnalysisPrompt(text: string, documentType: string, context: any): string {
   const basePrompt = `
-ENHANCED DOCUMENT ANALYSIS (WITH OCR/PDF EXTRACTION)
+ENHANCED DOCUMENT ANALYSIS
 
-This document was processed using OCR/PDF extraction technology. Please provide comprehensive analysis with special attention to form fields and structure.
+Please provide comprehensive analysis of this document with special attention to form fields and structure.
 
 ANALYSIS REQUIREMENTS:
 
@@ -189,9 +139,9 @@ ${text.substring(0, 15000)}${text.length > 15000 ? '...[truncated]' : ''}
 }
 
 function getEnhancedSystemPrompt(documentType: string): string {
-  return `You are an expert document analysis AI with specialized expertise in processing OCR-extracted text from funding and grant documents.
+  return `You are an expert document analysis AI specializing in funding and grant documents.
 
-Your task is to analyze documents that have been processed through OCR/PDF extraction and provide comprehensive, structured analysis focusing heavily on form field extraction and completion guidance.
+Your task is to analyze document text and provide comprehensive, structured analysis focusing on form field extraction and completion guidance.
 
 CRITICAL: Pay special attention to identifying ALL form fields and fillable areas in the document. This includes:
 - Traditional form fields with labels and blanks
@@ -211,19 +161,13 @@ Always respond with valid JSON that includes:
 Focus on being extremely thorough in field extraction as this data will be used to generate intelligent form completions.`;
 }
 
-function generateRecommendations(analysis: any, qualityAnalysis: any): string[] {
+function generateRecommendations(analysis: any): string[] {
   const recommendations: string[] = [];
-
-  // Quality-based recommendations
-  if (qualityAnalysis.quality === 'poor') {
-    recommendations.push('⚠️ Document quality is low - consider rescanning with higher resolution');
-    recommendations.push('📸 Ensure document is well-lit and properly aligned when scanning');
-  }
 
   // Analysis-based recommendations
   if (analysis.formFields && Object.keys(analysis.formFields).length > 0) {
-    const emptyFields = Object.keys(analysis.formFields).length;
-    recommendations.push(`📝 ${emptyFields} form fields detected - AI can help complete them`);
+    const fieldCount = Object.keys(analysis.formFields).length;
+    recommendations.push(`📝 ${fieldCount} form fields detected - AI can help complete them`);
     recommendations.push('🤖 Use "Generate Smart Completion" to automatically fill fields based on your profile');
   }
 

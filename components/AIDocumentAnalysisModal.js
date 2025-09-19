@@ -54,48 +54,83 @@ export default function AIDocumentAnalysisModal({ opportunity, project, userProf
     setProcessingOCR(true)
     try {
       const file = files[0]
-      console.log(`🔍 Processing ${file.name} with enhanced OCR analysis...`)
+      console.log(`🔍 Processing ${file.name} with client-side OCR...`)
       
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('context', JSON.stringify({
-        userProfile,
-        project,
-        opportunity
-      }))
+      // Check file type and size
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
+      if (!validTypes.includes(file.type)) {
+        throw new Error('Unsupported file type. Please use JPG, PNG, GIF, WebP, or PDF.')
+      }
+
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error('File too large. Maximum size is 10MB.')
+      }
+
+      // Extract text using client-side OCR
+      const { default: enhancedDocumentProcessor } = await import('../lib/enhancedDocumentProcessor')
       
-      const response = await fetch(resolveApiUrl('/api/ai/enhanced-document-processing'), {
+      console.log('📄 Extracting text from document...')
+      const extractedText = await enhancedDocumentProcessor.extractText(file, file.type)
+      
+      if (!extractedText || extractedText.length < 10) {
+        throw new Error('No readable text found in document. Please ensure the document is clearly readable and properly oriented.')
+      }
+
+      // Clean the text and analyze quality
+      const cleanedText = enhancedDocumentProcessor.cleanOCRText(extractedText)
+      const quality = enhancedDocumentProcessor.analyzeQuality(cleanedText)
+      
+      console.log(`✅ Extracted ${cleanedText.length} characters with ${quality.quality} quality`)
+      
+      // Perform AI analysis on extracted text
+      const analysisResponse = await fetch(resolveApiUrl('/api/ai/enhanced-document-processing'), {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          extractedText: cleanedText,
+          documentType: file.type,
+          context: {
+            userProfile,
+            project,
+            opportunity
+          }
+        })
       })
+
+      if (!analysisResponse.ok) {
+        const errorData = await analysisResponse.json()
+        throw new Error(errorData.message || errorData.error || 'Analysis failed')
+      }
+
+      const result = await analysisResponse.json()
+      console.log('Enhanced document analysis result:', result)
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Document processing failed')
+      if (!result.success) {
+        throw new Error(result.error || 'Analysis failed')
+      }
+
+      setAnalysis(result.analysis)
+      setDocumentQuality(quality)
+      
+      // Generate recommendations for missing fields
+      if (result.analysis?.formFields) {
+        generateMissingFieldRecommendations(result.analysis.formFields)
       }
       
-      const result = await response.json()
-      console.log('Enhanced document processing result:', result)
+      toast.success(`Document processed! Extracted ${cleanedText.length} characters with ${quality.quality} quality`)
       
-      if (result.success) {
-        setAnalysis(result.analysis)
-        setDocumentQuality(result.extraction.quality)
-        
-        // Generate recommendations for missing fields
-        if (result.analysis?.formFields) {
-          generateMissingFieldRecommendations(result.analysis.formFields)
-        }
-        
-        toast.success(`Document processed! Extracted ${result.extraction.cleanedText.length} characters with ${result.extraction.quality.quality} quality`)
-        
-        // Show quality warnings if needed
-        if (result.extraction.quality.issues?.length > 0) {
-          result.extraction.quality.issues.forEach(issue => {
-            toast.warning(issue, { duration: 4000 })
-          })
-        }
-      } else {
-        throw new Error(result.error || 'Processing failed')
+      // Show quality warnings if needed
+      if (quality.issues?.length > 0) {
+        quality.issues.forEach(issue => {
+          toast.warning(issue, { duration: 4000 })
+        })
+      }
+
+      // Show quality suggestions
+      if (quality.suggestions?.length > 0) {
+        quality.suggestions.forEach(suggestion => {
+          toast.info(suggestion, { duration: 6000 })
+        })
       }
       
     } catch (error) {
