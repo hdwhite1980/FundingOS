@@ -55,11 +55,11 @@ export default function OpportunityList({
     amountRange: 'all', // all, small, medium, large
     organizationType: 'all',
     
-    // Eligibility filters (when enabled)
-    onlyEligible: enableEligibilityCheck,
+    // Eligibility filters (when enabled) - Make these more permissive by default
+    onlyEligible: false, // Changed from enableEligibilityCheck to false
     excludeWarnings: false,
-    minConfidence: 70,
-    showIneligible: false,
+    minConfidence: 50, // Lowered from 70 to 50
+    showIneligible: true, // Changed to true to show all opportunities
     smallBusinessOnly: false
   })
   
@@ -146,14 +146,25 @@ export default function OpportunityList({
     try {
       setLoading(true)
       
+      console.log('🔍 Loading opportunities with filters:', {
+        selectedProject: selectedProject?.name,
+        projectType: selectedProject?.project_type,
+        userOrgType: userProfile?.organization_type,
+        enableEligibilityCheck,
+        filters
+      })
+      
       let loadedOpportunities
       
       if (enableEligibilityCheck) {
         // Use enhanced opportunity service with eligibility filtering
+        const projectTypes = selectedProject.project_type ? [selectedProject.project_type] : []
+        console.log('🎯 Project types for search:', projectTypes)
+        
         loadedOpportunities = await opportunityService.getEligibleOpportunities(
           userProfile,
           {
-            projectTypes: [selectedProject.project_type],
+            projectTypes: projectTypes,
             organizationType: userProfile.organization_type,
             state: userProfile.state,
             onlyEligible: filters.onlyEligible,
@@ -163,6 +174,17 @@ export default function OpportunityList({
             showIneligible: filters.showIneligible
           }
         )
+        
+        console.log('✅ Loaded opportunities:', {
+          total: loadedOpportunities?.length || 0,
+          eligibleCount: loadedOpportunities?.filter(opp => opp.eligibility?.eligible)?.length || 0,
+          firstFew: loadedOpportunities?.slice(0, 3)?.map(o => ({ 
+            id: o.id, 
+            title: o.title?.substring(0, 40), 
+            eligible: o.eligibility?.eligible,
+            score: o.eligibilityScore 
+          })) || []
+        })
         
         // Show eligibility stats
         const totalCount = loadedOpportunities.length
@@ -177,10 +199,22 @@ export default function OpportunityList({
         }
       } else {
         // Use basic opportunity service
+        const projectTypes = selectedProject.project_type ? [selectedProject.project_type] : []
+        console.log('🎯 Basic project types for search:', projectTypes)
+        
         loadedOpportunities = await opportunityService.getOpportunities({
-          projectTypes: [selectedProject.project_type],
+          projectTypes: projectTypes,
           organizationType: userProfile.organization_type,
           state: userProfile.state
+        })
+        
+        console.log('✅ Loaded basic opportunities:', {
+          total: loadedOpportunities?.length || 0,
+          firstFew: loadedOpportunities?.slice(0, 3)?.map(o => ({ 
+            id: o.id, 
+            title: o.title?.substring(0, 40),
+            project_types: o.project_types
+          })) || []
         })
       }
       
