@@ -162,6 +162,20 @@ export default function EnhancedApplicationTracker({
         throw new Error('Selected project not found')
       }
 
+      console.log('📋 Project data for completion:', {
+        id: project.id,
+        name: project.name || project.title,
+        funding: project.funding_needed || project.total_project_budget,
+        availableFields: Object.keys(project)
+      })
+      
+      console.log('👤 User profile data:', {
+        hasEmail: !!userProfile?.email,
+        hasOrganization: !!userProfile?.organization_name,
+        hasName: !!(userProfile?.full_name || userProfile?.first_name),
+        availableFields: userProfile ? Object.keys(userProfile) : null
+      })
+
       // Combine form fields from all analyzed documents
       const combinedFormFields = {}
       const combinedRequirements = []
@@ -175,16 +189,43 @@ export default function EnhancedApplicationTracker({
         }
       })
 
-      // Use smart form completion service to fill out the form
-      const completion = await smartFormCompletionService.analyzeAndCompleteForm(
-        combinedFormFields,
-        userProfile,
-        project,
-        [] // previousApplications - empty for now
-      )
+      // Use the server-side smart form completion API instead of client service
+      console.log('🔄 Calling smart form completion API with data:', {
+        formFields: Object.keys(combinedFormFields).length,
+        userProfile: userProfile ? Object.keys(userProfile) : null,
+        project: project ? Object.keys(project) : null
+      });
+
+      const completionResponse = await fetch('/api/ai/smart-form-completion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          formStructure: { formFields: combinedFormFields },
+          userData: {
+            userProfile,
+            project,
+            organization: userProfile
+          }
+        })
+      });
+
+      if (!completionResponse.ok) {
+        const errorText = await completionResponse.text();
+        console.error('Form completion API error:', errorText);
+        throw new Error(`Form completion failed: ${errorText}`);
+      }
+
+      const completion = await completionResponse.json();
+      console.log('✅ Form completion result:', completion);
 
       setFormCompletion(completion)
       setFilledForm(completion.filledForm || completion.fieldCompletions || {})
+      
+      console.log('📊 Form completion summary:', {
+        completionPercentage: completion.completionPercentage,
+        fieldsCompleted: Object.keys(completion.filledForm || {}).length,
+        sampleFields: Object.entries(completion.filledForm || {}).slice(0, 3)
+      });
       
       // Create mock opportunity data for AI analysis
       const mockOpportunity = {
