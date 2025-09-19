@@ -66,9 +66,21 @@ export const analyzeProactiveTriggers = ({
   const now = new Date()
   
   // 1. DEADLINE ALERTS - High Priority
-  opportunities.forEach(opp => {
-    if (opp.deadline_date || opp.deadline || opp.application_deadline) {
-      const deadline = new Date(opp.deadline_date || opp.deadline || opp.application_deadline)
+  // Only alert for opportunities that have active projects/applications
+  const activeApplications = projects.filter(p => 
+    p.selected_opportunity_id || p.opportunity_id || p.grant_id
+  )
+  
+  activeApplications.forEach(project => {
+    // Find the associated opportunity
+    const associatedOpp = opportunities.find(opp => 
+      opp.id === project.selected_opportunity_id || 
+      opp.id === project.opportunity_id || 
+      opp.id === project.grant_id
+    )
+    
+    if (associatedOpp && (associatedOpp.deadline_date || associatedOpp.deadline || associatedOpp.application_deadline)) {
+      const deadline = new Date(associatedOpp.deadline_date || associatedOpp.deadline || associatedOpp.application_deadline)
       const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24))
       
       if (daysLeft <= 7 && daysLeft > 0) {
@@ -76,9 +88,32 @@ export const analyzeProactiveTriggers = ({
           type: 'deadline_approaching',
           priority: 9,
           title: `Application Deadline in ${daysLeft} Days`,
-          message: `Don't miss the ${opp.title} deadline!`,
+          message: `Your ${project.name} application deadline is approaching!`,
           context: { 
-            opportunity: opp, 
+            opportunity: associatedOpp,
+            project: project,
+            daysLeft,
+            urgency: daysLeft <= 3 ? 'critical' : 'high'
+          }
+        })
+      }
+    }
+  })
+  
+  // Also check submissions for deadlines
+  submissions.forEach(submission => {
+    if (submission.deadline_date || submission.next_report_due) {
+      const deadline = new Date(submission.deadline_date || submission.next_report_due)
+      const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24))
+      
+      if (daysLeft <= 7 && daysLeft > 0) {
+        triggers.push({
+          type: 'deadline_approaching',
+          priority: 9,
+          title: `Submission Deadline in ${daysLeft} Days`,
+          message: `Don't miss your ${submission.title || 'application'} deadline!`,
+          context: { 
+            submission: submission,
             daysLeft,
             urgency: daysLeft <= 3 ? 'critical' : 'high'
           }

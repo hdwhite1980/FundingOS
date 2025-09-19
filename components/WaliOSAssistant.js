@@ -82,7 +82,19 @@ export default function WaliOSAssistant({
 	const generateProactiveMessage = () => {
 		const { trigger, context } = triggerContext
 		switch (trigger) {
-			case 'deadline_approaching': return `⏰ You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
+			case 'deadline_approaching': {
+				const { context } = triggerContext
+				const isProject = context?.project
+				const isSubmission = context?.submission
+				
+				if (isProject) {
+					return `⏰ Your project "${context.project.name}" has an application deadline in ${context?.daysLeft} days. Want help preparing?`
+				} else if (isSubmission) {
+					return `⏰ You have a submission deadline in ${context?.daysLeft} days. Want focused help preparing?`
+				} else {
+					return `⏰ You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
+				}
+			}
 			case 'incomplete_application': return `📝 One application is ${context?.completionPercentage}% complete. I can help you finish it quickly.`
 			case 'compliance_issue': return `⚠️ Some compliance items need attention for ${context?.projectName}. Shall we review them?`
 			case 'new_opportunity': return `🎯 I found ${context?.matchCount} new high-fit opportunities for your portfolio.`
