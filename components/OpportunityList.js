@@ -165,7 +165,7 @@ export default function OpportunityList({
           userProfile,
           {
             projectTypes: projectTypes,
-            organizationType: userProfile.organization_type,
+            // organizationType: userProfile.organization_type, // Removed - too restrictive
             state: userProfile.state,
             onlyEligible: filters.onlyEligible,
             excludeWarnings: filters.excludeWarnings,
@@ -204,7 +204,7 @@ export default function OpportunityList({
         
         loadedOpportunities = await opportunityService.getOpportunities({
           projectTypes: projectTypes,
-          organizationType: userProfile.organization_type,
+          // organizationType: userProfile.organization_type, // Removed - too restrictive
           state: userProfile.state
         })
         
