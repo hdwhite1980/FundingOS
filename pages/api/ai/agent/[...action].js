@@ -1214,6 +1214,18 @@ async function performWebSearch(userId, message, projects, userProfile) {
     // Combine results
     const allOpportunities = [...webResults, ...dbResults]
     
+    // Save new web search results to database
+    if (webResults.length > 0) {
+      try {
+        console.log(`💾 Saving ${webResults.length} new web opportunities to database...`)
+        await saveWebResultsToDatabase(webResults, searchQuery, userId)
+        console.log('✅ Successfully saved web results to database')
+      } catch (saveError) {
+        console.error('❌ Failed to save web results:', saveError.message)
+        // Don't fail the search if saving fails
+      }
+    }
+    
     const searchSources = []
     if (webResults.length > 0) searchSources.push('serper_web_search')
     if (dbResults.length > 0) searchSources.push('database_search')
@@ -1947,5 +1959,93 @@ async function searchDatabaseDirect(query, projectType, organizationType) {
   } catch (error) {
     console.error('❌ Database search failed:', error)
     return []
+  }
+}
+
+// Save web search results to opportunities table
+async function saveWebResultsToDatabase(webResults, searchQuery, userId) {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+    
+    // Convert web results to database format
+    const opportunitiesToSave = webResults.map(result => ({
+      title: result.title || 'Untitled Opportunity',
+      description: result.description || 'No description available',
+      source_url: result.url,
+      sponsor: result.domain || 'Web Search',
+      source: 'web_search_serper',
+      discovered_via: `Web search: "${searchQuery}"`,
+      discovered_by_user: userId,
+      search_engine: result.search_engine || 'google',
+      search_position: result.position || null,
+      relevance_score: result.relevance_score || 0.8,
+      funding_type: 'Unknown', // Will be analyzed later
+      organization_types: ['General'], // Default, can be updated
+      geographic_scope: 'Unknown',
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      // Add metadata for tracking
+      metadata: {
+        search_query: searchQuery,
+        discovered_at: new Date().toISOString(),
+        search_method: 'serper_api',
+        needs_analysis: true // Flag for later AI analysis
+      }
+    }))
+    
+    console.log(`📝 Prepared ${opportunitiesToSave.length} opportunities for database insertion`)
+    
+    // Check for duplicates before inserting (based on source_url)
+    const existingUrls = await supabase
+      .from('opportunities')
+      .select('source_url')
+      .in('source_url', opportunitiesToSave.map(o => o.source_url))
+    
+    const existingUrlSet = new Set(existingUrls.data?.map(o => o.source_url) || [])
+    const newOpportunities = opportunitiesToSave.filter(o => !existingUrlSet.has(o.source_url))
+    
+    if (newOpportunities.length === 0) {
+      console.log('ℹ️ All web results already exist in database, skipping insert')
+      return { inserted: 0, skipped: opportunitiesToSave.length }
+    }
+    
+    console.log(`📊 Inserting ${newOpportunities.length} new opportunities (${opportunitiesToSave.length - newOpportunities.length} duplicates skipped)`)
+    
+    // Insert new opportunities in batches (Supabase has limits)
+    const batchSize = 100
+    let totalInserted = 0
+    
+    for (let i = 0; i < newOpportunities.length; i += batchSize) {
+      const batch = newOpportunities.slice(i, i + batchSize)
+      
+      const { data, error } = await supabase
+        .from('opportunities')
+        .insert(batch)
+        .select('id')
+      
+      if (error) {
+        console.error(`❌ Failed to insert batch ${i / batchSize + 1}:`, error)
+        throw error
+      }
+      
+      totalInserted += data?.length || 0
+      console.log(`✅ Inserted batch ${i / batchSize + 1}: ${data?.length || 0} opportunities`)
+    }
+    
+    console.log(`🎉 Successfully saved ${totalInserted} new opportunities to database`)
+    
+    return {
+      inserted: totalInserted,
+      skipped: existingUrlSet.size,
+      total_processed: opportunitiesToSave.length
+    }
+    
+  } catch (error) {
+    console.error('❌ Error saving web results to database:', error)
+    throw error
   }
 }
