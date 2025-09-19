@@ -5,8 +5,9 @@
  * Run with: node test-score-invalidation.js
  */
 
-import { directUserServices } from './lib/supabase.js'
-import scoringCache from './lib/scoringCache.js'
+require('dotenv').config()
+const { directUserServices } = require('./lib/supabase.js')
+const { scoringCacheService } = require('./lib/scoringCache.js')
 
 const TEST_USER_ID = 'test-user-123' // Replace with actual user ID for testing
 const TEST_PROJECT_ID = 'test-project-456' // Replace with actual project ID
@@ -19,7 +20,7 @@ async function testScoreInvalidation() {
   try {
     // Test 1: Get or calculate initial score
     console.log('\n1. Testing initial score calculation...')
-    const initialScore = await scoringCache.getOrCalculateScore(
+    const initialScore = await scoringCacheService.getOrCalculateScore(
       TEST_USER_ID, 
       TEST_PROJECT_ID, 
       TEST_OPPORTUNITY_ID
@@ -28,7 +29,7 @@ async function testScoreInvalidation() {
     
     // Test 2: Get cached score (should be cached now)
     console.log('\n2. Testing cached score retrieval...')
-    const cachedScore = await scoringCache.getOrCalculateScore(
+    const cachedScore = await scoringCacheService.getOrCalculateScore(
       TEST_USER_ID, 
       TEST_PROJECT_ID, 
       TEST_OPPORTUNITY_ID
@@ -49,7 +50,7 @@ async function testScoreInvalidation() {
       funding_request_amount: 100000
     }
     
-    const invalidated = await scoringCache.smartInvalidateOnProjectUpdate(
+    const invalidated = await scoringCacheService.smartInvalidateOnProjectUpdate(
       TEST_USER_ID, 
       TEST_PROJECT_ID, 
       mockOldProject, 
@@ -59,7 +60,7 @@ async function testScoreInvalidation() {
     
     // Test 4: Verify score is recalculated
     console.log('\n4. Testing score recalculation after invalidation...')
-    const newScore = await scoringCache.getOrCalculateScore(
+    const newScore = await scoringCacheService.getOrCalculateScore(
       TEST_USER_ID, 
       TEST_PROJECT_ID, 
       TEST_OPPORTUNITY_ID
@@ -73,7 +74,7 @@ async function testScoreInvalidation() {
       updated_at: new Date().toISOString() // Only timestamp changed
     }
     
-    const notInvalidated = await scoringCache.smartInvalidateOnProjectUpdate(
+    const notInvalidated = await scoringCacheService.smartInvalidateOnProjectUpdate(
       TEST_USER_ID, 
       TEST_PROJECT_ID, 
       mockNewProject, 
@@ -95,7 +96,7 @@ async function testScoreInvalidation() {
       woman_owned: true
     }
     
-    const profileInvalidated = await scoringCache.smartInvalidateOnProfileUpdate(
+    const profileInvalidated = await scoringCacheService.smartInvalidateOnProfileUpdate(
       TEST_USER_ID, 
       mockOldProfile, 
       mockNewProfile
