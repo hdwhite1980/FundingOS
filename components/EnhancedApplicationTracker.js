@@ -388,11 +388,14 @@ export default function EnhancedApplicationTracker({
     setAnalysisData(null)
   }
   const handleFinalSubmit = () => {
+    // Get the properly calculated funding amount
+    const fundingAmount = formatFundingAmount().replace(/,/g, ''); // Remove commas for parsing
+    
     const finalData = {
       project_id: selectedProject,
       opportunity_title: filledForm.opportunity_title || documentAnalysis?.[0]?.analysis?.title || 'AI-Assisted Application',
       application_id: filledForm.application_id || '',
-      submitted_amount: parseFloat(filledForm.funding_amount || filledForm.budget_amount || filledForm.requested_amount || 0),
+      submitted_amount: parseFloat(fundingAmount || 0),
       submission_date: new Date().toISOString().split('T')[0],
       status: 'submitted',
       notes: `AI-assisted completion with ${formCompletion?.completionPercentage || 0}% completeness`,
@@ -682,7 +685,7 @@ export default function EnhancedApplicationTracker({
           <div>
             <span className="text-slate-600">Funding Amount:</span>
             <div className="font-medium text-slate-900">
-              ${filledForm.funding_amount || filledForm.budget_amount || filledForm.requested_amount || '0'}
+              ${formatFundingAmount()}
             </div>
           </div>
           <div>
@@ -731,6 +734,46 @@ export default function EnhancedApplicationTracker({
       </div>
     </div>
   )
+
+  // Helper function to format funding amount from various sources
+  const formatFundingAmount = () => {
+    const currentProject = projects.find(p => p.id === selectedProject);
+    
+    // Priority order for funding amount sources:
+    // 1. Form-filled amounts (from AI completion)
+    const formFundingAmount = filledForm.funding_amount || 
+                             filledForm.budget_amount || 
+                             filledForm.requested_amount ||
+                             filledForm.amount_requested ||
+                             filledForm.total_budget ||
+                             filledForm.project_budget;
+    
+    if (formFundingAmount && formFundingAmount !== '0' && formFundingAmount !== 0) {
+      return Number(formFundingAmount).toLocaleString();
+    }
+    
+    // 2. Project funding needs
+    const projectFunding = currentProject?.funding_needed || 
+                          currentProject?.total_project_budget || 
+                          currentProject?.funding_request_amount ||
+                          currentProject?.budget_amount;
+    
+    if (projectFunding && projectFunding !== 0) {
+      return Number(projectFunding).toLocaleString();
+    }
+    
+    // 3. Opportunity amount range (use max if available)
+    if (formCompletion?.amountMax && formCompletion.amountMax > 0) {
+      return Number(formCompletion.amountMax).toLocaleString();
+    }
+    
+    if (formCompletion?.amountMin && formCompletion.amountMin > 0) {
+      return Number(formCompletion.amountMin).toLocaleString();
+    }
+    
+    // 4. Default fallback
+    return '0';
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
