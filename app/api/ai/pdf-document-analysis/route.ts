@@ -14,12 +14,24 @@ export const runtime = 'nodejs'
 // Extract text using PDF.js (serverless-safe, no file I/O, no workers)
 async function extractPDFText(pdfBuffer: Buffer): Promise<{ text: string; pages: number; info: any }> {
   try {
+    // Polyfill DOMMatrix in Node using canvas if missing
+    try {
+      if (!(globalThis as any).DOMMatrix) {
+        const canvasMod: any = await import('canvas')
+        if (canvasMod?.DOMMatrix) {
+          ;(globalThis as any).DOMMatrix = canvasMod.DOMMatrix
+        }
+      }
+    } catch (_) {
+      // ignore if canvas not available; pdfjs may still work
+    }
+
     const pdfjsLib: any = await import('pdfjs-dist')
     if (pdfjsLib?.GlobalWorkerOptions) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = ''
     }
     const bytes = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer)
-    const loadingTask = pdfjsLib.getDocument({ data: bytes })
+    const loadingTask = pdfjsLib.getDocument({ data: bytes, disableWorker: true })
     const pdf = await loadingTask.promise
     let allText = ''
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
