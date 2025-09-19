@@ -112,26 +112,28 @@ export default function WaliOSAssistant({
 		setAssistantState('talking')
 		setIsAnimating(true)
 		
-		// Ensure we start with empty message and wait for state to settle
+		// Reset message state immediately and ensure it's really empty
 		setCurrentMessage('')
 		
 		setTimeout(() => {
-			let index = 0
 			const fullMessage = message.toString() // Ensure it's a string
+			console.log('WaliOS fullMessage:', JSON.stringify(fullMessage)) // Debug log
 			
+			// Use a more direct approach - build the message directly instead of relying on prev state
+			let currentIndex = 0
 			const typeWriter = () => {
-				if (index < fullMessage.length) { 
-					const nextChar = fullMessage.charAt(index)
-					console.log(`Adding character ${index}: "${nextChar}"`) // Debug log
-					setCurrentMessage(prev => {
-						const newMessage = prev + nextChar
-						console.log(`Current message state: "${newMessage}"`) // Debug log
-						return newMessage
-					})
-					index++
+				if (currentIndex < fullMessage.length) { 
+					const nextChar = fullMessage.charAt(currentIndex)
+					currentIndex++
+					
+					// Set the message directly from the source instead of using prev state
+					const newMessage = fullMessage.substring(0, currentIndex)
+					console.log(`Character ${currentIndex-1}: "${nextChar}" -> Message: "${newMessage}"`) // Debug log
+					
+					setCurrentMessage(newMessage)
 					setTimeout(typeWriter, 28) 
 				} else { 
-					console.log('Typewriter complete, final message length:', index) // Debug log
+					console.log('Typewriter complete, final message:', fullMessage) // Debug log
 					setIsAnimating(false)
 					setAssistantState('idle')
 					if (onComplete) onComplete()
