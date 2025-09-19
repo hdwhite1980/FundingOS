@@ -59,9 +59,12 @@ export default function WaliOSAssistant({
 		setIsThinking(true); setAssistantState('thinking')
 		setTimeout(() => {
 			const message = generateProactiveMessage()
+			console.log('Generated proactive message:', JSON.stringify(message)) // Debug log
 			showMessage(message, () => {
 				setTimeout(() => {
-					showMessage('Would you like help with this now?', () => { setShowInput(true); setAssistantState('listening') })
+					const followUp = 'Would you like help with this now?'
+					console.log('Generated follow-up message:', JSON.stringify(followUp)) // Debug log
+					showMessage(followUp, () => { setShowInput(true); setAssistantState('listening') })
 				}, 1800)
 			})
 		}, 800)
@@ -104,13 +107,39 @@ export default function WaliOSAssistant({
 	}
 
 	const showMessage = (message, onComplete) => {
-		setIsThinking(false); setAssistantState('talking'); setCurrentMessage(''); setIsAnimating(true)
-		let index = 0
-		const typeWriter = () => {
-			if (index < message.length) { setCurrentMessage(p => p + message.charAt(index)); index++; setTimeout(typeWriter, 28) }
-			else { setIsAnimating(false); setAssistantState('idle'); onComplete && onComplete() }
-		}
-		typeWriter()
+		console.log('WaliOS showMessage called with:', JSON.stringify(message)) // Debug log
+		setIsThinking(false) 
+		setAssistantState('talking')
+		setIsAnimating(true)
+		
+		// Ensure we start with empty message and wait for state to settle
+		setCurrentMessage('')
+		
+		setTimeout(() => {
+			let index = 0
+			const fullMessage = message.toString() // Ensure it's a string
+			
+			const typeWriter = () => {
+				if (index < fullMessage.length) { 
+					const nextChar = fullMessage.charAt(index)
+					console.log(`Adding character ${index}: "${nextChar}"`) // Debug log
+					setCurrentMessage(prev => {
+						const newMessage = prev + nextChar
+						console.log(`Current message state: "${newMessage}"`) // Debug log
+						return newMessage
+					})
+					index++
+					setTimeout(typeWriter, 28) 
+				} else { 
+					console.log('Typewriter complete, final message length:', index) // Debug log
+					setIsAnimating(false)
+					setAssistantState('idle')
+					if (onComplete) onComplete()
+				}
+			}
+			
+			typeWriter()
+		}, 50) // Small delay to ensure state is reset
 	}
 
 	const handleUserInput = async (input) => {
