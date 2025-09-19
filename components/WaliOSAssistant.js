@@ -262,14 +262,11 @@ export default function WaliOSAssistant({
 	return (
 		<div 
 			className={`fixed z-50 ${expanded ? 'inset-0 p-4 md:p-6 flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}
-			style={expanded ? {} : { 
-				left: `${position.x}px`, 
-				top: `${position.y}px`,
-				bottom: 'auto',
-				right: 'auto',
-				transform: position.x === 0 && position.y === 0 ? 'translate(-100%, -100%)' : 'none',
-				...(position.x === 0 && position.y === 0 ? { bottom: '24px', right: '24px' } : {})
-			}}
+			style={expanded ? {} : 
+				position.x === 0 && position.y === 0 
+					? { bottom: '24px', right: '24px' } // Default position
+					: { left: `${position.x}px`, top: `${position.y}px` } // Custom position
+			}
 		>
 			<AnimatePresence>
 				{isOpen && (
