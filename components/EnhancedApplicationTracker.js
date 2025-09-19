@@ -573,7 +573,11 @@ export default function EnhancedApplicationTracker({
               </div>
               <div className="text-sm text-slate-600">
                 <p><strong>Type:</strong> {doc.analysis?.documentType || 'Unknown'}</p>
-                <p><strong>Fields Found:</strong> {Object.keys(doc.analysis?.formFields || {}).length}</p>
+                <p><strong>Fields Found:</strong> {
+                  Object.keys(doc.analysis?.formFields || {}).length > 0 
+                    ? Object.keys(doc.analysis?.formFields || {}).length
+                    : (dynamicFormStructure ? Object.keys(dynamicFormStructure.formFields || {}).length : 0)
+                }</p>
                 <p><strong>Requirements:</strong> {doc.analysis?.requirements?.length || 0} found</p>
                 {dynamicFormStructure && (
                   <p><strong>Form Fields Extracted:</strong> {Object.keys(dynamicFormStructure.formFields || {}).length}</p>
