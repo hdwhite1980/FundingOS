@@ -11,14 +11,24 @@ import aiProviderService from '../../../../lib/aiProviderService.js'
 // Ensure Node.js runtime for Buffer/pdf-parse support on Vercel
 export const runtime = 'nodejs'
 
-// Extract text from PDF with pdf-parse (normalized import + Uint8Array input)
+// Extract text using PDF.js (serverless-safe, no file I/O, no workers)
 async function extractPDFText(pdfBuffer: Buffer): Promise<{ text: string; pages: number; info: any }> {
   try {
-    const mod: any = await import('pdf-parse')
-    const pdfParse: any = mod?.default || mod
-    const input = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer)
-    const data = await pdfParse(input)
-    return { text: data.text || '', pages: data.numpages || 0, info: data.info || {} }
+    const pdfjsLib: any = await import('pdfjs-dist')
+    if (pdfjsLib?.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+    }
+    const bytes = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer)
+    const loadingTask = pdfjsLib.getDocument({ data: bytes })
+    const pdf = await loadingTask.promise
+    let allText = ''
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum)
+      const textContent = await page.getTextContent()
+      const pageText = textContent.items.map((it: any) => (it?.str ? String(it.str) : '')).join(' ')
+      allText += pageText + '\n\n'
+    }
+    return { text: allText.trim(), pages: pdf.numPages || 0, info: {} }
   } catch (error: any) {
     throw new Error(`PDF text extraction failed: ${error?.message || String(error)}`)
   }
