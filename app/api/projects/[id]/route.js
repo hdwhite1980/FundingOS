@@ -32,6 +32,20 @@ export async function PUT(request, { params }) {
     // Create service role client (bypasses RLS)
     const supabase = getSupabaseServiceClient()
     
+    // Get current project data for score invalidation comparison
+    let currentProject = null
+    try {
+      const { data: currentData } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .eq('user_id', userId)
+        .single()
+      currentProject = currentData
+    } catch (error) {
+      console.warn('Could not fetch current project for comparison:', error.message)
+    }
+    
     // Prepare update data
     const updateData = {
       ...projectData,
@@ -59,6 +73,15 @@ export async function PUT(request, { params }) {
         },
         { status: 500 }
       )
+    }
+
+    // Smart cache invalidation - only invalidate if significant changes
+    try {
+      const { default: scoringCache } = await import('../../../../lib/scoringCache.js')
+      await scoringCache.smartInvalidateOnProjectUpdate(userId, projectId, currentProject, data)
+    } catch (cacheError) {
+      console.warn('⚠️ Cache invalidation failed (non-critical):', cacheError.message)
+      // Don't fail the update if cache invalidation fails
     }
 
     console.log('✅ Project updated successfully:', data.id)

@@ -119,6 +119,19 @@ export async function PUT(req: NextRequest) {
       .eq('user_id', userId)
       .maybeSingle()
 
+    // Get current profile data for comparison
+    let currentProfile = null
+    try {
+      const { data: currentData } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+      currentProfile = currentData
+    } catch (error) {
+      console.warn('Could not fetch current profile for comparison:', error)
+    }
+
     if (existingProfile) {
       // Profile exists - update it
       const { data, error } = await supabase
@@ -132,6 +145,16 @@ export async function PUT(req: NextRequest) {
         .single()
       
       if (error) throw error
+
+      // Smart cache invalidation - only invalidate if significant changes
+      try {
+        const { default: scoringCache } = await import('../../../../lib/scoringCache.js')
+        await scoringCache.smartInvalidateOnProfileUpdate(userId, currentProfile, data)
+      } catch (cacheError) {
+        console.warn('⚠️ Cache invalidation failed (non-critical):', cacheError.message)
+        // Don't fail the update if cache invalidation fails
+      }
+
       return NextResponse.json({ profile: data })
     } else {
       // Profile doesn't exist - create it (DO NOT include 'id' field, let it auto-generate)
@@ -150,6 +173,16 @@ export async function PUT(req: NextRequest) {
         .single()
       
       if (error) throw error
+
+      // For new profiles, no need to invalidate since there shouldn't be cached scores yet
+      // But invalidate anyway to be safe
+      try {
+        const { default: scoringCache } = await import('../../../../lib/scoringCache.js')
+        await scoringCache.invalidateUserScores(userId)
+      } catch (cacheError) {
+        console.warn('⚠️ Cache invalidation failed (non-critical):', cacheError.message)
+      }
+
       return NextResponse.json({ profile: data })
     }
   } catch (e: any) {
