@@ -11,14 +11,16 @@ import aiProviderService from '../../../../lib/aiProviderService.js'
 // Ensure Node.js runtime for Buffer/pdf-parse support on Vercel
 export const runtime = 'nodejs'
 
-// Extract text from PDF with pdf-parse (dynamic import to avoid bundling issues)
+// Extract text from PDF with pdf-parse (normalized import + Uint8Array input)
 async function extractPDFText(pdfBuffer: Buffer): Promise<{ text: string; pages: number; info: any }> {
   try {
-    const pdfParse = await import('pdf-parse')
-    const data = await pdfParse.default(pdfBuffer)
+    const mod: any = await import('pdf-parse')
+    const pdfParse: any = mod?.default || mod
+    const input = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer)
+    const data = await pdfParse(input)
     return { text: data.text || '', pages: data.numpages || 0, info: data.info || {} }
   } catch (error: any) {
-    throw new Error(`PDF text extraction failed: ${error.message || String(error)}`)
+    throw new Error(`PDF text extraction failed: ${error?.message || String(error)}`)
   }
 }
 
