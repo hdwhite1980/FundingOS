@@ -158,7 +158,7 @@ export async function sendNewOpportunityAlert(investorEmail, opportunity) {
 }
 
 /**
- * Send chat history export email to user
+ * Send chat history export email to user using SendGrid dynamic template
  * @param {string} userEmail - User's email address
  * @param {Object} exportData - Exported chat data with userProfile, conversations, summary
  */
@@ -183,218 +183,35 @@ export async function sendChatHistoryEmail(userEmail, exportData) {
     day: 'numeric' 
   })}`
   
-  // Prepare chat messages for template
+  // Prepare chat messages for template (SendGrid format)
   const chatMessages = formatChatMessagesForEmail(summary.sessionGroups)
   
-  // Create the professional HTML email using the provided template
-  const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wali-OS Daily Brief</title>
-    <style>
-        body {
-            font-family: 'Georgia', 'Times New Roman', serif;
-            line-height: 1.7;
-            color: #2c3e50;
-            background-color: #ffffff;
-            margin: 0;
-            padding: 30px 20px;
-        }
-        .email-container {
-            max-width: 680px;
-            margin: 0 auto;
-            border: 1px solid #e8e8e8;
-            background-color: #ffffff;
-        }
-        .letterhead {
-            background-color: #10b981;
-            color: white;
-            padding: 25px 40px;
-        }
-        .letterhead h1 {
-            margin: 0;
-            font-size: 26px;
-            font-weight: 400;
-            letter-spacing: 1px;
-        }
-        .letterhead .tagline {
-            margin: 5px 0 0 0;
-            font-size: 13px;
-            opacity: 0.9;
-            font-style: italic;
-        }
-        .content {
-            padding: 40px;
-        }
-        .date-header {
-            text-align: right;
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 30px;
-            border-bottom: 1px solid #ecf0f1;
-            padding-bottom: 15px;
-        }
-        .salutation {
-            font-size: 16px;
-            margin-bottom: 25px;
-        }
-        .executive-summary {
-            background-color: #f8f9fa;
-            border-left: 4px solid #10b981;
-            padding: 20px 25px;
-            margin: 25px 0;
-        }
-        .executive-summary h3 {
-            margin: 0 0 15px 0;
-            font-size: 16px;
-            color: #2c3e50;
-        }
-        .metrics {
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
-        }
-        .metric {
-            text-align: center;
-            flex: 1;
-        }
-        .metric-value {
-            font-size: 22px;
-            font-weight: 600;
-            color: #10b981;
-            display: block;
-        }
-        .metric-label {
-            font-size: 12px;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .section-header {
-            font-size: 18px;
-            color: #2c3e50;
-            margin: 35px 0 20px 0;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #ecf0f1;
-        }
-        .conversation-item {
-            margin: 20px 0;
-            padding: 18px 0;
-            border-bottom: 1px solid #ecf0f1;
-        }
-        .conversation-item:last-child {
-            border-bottom: none;
-        }
-        .speaker {
-            font-weight: 600;
-            font-size: 13px;
-            color: #10b981;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .timestamp {
-            font-size: 12px;
-            color: #95a5a6;
-            float: right;
-        }
-        .message-text {
-            margin-top: 8px;
-            font-size: 15px;
-            line-height: 1.6;
-        }
-        .signature {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ecf0f1;
-        }
-        .footer {
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px 40px;
-            text-align: center;
-            font-size: 12px;
-        }
-        .footer a {
-            color: #10b981;
-            text-decoration: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="email-container">
-        <div class="letterhead">
-            <h1>WALI-OS</h1>
-            <div class="tagline">Intelligent Funding Solutions</div>
-        </div>
-        
-        <div class="content">
-            <div class="date-header">
-                Daily Intelligence Brief<br>
-                ${dateRange}
-            </div>
-            
-            <div class="salutation">
-                Dear ${escapeHTMLForEmail(userProfile.first_name || 'Valued User')},
-            </div>
-            
-            <p>Please find below your daily summary of funding intelligence conversations and strategic insights gathered over the past 24 hours.</p>
-            
-            <div class="executive-summary">
-                <h3>Executive Summary</h3>
-                <div class="metrics">
-                    <div class="metric">
-                        <span class="metric-value">${metrics.totalMessages}</span>
-                        <span class="metric-label">Exchanges</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-value">${metrics.opportunitiesDiscussed}</span>
-                        <span class="metric-label">Opportunities</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-value">${metrics.recommendationsMade}</span>
-                        <span class="metric-label">Strategic Insights</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-header">Conversation Log</div>
-            
-            ${chatMessages.map(msg => `
-            <div class="conversation-item">
-                <div class="speaker">
-                    ${msg.isAiResponse ? 'Wali-OS Intelligence Agent' : escapeHTMLForEmail(userProfile.first_name || 'User')}
-                    <span class="timestamp">${msg.timestamp}</span>
-                </div>
-                <div class="message-text">${escapeHTMLForEmail(msg.messageContent)}</div>
-            </div>
-            `).join('')}
-            
-            <div class="signature">
-                <p>Your dedicated funding intelligence system remains active and continues to monitor opportunities aligned with your organizational objectives.</p>
-                
-                <p>Respectfully,<br>
-                <strong>Wali-OS Intelligence System</strong></p>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p>Wali-OS Daily Intelligence Brief</p>
-            <p><a href="#preferences">Modify delivery preferences</a> | <a href="#support">Executive support</a></p>
-        </div>
-    </div>
-</body>
-</html>
-  `
+  // Prepare template data for SendGrid dynamic template
+  const templateData = {
+    // User information
+    first_name: userProfile.first_name || 'Valued User',
+    date_range: dateRange,
+    
+    // Executive summary metrics
+    total_messages: metrics.totalMessages,
+    opportunities_discussed: metrics.opportunitiesDiscussed,
+    recommendations_made: metrics.recommendationsMade,
+    
+    // Chat messages array for Handlebars iteration
+    chat_messages: chatMessages,
+    
+    // Footer links (you can customize these URLs)
+    unsubscribe_url: `${process.env.NEXT_PUBLIC_APP_URL}/unsubscribe?email=${encodeURIComponent(userEmail)}`,
+    support_url: `${process.env.NEXT_PUBLIC_APP_URL}/support`
+  }
   
   const subject = `Wali-OS Daily Intelligence Brief - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
   
   const emailContent = {
     to: userEmail,
     subject: subject,
-    html: htmlContent
+    template: 'daily-intelligence-brief', // Your SendGrid dynamic template ID/name
+    data: templateData
   }
   
   try {
@@ -516,7 +333,7 @@ async function sendEmail(emailData) {
 }
 
 /**
- * SendGrid integration example
+ * SendGrid integration with dynamic template support
  */
 async function sendWithSendGrid(emailData) {
   // Example implementation with SendGrid
@@ -527,10 +344,25 @@ async function sendWithSendGrid(emailData) {
   //   to: emailData.to,
   //   from: process.env.FROM_EMAIL,
   //   subject: emailData.subject,
-  //   html: emailData.html,
+  // }
+  
+  // // Check if using dynamic template
+  // if (emailData.template && emailData.data) {
+  //   msg.templateId = process.env[`SENDGRID_TEMPLATE_${emailData.template.toUpperCase().replace('-', '_')}`] || emailData.template
+  //   msg.dynamicTemplateData = emailData.data
+  // } else if (emailData.html) {
+  //   msg.html = emailData.html
   // }
   
   // return await sgMail.send(msg)
+  
+  console.log('📧 SendGrid email (template mode):', {
+    to: emailData.to,
+    subject: emailData.subject,
+    template: emailData.template,
+    dataKeys: emailData.data ? Object.keys(emailData.data) : [],
+    preview: emailData.html ? 'HTML content provided' : 'Using dynamic template'
+  })
   
   throw new Error('SendGrid not implemented - add your implementation here')
 }
@@ -613,7 +445,7 @@ function calculateEmailMetrics(summary, conversations) {
 }
 
 /**
- * Format chat messages for the email template
+ * Format chat messages for SendGrid dynamic template
  */
 function formatChatMessagesForEmail(sessionGroups) {
   const messages = []
@@ -626,8 +458,8 @@ function formatChatMessagesForEmail(sessionGroups) {
     if (session.messages && Array.isArray(session.messages)) {
       session.messages.forEach(msg => {
         messages.push({
-          isAiResponse: msg.role === 'assistant',
-          messageContent: msg.content || 'Message content not available',
+          is_ai_response: msg.role === 'assistant',
+          message_content: msg.content || 'Message content not available',
           timestamp: new Date(msg.created_at || msg.timestamp).toLocaleTimeString('en-US', { 
             hour: 'numeric', 
             minute: '2-digit',
