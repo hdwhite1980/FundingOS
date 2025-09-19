@@ -249,9 +249,131 @@ export default function AIDocumentAnalysisModal({ opportunity, project, userProf
           body: JSON.stringify({
             formStructure: dynamicFormStructure,
             userData: {
-              organization: userProfile?.organization || userProfile || {},
-              project: project || {},
-              user: userProfile || {}
+              // User & Authentication
+              user: {
+                id: user.id,
+                email: user.email,
+                full_name: userProfile?.full_name || user.user_metadata?.full_name,
+                user_role: userProfile?.user_role
+              },
+              
+              // Comprehensive Organization Data
+              organization: {
+                // Basic Information
+                organization_name: userProfile?.organization_name,
+                organization_type: userProfile?.organization_type,
+                organization_types: userProfile?.organization_types || [],
+                
+                // Legal & Compliance
+                tax_id: userProfile?.tax_id,
+                ein: userProfile?.tax_id, // alias for EIN
+                date_incorporated: userProfile?.date_incorporated,
+                state_incorporated: userProfile?.state_incorporated,
+                sam_gov_status: userProfile?.sam_gov_status,
+                grants_gov_status: userProfile?.grants_gov_status,
+                duns_uei_number: userProfile?.duns_uei_number,
+                compliance_history: userProfile?.compliance_history,
+                
+                // Address & Contact
+                address_line1: userProfile?.address_line1,
+                address_line2: userProfile?.address_line2,
+                city: userProfile?.city,
+                state: userProfile?.state,
+                zip_code: userProfile?.zip_code,
+                phone: userProfile?.phone,
+                website: userProfile?.website,
+                service_radius: userProfile?.service_radius,
+                additional_service_areas: userProfile?.additional_service_areas,
+                
+                // Organizational Capacity
+                annual_budget: userProfile?.annual_budget,
+                annual_revenue: userProfile?.annual_revenue,
+                full_time_staff: userProfile?.full_time_staff,
+                board_size: userProfile?.board_size,
+                years_in_operation: userProfile?.years_in_operation,
+                grant_experience: userProfile?.grant_experience,
+                largest_grant: userProfile?.largest_grant,
+                grant_writing_capacity: userProfile?.grant_writing_capacity,
+                data_collection_capacity: userProfile?.data_collection_capacity,
+                partnership_approach: userProfile?.partnership_approach,
+                
+                // Mission & Focus
+                mission_statement: userProfile?.mission_statement,
+                primary_service_areas: userProfile?.primary_service_areas,
+                target_demographics: userProfile?.target_demographics,
+                unique_differentiators: userProfile?.unique_differentiators,
+                key_outcomes: userProfile?.key_outcomes,
+                
+                // Financial Systems
+                audit_status: userProfile?.audit_status,
+                financial_systems: userProfile?.financial_systems,
+                
+                // Contact Person (Executive)
+                executive_director: userProfile?.full_name,
+                contact_person: userProfile?.full_name,
+                contact_email: userProfile?.email || user.email,
+                contact_phone: userProfile?.phone
+              },
+              
+              // Comprehensive Project Data
+              project: {
+                // Basic Project Info
+                id: project?.id,
+                name: project?.name,
+                title: project?.title || project?.name,
+                description: project?.description,
+                project_narrative: project?.project_narrative,
+                
+                // Project Categories & Type
+                project_categories: project?.project_categories,
+                project_type: project?.project_type,
+                primary_goals: project?.primary_goals,
+                
+                // Financial Information
+                funding_request_amount: project?.funding_request_amount,
+                funding_needed: project?.funding_needed,
+                funding_goal: project?.funding_goal,
+                total_project_budget: project?.total_project_budget,
+                budget: project?.budget,
+                
+                // Project Details
+                estimated_people_served: project?.estimated_people_served,
+                location: project?.location,
+                project_location: project?.project_location,
+                timeline: project?.timeline,
+                project_duration: project?.project_duration,
+                
+                // Project Outcomes
+                community_benefit: project?.community_benefit,
+                evaluation_plan: project?.evaluation_plan,
+                outcome_measures: project?.outcome_measures,
+                
+                // Funding Preferences
+                preferred_funding_types: project?.preferred_funding_types,
+                
+                // Dates
+                start_date: project?.start_date,
+                end_date: project?.end_date,
+                created_at: project?.created_at
+              },
+              
+              // Opportunity Context (for tailoring)
+              opportunity: {
+                id: opportunity?.id,
+                title: opportunity?.title,
+                amount_max: opportunity?.amount_max,
+                amount_min: opportunity?.amount_min,
+                organization_types: opportunity?.organization_types,
+                geographic_focus: opportunity?.geographic_focus,
+                program_areas: opportunity?.program_areas
+              },
+              
+              // Analysis Context (if available)
+              analysisContext: analysis ? {
+                formFields: analysis.formFields,
+                extractedText: analysis.extractedText,
+                documentStructure: analysis.documentStructure
+              } : null
             },
             options: {
               includeEmptyFields: false,
