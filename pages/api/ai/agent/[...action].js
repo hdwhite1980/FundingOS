@@ -103,6 +103,47 @@ export default async function handler(req, res) {
               }
             } catch (searchError) {
               console.error('Web search failed:', searchError)
+              // Create fallback response when web search fails
+              const fallbackResponse = `I tried to search the internet for new opportunities, but encountered a technical issue with the web search service.
+
+However, I can still help you with:
+• Analyzing the ${opportunities?.length || 0} opportunities already in our database
+• Providing detailed fits scores for your ${projects?.length || 0} projects
+• Giving you strategic advice on funding approaches
+
+Would you like me to analyze the current opportunities we have, or help you in another way?`
+
+              // Store conversation with fallback context
+              await supabase.from('agent_conversations').insert([
+                {
+                  user_id: userId,
+                  role: 'user',
+                  content: message,
+                  metadata: { 
+                    context_type: 'web_search_failed',
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                },
+                {
+                  user_id: userId,
+                  role: 'assistant',
+                  content: fallbackResponse,
+                  metadata: { 
+                    context_type: 'web_search_fallback',
+                    error_message: searchError.message,
+                    timestamp: new Date().toISOString() 
+                  },
+                  created_at: new Date().toISOString()
+                }
+              ])
+              
+              res.json({ 
+                message: fallbackResponse,
+                webSearchFailed: true,
+                error: searchError.message
+              })
+              return
               // Continue with regular chat if search fails
             }
           }

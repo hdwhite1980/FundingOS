@@ -1,4 +1,12 @@
-// pages/api/ai/agent/search-opportunities.js
+// pages/api/ai/agent/search-opp    // Initialize the enhanced discovery system
+    let discoverySystem;
+    try {
+      discoverySystem = new AIEnhancedOpportunityDiscovery() // Constructor doesn't take parameters
+      console.log('✅ AIEnhancedOpportunityDiscovery initialized successfully')
+    } catch (importError) {
+      console.error('Failed to initialize AIEnhancedOpportunityDiscovery:', importError)
+      throw new Error(`Discovery system initialization failed: ${importError.message}`)
+    }s.js
 // UPDATED: Now uses enhanced AI-powered discovery system with 65+ sources and general web searches
 import { createClient } from '@supabase/supabase-js'
 import AIEnhancedOpportunityDiscovery from '../../../../lib/ai-enhanced-opportunity-discovery'
@@ -31,13 +39,38 @@ export default async function handler(req, res) {
     console.log(`🚨 LEGACY API WRAPPER: Redirecting to enhanced discovery for query: "${searchQuery}"`)
 
     // Initialize the enhanced discovery system
-    const discoverySystem = new AIEnhancedOpportunityDiscovery(supabase)
+    let discoverySystem;
+    try {
+      discoverySystem = new AIEnhancedOpportunityDiscovery(supabase)
+      console.log('✅ AIEnhancedOpportunityDiscovery initialized successfully')
+    } catch (importError) {
+      console.error('Failed to initialize AIEnhancedOpportunityDiscovery:', importError)
+      throw new Error(`Discovery system initialization failed: ${importError.message}`)
+    }
     
     // Call the enhanced search with correct parameters
-    const results = await discoverySystem.performIntelligentWebSearch(
+    console.log('🔍 Calling performIntelligentWebSearch with params:', {
       searchQuery,
       projectType,
       organizationType
+    })
+    
+    // Create a default intent analysis since we don't have conversation context
+    const defaultIntentAnalysis = {
+      searchIntent: 'general_funding_search',
+      confidence: 0.7,
+      recommendedDepth: 'comprehensive',
+      prioritySources: ['government', 'foundations', 'grants_databases'],
+      enhancedSearchTerms: [searchQuery],
+      specificCategories: projectType ? [projectType] : [],
+      organizationFocus: organizationType || 'general'
+    }
+    
+    const results = await discoverySystem.performIntelligentWebSearch(
+      searchQuery,
+      projectType,
+      organizationType,
+      defaultIntentAnalysis
     )
 
     console.log(`✅ LEGACY API WRAPPER: Enhanced discovery found ${results?.opportunities?.length || 0} opportunities`)
@@ -55,6 +88,21 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ LEGACY API WRAPPER ERROR:', error)
-    return res.status(500).json({ error: 'Enhanced discovery system failed: ' + error.message })
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      searchQuery,
+      projectType,
+      organizationType
+    })
+    return res.status(500).json({ 
+      error: 'Enhanced discovery system failed: ' + error.message,
+      details: {
+        searchQuery,
+        projectType,
+        organizationType,
+        errorType: error.constructor.name
+      }
+    })
   }
 }
