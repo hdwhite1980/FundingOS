@@ -1,10 +1,77 @@
 /**
  * Enhanced PDF Document Analysis API with Server-side OCR
  * Handles complex documents like grant applications, loan forms, and registration documents
+ * Converts PDFs to images for AI vision models in Vercel serverless environment
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import aiProviderService from '../../../../lib/aiProviderService.js'
+
+// PDF to Image conversion for Vercel serverless environment using Puppeteer
+async function convertPDFToImages(pdfBuffer: Buffer): Promise<string[]> {
+  try {
+    // Use Puppeteer which is already in package.json and works in Vercel
+    const puppeteer = await import('puppeteer')
+    
+    console.log('🚀 Starting PDF to image conversion with Puppeteer...')
+    
+    // Create a temporary HTML page with the PDF embedded
+    const pdfBase64 = pdfBuffer.toString('base64')
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { margin: 0; padding: 0; }
+          embed { width: 100vw; height: 100vh; }
+        </style>
+      </head>
+      <body>
+        <embed src="data:application/pdf;base64,${pdfBase64}" type="application/pdf" />
+      </body>
+      </html>
+    `
+    
+    // Launch Puppeteer browser
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    })
+    
+    const page = await browser.newPage()
+    await page.setViewport({ width: 1200, height: 1600, deviceScaleFactor: 2 })
+    await page.setContent(htmlContent)
+    
+    // Wait for PDF to load
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Take screenshot
+    const screenshot = await page.screenshot({
+      type: 'png',
+      fullPage: true,
+      encoding: 'base64'
+    })
+    
+    await browser.close()
+    
+    console.log(`✅ Converted PDF to image (${Math.round(screenshot.length / 1024)}KB)`)
+    
+    return [screenshot as string]
+    
+  } catch (error) {
+    console.error('PDF to image conversion failed:', error)
+    
+    // Fallback: Return PDF as is and let the error handling deal with it
+    console.log('🔄 Falling back to direct PDF processing (may not work with vision models)')
+    const pdfBase64 = pdfBuffer.toString('base64')
+    return [pdfBase64]
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,14 +103,24 @@ export async function POST(request: NextRequest) {
       extractionMode
     })
 
-    // Convert file to base64 for AI processing
+    // Convert file to buffer for PDF processing
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const base64 = buffer.toString('base64')
+
+    // Convert PDF to images first for AI vision models
+    console.log('🖼️ Converting PDF to images for AI vision analysis...')
+    const pageImages = await convertPDFToImages(buffer)
+    
+    if (pageImages.length === 0) {
+      throw new Error('Failed to convert PDF to images')
+    }
+
+    console.log(`✅ Successfully converted PDF to ${pageImages.length} image(s)`)
 
     // Use enhanced prompts for complex document analysis
     const analysisPrompt = buildEnhancedPDFAnalysisPrompt(documentType, context, file.name)
     
+    // Build messages with images instead of direct PDF
     const messages = [
       {
         role: 'system',
@@ -56,13 +133,14 @@ export async function POST(request: NextRequest) {
             type: 'text',
             text: analysisPrompt.user
           },
-          {
+          // Add each page image
+          ...pageImages.map(imageBase64 => ({
             type: 'image_url',
             image_url: {
-              url: `data:${file.type};base64,${base64}`,
+              url: `data:image/png;base64,${imageBase64}`,
               detail: 'high'
             }
-          }
+          }))
         ]
       }
     ]
@@ -244,10 +322,12 @@ CRITICAL: Always return valid JSON matching this enhanced structure:
 
     user: `Perform comprehensive analysis of this ${documentType} document with enhanced structure recognition.
 
+IMPORTANT: You are analyzing high-resolution images of PDF pages. Each image represents a page from the original document.
+
 Document Context:
 - File Name: ${fileName}
 - Expected Type: ${documentType}
-- Analysis Mode: Enhanced structure extraction
+- Analysis Mode: Enhanced structure extraction from PDF page images
 - User Profile: ${context.userProfile ? 'Available for pre-filling' : 'Not provided'}
 - Project Data: ${context.projectData ? 'Available for context' : 'Not provided'}
 
