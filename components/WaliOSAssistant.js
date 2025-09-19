@@ -5,7 +5,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageCircle, X, Sparkles, Send } from 'lucide-react'
+import { MessageCircle, X, Sparkles, Send, GripHorizontal } from 'lucide-react'
 
 export default function WaliOSAssistant({ 
 	isVisible = true,
@@ -31,6 +31,32 @@ export default function WaliOSAssistant({
 	const scrollRef = useRef(null)
 	const [eyesBlink, setEyesBlink] = useState(false)
 	const [isAnimating, setIsAnimating] = useState(false)
+	
+	// Drag and drop state
+	const [position, setPosition] = useState({ x: 0, y: 0 })
+	const [isDragging, setIsDragging] = useState(false)
+	const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+	const assistantRef = useRef(null)
+
+	// Load saved position on mount
+	useEffect(() => {
+		const savedPosition = localStorage.getItem('waliOSAssistantPosition')
+		if (savedPosition) {
+			try {
+				const parsed = JSON.parse(savedPosition)
+				setPosition(parsed)
+			} catch (e) {
+				console.warn('Failed to parse saved assistant position:', e)
+			}
+		}
+	}, [])
+
+	// Save position when it changes
+	useEffect(() => {
+		if (position.x !== 0 || position.y !== 0) {
+			localStorage.setItem('waliOSAssistantPosition', JSON.stringify(position))
+		}
+	}, [position])
 
 	useEffect(() => {
 		const blinkInterval = setInterval(() => {
@@ -184,22 +210,95 @@ export default function WaliOSAssistant({
 		return `I’ll analyze how "${input}" maps to your funding strategy and follow up with actionable steps.`
 	}
 
+	// Drag functionality
+	const handleMouseDown = (e) => {
+		if (expanded) return // Don't allow dragging when expanded
+		setIsDragging(true)
+		setDragStart({
+			x: e.clientX - position.x,
+			y: e.clientY - position.y
+		})
+		e.preventDefault()
+	}
+
+	const handleMouseMove = (e) => {
+		if (!isDragging) return
+		
+		const newX = e.clientX - dragStart.x
+		const newY = e.clientY - dragStart.y
+		
+		// Keep assistant within viewport bounds
+		const windowWidth = window.innerWidth
+		const windowHeight = window.innerHeight
+		const assistantWidth = 320 // approximate width
+		const assistantHeight = 400 // approximate height
+		
+		const boundedX = Math.max(-assistantWidth + 64, Math.min(windowWidth - 64, newX))
+		const boundedY = Math.max(0, Math.min(windowHeight - assistantHeight, newY))
+		
+		setPosition({ x: boundedX, y: boundedY })
+	}
+
+	const handleMouseUp = () => {
+		setIsDragging(false)
+	}
+
+	// Add global mouse event listeners for dragging
+	useEffect(() => {
+		if (isDragging) {
+			document.addEventListener('mousemove', handleMouseMove)
+			document.addEventListener('mouseup', handleMouseUp)
+			
+			return () => {
+				document.removeEventListener('mousemove', handleMouseMove)
+				document.removeEventListener('mouseup', handleMouseUp)
+			}
+		}
+	}, [isDragging, dragStart, position])
+
 	const handleClose = () => { setIsOpen(false); setTimeout(() => onClose && onClose(), 280) }
 	if (!isVisible) return null
 
 	return (
-		<div className={`fixed ${expanded ? 'inset-0 p-4 md:p-6' : 'bottom-6 right-6'} z-50 ${expanded ? 'flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}>
+		<div 
+			className={`fixed z-50 ${expanded ? 'inset-0 p-4 md:p-6 flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}
+			style={expanded ? {} : { 
+				left: `${position.x}px`, 
+				top: `${position.y}px`,
+				bottom: 'auto',
+				right: 'auto',
+				transform: position.x === 0 && position.y === 0 ? 'translate(-100%, -100%)' : 'none',
+				...(position.x === 0 && position.y === 0 ? { bottom: '24px', right: '24px' } : {})
+			}}
+		>
 			<AnimatePresence>
 				{isOpen && (
 					<>
 						<motion.div
+							ref={assistantRef}
 							initial={{ opacity: 0, scale: 0.95, y: 20 }}
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 20 }}
-							className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : 'absolute bottom-20 right-0'} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col p-4 max-w-sm min-w-64`}
+							className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : ''} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col p-4 max-w-sm min-w-64 ${isDragging && !expanded ? 'shadow-2xl ring-2 ring-emerald-500/50' : ''}`}
+							style={!expanded ? { 
+								cursor: isDragging ? 'grabbing' : 'default',
+								transition: isDragging ? 'none' : 'all 0.2s ease'
+							} : {}}
 						>
 							<div className="flex items-start justify-between mb-2">
-								<div className="text-xs text-gray-500 font-medium">Wali-OS Assistant</div>
+								<div 
+									className={`text-xs text-gray-500 font-medium flex items-center gap-2 ${!expanded ? 'cursor-move select-none' : ''}`}
+									onMouseDown={!expanded ? handleMouseDown : undefined}
+									title={!expanded ? "Drag to move assistant" : ""}
+								>
+									{!expanded && (
+										<GripHorizontal className="w-3 h-3 text-gray-400" />
+									)}
+									Wali-OS Assistant
+									{isDragging && !expanded && (
+										<span className="text-emerald-500 text-xs">Moving...</span>
+									)}
+								</div>
 								<div className="flex items-center gap-1">
 									<button onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600 p-1" title={expanded ? 'Collapse' : 'Expand'}>
 										{expanded ? <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 11h6v6H7v-4H3v-2zm14-2h-6V3h2v4h4v2z"/></svg> : <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3h2v6H3V7h4V3zm6 14h-2v-6h6v2h-4v4z"/></svg>}
