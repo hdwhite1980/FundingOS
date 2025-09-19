@@ -744,6 +744,83 @@ export default function EnhancedApplicationTracker({
             </div>
           )}
         </div>
+        
+        {/* Form Fields Information Section */}
+        {dynamicFormStructure?.formFields && Object.keys(dynamicFormStructure.formFields).length > 0 && (
+          <div className="mt-6 bg-white rounded-lg border border-slate-200 p-4">
+            <h5 className="font-medium text-slate-900 mb-3 flex items-center">
+              <FileText className="w-4 h-4 mr-2 text-blue-600" />
+              Application Form Fields Identified
+            </h5>
+            <p className="text-sm text-slate-600 mb-4">
+              Our AI analysis identified {Object.keys(dynamicFormStructure.formFields).length} form fields from your uploaded documents:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+              {Object.entries(dynamicFormStructure.formFields).map(([fieldId, fieldConfig], index) => (
+                <div key={fieldId} className="flex items-start space-x-2 text-xs">
+                  <div className="w-4 h-4 bg-blue-100 text-blue-600 rounded text-center flex items-center justify-center font-bold text-xs">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-800">
+                      {fieldConfig.label || fieldId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </div>
+                    {fieldConfig.type && (
+                      <div className="text-slate-500">
+                        {fieldConfig.type} {fieldConfig.required ? '(Required)' : '(Optional)'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Form Completion Status */}
+        {filledForm && Object.keys(filledForm).length > 0 && (
+          <div className="mt-4 bg-emerald-50 rounded-lg border border-emerald-200 p-4">
+            <h5 className="font-medium text-slate-900 mb-3 flex items-center">
+              <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" />
+              AI Form Completion Status
+            </h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">
+                  {Object.keys(filledForm).filter(key => filledForm[key] && filledForm[key] !== '[To be completed]').length}
+                </div>
+                <div className="text-sm text-slate-600">Fields Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-600">
+                  {Object.keys(filledForm).filter(key => !filledForm[key] || filledForm[key] === '[To be completed]').length}
+                </div>
+                <div className="text-sm text-slate-600">Fields Pending</div>
+              </div>
+            </div>
+            
+            {Object.keys(filledForm).length > 0 && (
+              <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
+                <div className="text-sm font-medium text-slate-900 mb-2">Sample Completed Fields:</div>
+                {Object.entries(filledForm).slice(0, 8).map(([field, value]) => (
+                  <div key={field} className="flex justify-between text-xs">
+                    <span className="text-slate-600 capitalize truncate max-w-[120px]">
+                      {field.replace(/_/g, ' ')}:
+                    </span>
+                    <span className="text-slate-900 font-medium truncate max-w-[180px]">
+                      {typeof value === 'string' ? (value.length > 30 ? value.substring(0, 30) + '...' : value) : String(value)}
+                    </span>
+                  </div>
+                ))}
+                {Object.keys(filledForm).length > 8 && (
+                  <div className="text-xs text-slate-500 text-center">
+                    +{Object.keys(filledForm).length - 8} more fields
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex space-x-4">
