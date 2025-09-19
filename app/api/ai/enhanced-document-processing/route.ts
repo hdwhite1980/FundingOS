@@ -97,47 +97,67 @@ async function performAIAnalysis(text: string, documentType: string, context: an
 
 function buildEnhancedAnalysisPrompt(text: string, documentType: string, context: any): string {
   const basePrompt = `
-ENHANCED DOCUMENT ANALYSIS - FORM FIELD EXTRACTION
+ENHANCED DOCUMENT ANALYSIS - PRECISE FORM FIELD EXTRACTION
 
-You are analyzing OCR-extracted text from a form document. Your primary task is to identify ALL form fields exactly as they appear in the original document.
+You are analyzing OCR-extracted text from a form document. Your CRITICAL task is to identify EVERY SINGLE form field exactly as it appears in the original document.
 
-CRITICAL FIELD EXTRACTION REQUIREMENTS:
+FIELD EXTRACTION STRATEGY - MULTI-PASS ANALYSIS:
 
-1. EXACT FIELD IDENTIFICATION:
-   Look for these specific patterns in the OCR text:
-   - "Field Name: ____" or "Field Name: _______" or "Field Name: ________________"
-   - "Field Name: $______" (currency fields)
-   - "[ ] Option Name" or "☐ Option Name" (checkboxes)
-   - "Field Name: ( ) Option1 ( ) Option2" (radio buttons)
-   - Lines with colons followed by blank space or underscores
-   - Numbered or bulleted form sections
-   - Table-like structures with labels and blank spaces
+PASS 1 - EXPLICIT FIELD PATTERNS:
+Look for these EXACT patterns in the OCR text:
+- "Field Name: ____________________" (any length of underscores/dashes/dots)
+- "Field Name: $_____" (currency fields)
+- "Field Name: [____]" (bracketed fields) 
+- "Field Name: (" or "Field Name: (_____)" (parenthetical fields)
+- "Field Name: □" or "Field Name: ☐" (checkbox fields)
+- "Field Name:" followed by blank lines or whitespace
+- Table rows with labels and empty cells/spaces
 
-2. FIELD STRUCTURE PRESERVATION:
-   - Extract the EXACT field label/name as written in the document
-   - Identify the field type based on context (text, number, date, currency, email, phone, select, checkbox, textarea)
-   - Note if field appears required (*, "required", "mandatory")
-   - Preserve any validation hints or instructions near the field
-   - Maintain the original field order and grouping
+PASS 2 - CONTEXTUAL FIELD DETECTION:
+- Lines ending with colons (:) followed by blank space
+- Labels adjacent to form elements: "Name [____]", "Address _____"
+- Numbered/lettered lists requesting information: "1. Organization Name ____"
+- Section headers followed by blank input areas
+- Words like "Enter", "Provide", "List" followed by field descriptions
+- Date patterns: "Date: ___/___/___" or "MM/DD/YYYY"
 
-3. COMMON OCR FIELD PATTERNS:
-   - Text may have spacing issues: "Organization Name: ______" might appear as "Organization Name:______" 
-   - Underscores may appear as other characters: "____" might be "----" or "......."
-   - Checkbox symbols may be OCR'd as "[  ]", "[ ]", "□", or "☐"
-   - Dollar signs and number fields: "$______" or "Amount: $______"
-   - Date fields often have format hints: "Date (MM/DD/YYYY): ______"
+PASS 3 - STRUCTURAL FIELD IDENTIFICATION:
+- Multi-line fields indicated by multiple blank lines
+- Table structures with headers and empty data cells
+- Signature lines: "Signature: ________________" 
+- Contact information blocks (Name, Address, Phone, Email sections)
+- Financial fields grouped together (Budget, Amount, Cost sections)
 
-4. SECTION ORGANIZATION:
-   - Group fields by document sections (Applicant Information, Project Details, Budget, etc.)
-   - Preserve section headers and subheaders
-   - Note any conditional fields or dependencies
+PASS 4 - VALIDATION AND COMPLETION CHECK:
+- Re-scan text for any missed patterns like "Please provide...", "Enter your...", "Attach..."
+- Check for fields split across multiple lines due to OCR errors
+- Look for fields at document beginning, middle, and end
+- Ensure all form sections have corresponding fields extracted
 
-5. VALIDATION AND QUALITY:
-   - If you find fewer than 5 fields in a form document, re-examine the text more carefully
-   - Look for fields that might be spread across multiple lines due to OCR
-   - Check for fields near the beginning, middle, and end of the document
+OCR ARTIFACT HANDLING:
+- Underscores may appear as: "____", "----", "....", "━━━━", "____"  
+- Brackets may appear as: "[ ]", "[  ]", "□", "☐", "( )", "[____]"
+- Text spacing issues: "Organization Name:____" = "Organization Name: ____"
+- Character substitution: "Email:" might be "Ernail:" or "E-mail:"
+- Line breaks in field names: "Organization\nName: ____" = "Organization Name: ____"
 
-RETURN FORMAT:
+COMPREHENSIVE FIELD TYPES:
+- text: Name, address, description fields
+- number: Age, quantity, ID numbers  
+- currency: Dollar amounts, budgets, costs
+- date: Dates with various formats
+- email: Email address fields
+- phone: Phone/fax numbers
+- select: Dropdown options, multiple choice
+- checkbox: Yes/No, selection options
+- textarea: Long text, comments, descriptions
+- file: Document upload, attachment fields
+
+SECTION ORGANIZATION:
+- Preserve exact section headers from document
+- Group related fields under appropriate sections
+- Maintain original field order within sections
+- Identify conditional or dependent fields
 You must return a JSON object with this exact structure:
 {
   "formFields": {
