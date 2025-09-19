@@ -416,28 +416,57 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     return time.toLocaleDateString()
   }
 
-  // Enhanced component for funding progress visualization - MOBILE RESPONSIVE
-  const FundingProgressCard = () => {
-    const totalGoal = stats.totalFunding
-    const totalSecured = stats.totalAwarded
-    const totalPending = stats.totalRequested - stats.totalAwarded
-    const securedPercent = totalGoal > 0 ? (totalSecured / totalGoal) * 100 : 0
-    const pendingPercent = totalGoal > 0 ? (totalPending / totalGoal) * 100 : 0
+  // Dynamic funding process indicator with colors for each funding type
+  const FundingProcessIndicator = () => {
+    // Calculate funding breakdown by type
+    const fundingBreakdown = {
+      grants: {
+        secured: stats.totalAwarded || 0,
+        pending: (stats.totalRequested || 0) - (stats.totalAwarded || 0),
+        target: stats.totalFunding * 0.6, // 60% from grants
+        color: 'emerald',
+        bgColor: 'bg-emerald-500',
+        lightBg: 'bg-emerald-100',
+        textColor: 'text-emerald-700'
+      },
+      donations: {
+        secured: stats.totalDonated || 0,
+        pending: stats.totalFunding * 0.15, // Estimated pending donations
+        target: stats.totalFunding * 0.25, // 25% from donations
+        color: 'rose',
+        bgColor: 'bg-rose-500',
+        lightBg: 'bg-rose-100',
+        textColor: 'text-rose-700'
+      },
+      investments: {
+        secured: 0, // Angel investments secured
+        pending: stats.totalFunding * 0.1, // Estimated pending investments
+        target: stats.totalFunding * 0.15, // 15% from investments
+        color: 'blue',
+        bgColor: 'bg-blue-500',
+        lightBg: 'bg-blue-100',
+        textColor: 'text-blue-700'
+      }
+    }
+
+    const totalSecured = Object.values(fundingBreakdown).reduce((sum, type) => sum + type.secured, 0)
+    const totalTarget = stats.totalFunding || 100000 // Default target if none set
+    const overallProgress = totalTarget > 0 ? (totalSecured / totalTarget) * 100 : 0
 
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300">
-        <div className="flex items-start justify-between mb-3 sm:mb-4">
+        <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center mb-3">
-              <div className="p-2 sm:p-2.5 bg-slate-50 rounded-lg">
-                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-slate-700" />
+              <div className="p-2 sm:p-2.5 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-700" />
               </div>
               <div className="ml-2 sm:ml-3 flex-1">
-                <p className="text-xs sm:text-sm font-medium text-slate-600">Funding Progress</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-600">Funding Process</p>
                 <div className="flex items-center mt-1 text-xs font-medium text-emerald-600">
-                  <ArrowUp className="w-3 h-3 mr-1" />
-                  <span className="hidden sm:inline">{stats.applicationSuccessRate}% success rate</span>
-                  <span className="sm:hidden">{stats.applicationSuccessRate}%</span>
+                  <Activity className="w-3 h-3 mr-1" />
+                  <span className="hidden sm:inline">{overallProgress.toFixed(0)}% of total goal</span>
+                  <span className="sm:hidden">{overallProgress.toFixed(0)}%</span>
                 </div>
               </div>
             </div>
@@ -447,59 +476,109 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   ${totalSecured > 1000000 ? (totalSecured / 1000000).toFixed(1) + 'M' : (totalSecured / 1000).toFixed(0) + 'K'}
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500">
-                  of ${totalGoal > 1000000 ? (totalGoal / 1000000).toFixed(1) + 'M' : (totalGoal / 1000).toFixed(0) + 'K'} goal
+                  of ${totalTarget > 1000000 ? (totalTarget / 1000000).toFixed(1) + 'M' : (totalTarget / 1000).toFixed(0) + 'K'} goal
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Progress Visualization */}
+        {/* Multi-Type Progress Visualization */}
         <div className="space-y-3 sm:space-y-4">
+          {/* Combined Progress Bar */}
           <div className="relative">
-            <div className="w-full bg-slate-100 rounded-lg h-3 sm:h-6 overflow-hidden">
+            <div className="w-full bg-slate-100 rounded-lg h-4 sm:h-6 overflow-hidden">
               <div className="relative h-full flex">
+                {/* Grants Progress */}
                 <div
                   className="bg-emerald-500 h-full transition-all duration-700 ease-out"
-                  style={{ width: `${Math.min(securedPercent, 100)}%` }}
+                  style={{ width: `${Math.min((fundingBreakdown.grants.secured / totalTarget) * 100, 100)}%` }}
+                  title={`Grants: $${(fundingBreakdown.grants.secured / 1000).toFixed(0)}K`}
                 />
+                {/* Donations Progress */}
                 <div
-                  className="bg-amber-300 h-full opacity-60 transition-all duration-700 ease-out"
-                  style={{ width: `${Math.min(pendingPercent, 100 - securedPercent)}%` }}
+                  className="bg-rose-500 h-full transition-all duration-700 ease-out"
+                  style={{ width: `${Math.min((fundingBreakdown.donations.secured / totalTarget) * 100, 100 - (fundingBreakdown.grants.secured / totalTarget) * 100)}%` }}
+                  title={`Donations: $${(fundingBreakdown.donations.secured / 1000).toFixed(0)}K`}
                 />
+                {/* Investments Progress */}
+                <div
+                  className="bg-blue-500 h-full transition-all duration-700 ease-out"
+                  style={{ width: `${Math.min((fundingBreakdown.investments.secured / totalTarget) * 100, 100 - ((fundingBreakdown.grants.secured + fundingBreakdown.donations.secured) / totalTarget) * 100)}%` }}
+                  title={`Investments: $${(fundingBreakdown.investments.secured / 1000).toFixed(0)}K`}
+                />
+                {/* Pending indicator overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-30 animate-pulse" />
               </div>
             </div>
             
             <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
               <span>$0</span>
-              <span className="hidden sm:inline">{securedPercent.toFixed(0)}% secured</span>
-              <span className="sm:hidden">{securedPercent.toFixed(0)}%</span>
+              <div className="flex items-center space-x-2">
+                <span className="hidden sm:inline">{overallProgress.toFixed(0)}% secured</span>
+                <span className="sm:hidden">{overallProgress.toFixed(0)}%</span>
+              </div>
               <span>Goal</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <div>
-              <p className="text-xs font-medium text-slate-600 mb-2">Secured</p>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 mr-1 sm:mr-2" />
-                  <span className="text-slate-700 hidden sm:inline">Grants Awarded</span>
-                  <span className="text-slate-700 sm:hidden">Grants</span>
+          {/* Funding Type Breakdown */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {Object.entries(fundingBreakdown).map(([type, data]) => {
+              const typeProgress = data.target > 0 ? (data.secured / data.target) * 100 : 0
+              const typeNames = {
+                grants: 'Grants',
+                donations: 'Donations', 
+                investments: 'Investments'
+              }
+              
+              return (
+                <div key={type} className={`${data.lightBg} rounded-lg p-2 sm:p-3`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center">
+                      <div className={`w-2 h-2 rounded-full ${data.bgColor} mr-1 sm:mr-2`} />
+                      <span className="text-xs font-medium text-slate-700 hidden sm:inline">{typeNames[type]}</span>
+                      <span className="text-xs font-medium text-slate-700 sm:hidden">{typeNames[type].slice(0,4)}</span>
+                    </div>
+                  </div>
+                  <div className={`text-xs sm:text-sm font-bold ${data.textColor} mb-1`}>
+                    ${(data.secured / 1000).toFixed(0)}K
+                  </div>
+                  <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`${data.bgColor} h-full transition-all duration-500`}
+                      style={{ width: `${Math.min(typeProgress, 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1 hidden sm:block">
+                    {typeProgress.toFixed(0)}% of type goal
+                  </div>
                 </div>
-                <span className="font-medium text-slate-900">${(totalSecured / 1000).toFixed(0)}K</span>
-              </div>
+              )
+            })}
+          </div>
+
+          {/* Funding Pipeline Status */}
+          <div className="border-t border-slate-200 pt-3 sm:pt-4">
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+              <span className="font-medium">Pipeline Status</span>
+              <span>{stats.pendingApplications || 0} applications pending</span>
             </div>
-            
-            <div>
-              <p className="text-xs font-medium text-slate-600 mb-2">Pending</p>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 rounded-full bg-amber-300 mr-1 sm:mr-2" />
-                  <span className="text-slate-700 hidden sm:inline">Applications</span>
-                  <span className="text-slate-700 sm:hidden">Apps</span>
-                </div>
-                <span className="font-medium text-slate-500">${(totalPending / 1000).toFixed(0)}K</span>
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="flex items-center">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 mr-1 sm:mr-2" />
+                <span className="text-xs text-slate-600 hidden sm:inline">Active: {stats.totalSubmissions || 0}</span>
+                <span className="text-xs text-slate-600 sm:hidden">Act: {stats.totalSubmissions || 0}</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 rounded-full bg-amber-400 mr-1 sm:mr-2" />
+                <span className="text-xs text-slate-600 hidden sm:inline">Review: {stats.pendingApplications || 0}</span>
+                <span className="text-xs text-slate-600 sm:hidden">Rev: {stats.pendingApplications || 0}</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 rounded-full bg-blue-400 mr-1 sm:mr-2" />
+                <span className="text-xs text-slate-600 hidden sm:inline">Opportunities: {stats.activeOpportunities}</span>
+                <span className="text-xs text-slate-600 sm:hidden">Opp: {stats.activeOpportunities}</span>
               </div>
             </div>
           </div>
@@ -735,15 +814,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 change={stats.totalProjects > 0 ? "+3 this month" : "Create your first project"}
                 trend={stats.totalProjects > 0 ? "up" : "neutral"}
               />
-              <FundingProgressCard />
-              <MetricCard
-                icon={FileText}
-                title="Applications"
-                value={stats.totalSubmissions}
-                subtitle={stats.pendingApplications > 0 ? `${stats.pendingApplications} pending review` : "No pending applications"}
-                change={stats.applicationSuccessRate > 0 ? `${stats.applicationSuccessRate}% success rate` : "No applications yet"}
-                trend={stats.applicationSuccessRate > 50 ? "up" : "neutral"}
-              />
+              <div className="sm:col-span-2">
+                <FundingProcessIndicator />
+              </div>
               <MetricCard
                 icon={Zap}
                 title="Opportunities"
