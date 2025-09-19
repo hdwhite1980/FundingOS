@@ -216,7 +216,9 @@ export default function EnhancedApplicationTracker({
       }
 
       setAnalysisData(analysisDataForModal)
-      setShowAIDocumentAnalysisModal(true)
+      
+      // Move to completion step instead of opening another modal
+      setStep('completion')
       
       // Check if we have a blank application that needs missing info collection
       if (completion.formStatus?.isBlank && completion.questionsForUser?.length > 0) {
