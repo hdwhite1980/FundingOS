@@ -767,7 +767,36 @@ export default function EnhancedApplicationTracker({
                   </div>
                   <div className="flex-1">
                     <div className="font-medium text-slate-800">
-                      {fieldConfig.label || fieldId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {(() => {
+                        // Clean up corrupted OCR labels
+                        let label = fieldConfig.label || fieldId;
+                        
+                        // Check if label contains mostly non-printable or garbled characters
+                        const hasGarbledText = /[^\w\s\-_().,\/\[\]]/g.test(label) && label.length > 10;
+                        const hasControlChars = /[\x00-\x1F\x7F-\x9F]/g.test(label);
+                        
+                        if (hasGarbledText || hasControlChars || label.length < 2) {
+                          // Use field ID as fallback and make it readable
+                          label = fieldId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                          
+                          // If still looks weird, use generic field names
+                          if (!label || label.length < 3) {
+                            const fieldTypes = {
+                              text: 'Text Field',
+                              textarea: 'Description Field', 
+                              email: 'Email Address',
+                              phone: 'Phone Number',
+                              date: 'Date Field',
+                              currency: 'Amount Field',
+                              checkbox: 'Checkbox Field',
+                              select: 'Selection Field'
+                            };
+                            label = fieldTypes[fieldConfig.type] || `Field ${index + 1}`;
+                          }
+                        }
+                        
+                        return label;
+                      })()}
                     </div>
                     {fieldConfig.type && (
                       <div className="text-slate-500">

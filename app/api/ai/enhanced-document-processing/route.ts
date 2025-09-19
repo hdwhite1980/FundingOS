@@ -110,6 +110,106 @@ async function performAIAnalysis(text: string, documentType: string, context: an
 }
 
 function generateFallbackFormStructure(text: string, documentType: string, context: any) {
+  // Enhanced fallback for Missouri Common Grant Application  
+  if (documentType?.toLowerCase().includes('missouri') || text?.toLowerCase().includes('missouri common grant')) {
+    const missouriFields = {
+      "organization_name": {
+        "label": "Legal Name of Organization",
+        "type": "text",
+        "required": true,
+        "section": "Organization Information"
+      },
+      "organization_address": {
+        "label": "Organization Address",
+        "type": "textarea", 
+        "required": true,
+        "section": "Organization Information"
+      },
+      "federal_tax_id": {
+        "label": "Federal Tax ID Number",
+        "type": "text",
+        "required": true,
+        "section": "Organization Information"
+      },
+      "contact_person": {
+        "label": "Contact Person Name",
+        "type": "text",
+        "required": true,
+        "section": "Contact Information"
+      },
+      "contact_title": {
+        "label": "Contact Person Title",
+        "type": "text",
+        "required": true,
+        "section": "Contact Information"
+      },
+      "contact_phone": {
+        "label": "Contact Phone Number",
+        "type": "phone",
+        "required": true,
+        "section": "Contact Information"
+      },
+      "contact_email": {
+        "label": "Contact Email Address",
+        "type": "email",
+        "required": true,
+        "section": "Contact Information"
+      },
+      "project_title": {
+        "label": "Project Title",
+        "type": "text",
+        "required": true,
+        "section": "Project Information"
+      },
+      "project_description": {
+        "label": "Project Description",
+        "type": "textarea",
+        "required": true,
+        "section": "Project Information"
+      },
+      "funding_amount_requested": {
+        "label": "Total Amount Requested",
+        "type": "currency",
+        "required": true,
+        "section": "Budget Information"
+      },
+      "project_period": {
+        "label": "Project Period",
+        "type": "text",
+        "required": true,
+        "section": "Project Information"
+      },
+      "authorized_signature": {
+        "label": "Authorized Representative Signature",
+        "type": "text",
+        "required": true,
+        "section": "Authorization"
+      },
+      "signature_date": {
+        "label": "Date of Signature",
+        "type": "date",
+        "required": true,
+        "section": "Authorization"
+      }
+    };
+
+    return {
+      formFields: missouriFields,
+      documentStructure: {
+        title: "Missouri Common Grant Application",
+        sections: ["Organization Information", "Contact Information", "Project Information", "Budget Information", "Authorization"],
+        totalFields: Object.keys(missouriFields).length
+      },
+      extractionQuality: {
+        confidence: 0.8,
+        issues: ["Using Missouri-specific form structure"],
+        fieldCount: Object.keys(missouriFields).length,
+        fallbackUsed: true,
+        documentType: "missouri_common_grant"
+      }
+    };
+  }
+
   console.log('🔄 Generating fallback form structure for document type:', documentType);
   
   // Common Grant Application Form Structure
