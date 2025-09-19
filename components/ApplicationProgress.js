@@ -82,6 +82,11 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
         throw new Error('Project is required')
       }
       
+      // Ensure we have either opportunity_id or opportunity_title
+      if (!cleanData.opportunity_id && !cleanData.opportunity_title) {
+        cleanData.opportunity_title = 'Manual Entry'
+      }
+      
       // Allow 0 submitted_amount for AI-Enhanced applications that don't have funding amounts extracted
       if (cleanData.submitted_amount < 0 || (cleanData.submitted_amount === 0 && !cleanData.opportunity_title?.includes('AI-'))) {
         throw new Error('Submitted amount must be greater than or equal to 0')
@@ -89,7 +94,8 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
       
       console.log('Clean data to submit:', cleanData)
       
-      const newSubmission = await directUserServices.applications.createApplication(user.id, cleanData)
+      // Use the service role API endpoint to create the application
+      const newSubmission = await directUserServices.applications.createApplicationViaAPI(user.id, cleanData)
       
       await loadSubmissions()
       
@@ -490,19 +496,51 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
 function CreateSubmissionModal({ projects, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     project_id: '',
+    opportunity_id: '',
     opportunity_title: '',
     application_id: '',
     submitted_amount: '',
     submission_date: new Date().toISOString().split('T')[0],
     notes: ''
   })
+  
+  const [opportunities, setOpportunities] = useState([])
+  const [loadingOpportunities, setLoadingOpportunities] = useState(false)
+  
+  // Load opportunities when modal opens
+  useEffect(() => {
+    loadOpportunities()
+  }, [])
+  
+  const loadOpportunities = async () => {
+    try {
+      setLoadingOpportunities(true)
+      const data = await directUserServices.opportunities.getOpportunities({})
+      setOpportunities(data || [])
+    } catch (error) {
+      console.error('Failed to load opportunities:', error)
+      toast.error('Failed to load opportunities')
+    } finally {
+      setLoadingOpportunities(false)
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     
+    // Ensure we have either opportunity_id or create a default one
+    let finalOpportunityId = formData.opportunity_id
+    let finalOpportunityTitle = formData.opportunity_title?.trim()
+    
+    if (!finalOpportunityId && !finalOpportunityTitle) {
+      finalOpportunityTitle = 'Manual Entry'
+      // We'll handle creating a default opportunity in the backend if needed
+    }
+    
     const cleanData = {
       project_id: formData.project_id,
-      opportunity_title: formData.opportunity_title?.trim() || 'Manual Entry',
+      opportunity_id: finalOpportunityId || null,
+      opportunity_title: finalOpportunityTitle || 'Manual Entry',
       application_id: formData.application_id?.trim() || null,
       submitted_amount: parseFloat(formData.submitted_amount),
       submission_date: formData.submission_date,
@@ -552,13 +590,45 @@ function CreateSubmissionModal({ projects, onClose, onSubmit }) {
 
             <div>
               <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">Grant Opportunity</label>
-              <input
-                type="text"
+              <select
                 className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Enter opportunity title or ID"
-                value={formData.opportunity_title}
-                onChange={(e) => setFormData({...formData, opportunity_title: e.target.value})}
-              />
+                value={formData.opportunity_id}
+                onChange={(e) => {
+                  const selectedId = e.target.value
+                  const selectedOpportunity = opportunities.find(opp => opp.id === selectedId)
+                  setFormData({
+                    ...formData, 
+                    opportunity_id: selectedId,
+                    opportunity_title: selectedOpportunity ? selectedOpportunity.title : ''
+                  })
+                }}
+              >
+                <option value="">Select from existing opportunities</option>
+                {loadingOpportunities ? (
+                  <option disabled>Loading opportunities...</option>
+                ) : (
+                  opportunities.map(opportunity => (
+                    <option key={opportunity.id} value={opportunity.id}>
+                      {opportunity.title} - {opportunity.sponsor || 'Unknown Sponsor'}
+                    </option>
+                  ))
+                )}
+              </select>
+              
+              <div className="mt-2">
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Or Enter Custom Title</label>
+                <input
+                  type="text"
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="Enter opportunity title manually"
+                  value={formData.opportunity_title}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    opportunity_title: e.target.value,
+                    opportunity_id: '' // Clear selection when typing custom title
+                  })}
+                />
+              </div>
             </div>
 
             <div>

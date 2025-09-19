@@ -33,16 +33,66 @@ export async function POST(request) {
     // Create service role client (bypasses RLS)
     const supabase = getSupabaseServiceClient()
     
-    // Prepare application data with proper timestamps
+    // Handle opportunity_id requirement
+    let finalOpportunityId = applicationFields.opportunity_id
+    
+    if (!finalOpportunityId) {
+      console.log('🔍 No opportunity_id provided, finding or creating default opportunity')
+      
+      // Try to find existing default opportunity
+      const { data: defaultOpportunity, error: findError } = await supabase
+        .from('opportunities')
+        .select('id')
+        .eq('title', 'Manual Entry - Default Opportunity')
+        .single()
+      
+      if (defaultOpportunity && !findError) {
+        finalOpportunityId = defaultOpportunity.id
+        console.log(`✅ Using existing default opportunity: ${finalOpportunityId}`)
+      } else {
+        // Create default opportunity
+        console.log('➕ Creating default opportunity for manual entries')
+        const { data: newOpportunity, error: createError } = await supabase
+          .from('opportunities')
+          .insert([{
+            title: 'Manual Entry - Default Opportunity',
+            sponsor: 'Manual Entry',
+            source: 'manual',
+            amount_min: 0,
+            amount_max: 1000000,
+            description: 'Default opportunity for manually tracked applications',
+            created_at: new Date().toISOString()
+          }])
+          .select('id')
+          .single()
+        
+        if (createError) {
+          console.error('❌ Failed to create default opportunity:', createError)
+          return NextResponse.json(
+            { 
+              error: 'Failed to create default opportunity', 
+              details: createError.message 
+            },
+            { status: 500 }
+          )
+        }
+        
+        finalOpportunityId = newOpportunity.id
+        console.log(`✅ Created default opportunity: ${finalOpportunityId}`)
+      }
+    }
+    
+    // Prepare application data with proper timestamps and required opportunity_id
     const newApplication = {
       ...applicationFields,
       user_id: user_id,
+      opportunity_id: finalOpportunityId, // Ensure this is always set
       status: applicationFields.status || 'submitted',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
 
-    console.log('💾 Inserting application with service role')
+    console.log('💾 Inserting application with service role and opportunity_id:', finalOpportunityId)
 
     // Insert application using service role (bypasses RLS)
     const { data, error } = await supabase
