@@ -97,68 +97,115 @@ async function performAIAnalysis(text: string, documentType: string, context: an
 
 function buildEnhancedAnalysisPrompt(text: string, documentType: string, context: any): string {
   const basePrompt = `
-ENHANCED DOCUMENT ANALYSIS
+ENHANCED DOCUMENT ANALYSIS - FORM FIELD EXTRACTION
 
-Please provide comprehensive analysis of this document with special attention to form fields and structure.
+You are analyzing OCR-extracted text from a form document. Your primary task is to identify ALL form fields exactly as they appear in the original document.
 
-ANALYSIS REQUIREMENTS:
+CRITICAL FIELD EXTRACTION REQUIREMENTS:
 
-1. FORM FIELD EXTRACTION (CRITICAL):
-   - Extract ALL form fields, input areas, and fillable sections
-   - Look for patterns: "Field Name: ____", "[ ] checkbox", "Field Name $______", text areas
-   - Identify field types: text, number, date, currency, email, phone, select, checkbox, textarea
-   - Determine required vs optional fields (look for asterisks, "required", etc.)
-   - Group fields by sections/categories
+1. EXACT FIELD IDENTIFICATION:
+   Look for these specific patterns in the OCR text:
+   - "Field Name: ____" or "Field Name: _______" or "Field Name: ________________"
+   - "Field Name: $______" (currency fields)
+   - "[ ] Option Name" or "☐ Option Name" (checkboxes)
+   - "Field Name: ( ) Option1 ( ) Option2" (radio buttons)
+   - Lines with colons followed by blank space or underscores
+   - Numbered or bulleted form sections
+   - Table-like structures with labels and blank spaces
 
-2. DOCUMENT STRUCTURE:
-   - Title, version, date information
-   - Section headers and organization
-   - Instructions and guidelines
-   - Submission requirements and deadlines
+2. FIELD STRUCTURE PRESERVATION:
+   - Extract the EXACT field label/name as written in the document
+   - Identify the field type based on context (text, number, date, currency, email, phone, select, checkbox, textarea)
+   - Note if field appears required (*, "required", "mandatory")
+   - Preserve any validation hints or instructions near the field
+   - Maintain the original field order and grouping
 
-3. REQUIREMENTS ANALYSIS:
-   - Eligibility criteria
-   - Supporting documents needed
-   - Technical specifications
-   - Compliance requirements
+3. COMMON OCR FIELD PATTERNS:
+   - Text may have spacing issues: "Organization Name: ______" might appear as "Organization Name:______" 
+   - Underscores may appear as other characters: "____" might be "----" or "......."
+   - Checkbox symbols may be OCR'd as "[  ]", "[ ]", "□", or "☐"
+   - Dollar signs and number fields: "$______" or "Amount: $______"
+   - Date fields often have format hints: "Date (MM/DD/YYYY): ______"
 
-4. MISSING INFORMATION DETECTION:
-   - Identify blank or unfilled fields
-   - Note any incomplete sections
-   - Flag areas needing attention
+4. SECTION ORGANIZATION:
+   - Group fields by document sections (Applicant Information, Project Details, Budget, etc.)
+   - Preserve section headers and subheaders
+   - Note any conditional fields or dependencies
+
+5. VALIDATION AND QUALITY:
+   - If you find fewer than 5 fields in a form document, re-examine the text more carefully
+   - Look for fields that might be spread across multiple lines due to OCR
+   - Check for fields near the beginning, middle, and end of the document
+
+RETURN FORMAT:
+You must return a JSON object with this exact structure:
+{
+  "formFields": {
+    "field_key": {
+      "label": "Exact field name as it appears",
+      "type": "text|number|date|currency|email|phone|select|checkbox|textarea",
+      "required": true|false,
+      "section": "Document section name",
+      "validation": "Any validation hints or format requirements",
+      "value": "", 
+      "placeholder": "Any placeholder text or instructions"
+    }
+  },
+  "documentStructure": {
+    "title": "Document title",
+    "sections": ["Section 1", "Section 2", ...],
+    "totalFields": 0
+  },
+  "extractionQuality": {
+    "confidence": 0.0-1.0,
+    "issues": ["Any problems with field extraction"],
+    "fieldCount": 0
+  }
+}
 
 DOCUMENT TEXT (${text.length} characters):
 ${text.substring(0, 15000)}${text.length > 15000 ? '...[truncated]' : ''}
 `;
 
   if (context.userProfile || context.project) {
-    return basePrompt + `\n\nCONTEXT FOR PERSONALIZED ANALYSIS:\n${JSON.stringify(context, null, 2)}`;
+    return basePrompt + `\n\nCONTEXT FOR PERSONALIZED ANALYSIS (for field completion suggestions):\nUser Profile: ${JSON.stringify(context.userProfile, null, 2)}\nProject: ${JSON.stringify(context.project, null, 2)}`;
   }
 
   return basePrompt;
 }
 
 function getEnhancedSystemPrompt(documentType: string): string {
-  return `You are an expert document analysis AI specializing in funding and grant documents.
+  return `You are an expert document analysis AI specializing in form field extraction from OCR text.
 
-Your task is to analyze document text and provide comprehensive, structured analysis focusing on form field extraction and completion guidance.
+Your primary expertise is in accurately identifying and extracting form fields from documents that have been processed through OCR (Optical Character Recognition).
 
-CRITICAL: Pay special attention to identifying ALL form fields and fillable areas in the document. This includes:
-- Traditional form fields with labels and blanks
-- Checkbox lists and selection options  
-- Text areas and description fields
-- Numerical inputs (currency, dates, percentages)
-- Required vs optional field distinctions
-- Field validation rules and constraints
+CORE COMPETENCIES:
+1. FORM FIELD PATTERN RECOGNITION - You excel at identifying form fields even when OCR introduces artifacts
+2. FIELD TYPE CLASSIFICATION - You accurately determine field types (text, number, date, currency, etc.)
+3. STRUCTURE PRESERVATION - You maintain the original document organization and field relationships
+4. OCR ERROR HANDLING - You compensate for common OCR issues like character substitution and spacing problems
 
-Always respond with valid JSON that includes:
-- Detailed form field extraction
-- Document structure analysis  
-- Requirements and compliance information
-- Specific recommendations for missing information
-- AI-generated suggestions for how to complete unfilled fields
+CRITICAL SUCCESS FACTORS:
+- Extract ALL form fields present in the document - missing fields is the primary failure mode
+- Preserve exact field labels as they appear in the original document
+- Accurately classify field types based on context and validation hints
+- Maintain document structure and section organization
+- Handle OCR artifacts gracefully (underscores as dashes, spacing issues, symbol substitutions)
 
-Focus on being extremely thorough in field extraction as this data will be used to generate intelligent form completions.`;
+FIELD EXTRACTION PRIORITIES:
+1. Personal/Organization Information Fields (names, addresses, contact info)
+2. Financial Fields (amounts, budgets, funding requests)
+3. Project Description Fields (objectives, methods, outcomes)
+4. Administrative Fields (dates, signatures, certifications)
+5. Checkbox/Selection Fields (eligibility criteria, categories)
+
+RESPONSE REQUIREMENTS:
+- Always return valid JSON with the exact structure specified
+- Field extraction confidence should be high (>0.8) for forms with clear structure
+- If field extraction confidence is low, include specific issues in the response
+- Provide accurate field counts and section organization
+
+Remember: Users depend on accurate field extraction to generate completed forms. Missing or incorrectly identified fields directly impact their application success.`;
 }
 
 function generateRecommendations(analysis: any): string[] {

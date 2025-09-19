@@ -525,6 +525,21 @@ export default function AIDocumentAnalysisModal({ opportunity, project, userProf
                         Document Quality: {documentQuality.quality.toUpperCase()}
                       </span>
                     </div>
+                    
+                    {/* Field Detection Summary */}
+                    {documentQuality.fieldDetection && (
+                      <div className="mt-2 text-sm">
+                        <p className={`font-medium ${documentQuality.quality === 'good' ? 'text-green-800' : documentQuality.quality === 'fair' ? 'text-yellow-800' : 'text-red-800'}`}>
+                          🎯 Field Detection: {documentQuality.fieldDetection.potentialFields} potential fields found
+                        </p>
+                        {documentQuality.fieldDetection.fieldPatterns?.length > 0 && (
+                          <div className="mt-1 text-xs text-slate-600">
+                            Detected: {documentQuality.fieldDetection.fieldPatterns.map(p => `${p.count} ${p.name.toLowerCase()}`).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {documentQuality.suggestions?.length > 0 && (
                       <div className="mt-2">
                         {documentQuality.suggestions.map((suggestion, index) => (
