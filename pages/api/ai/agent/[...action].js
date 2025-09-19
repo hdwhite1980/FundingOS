@@ -1201,7 +1201,19 @@ async function performWebSearch(userId, message, projects, userProfile) {
     }
     
     // Call our search API endpoint
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai/agent/search-opportunities`, {
+    const searchUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai/agent/search-opportunities`
+    console.log('🔍 Calling search endpoint:', searchUrl)
+    console.log('📋 Search payload:', JSON.stringify({
+      userId,
+      searchQuery,
+      projectType: projects?.[0]?.project_type,
+      organizationType: userProfile?.organization_type,
+      location: userProfile?.city && userProfile?.state ? `${userProfile.city}, ${userProfile.state}` : null,
+      fundingAmount: projects?.[0]?.funding_needed,
+      searchDepth: 'thorough'
+    }, null, 2))
+    
+    const response = await fetch(searchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1220,7 +1232,9 @@ async function performWebSearch(userId, message, projects, userProfile) {
     if (response.ok) {
       return await response.json()
     } else {
-      throw new Error('Search API request failed')
+      const errorText = await response.text()
+      console.error('Search API failed with status:', response.status, 'Response:', errorText)
+      throw new Error(`Search API request failed: ${response.status} - ${errorText}`)
     }
   } catch (error) {
     console.error('Web search error:', error)

@@ -103,11 +103,19 @@ async function searchDatabase(query, projectType, organizationType) {
 }
 
 export default async function handler(req, res) {
+  console.log('🚀 Search endpoint called with method:', req.method)
+  console.log('🔧 Environment check - SERPAPI_KEY exists:', !!process.env.SERPAPI_KEY)
+  console.log('🔧 Environment check - SUPABASE_URL exists:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log('🔧 Environment check - SUPABASE_SERVICE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
+    console.log('📥 Request body:', JSON.stringify(req.body, null, 2))
+    
     const { 
       userId, 
       searchQuery, 
@@ -116,6 +124,7 @@ export default async function handler(req, res) {
     } = req.body
 
     if (!userId || !searchQuery) {
+      console.log('❌ Missing required parameters:', { userId: !!userId, searchQuery: !!searchQuery })
       return res.status(400).json({ error: 'Missing required parameters' })
     }
 
