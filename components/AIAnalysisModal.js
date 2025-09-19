@@ -1,13 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, FileText, Clock, Copy, RotateCcw, Sparkles, TrendingUp } from 'lucide-react'
+import { X, Zap, Target, AlertTriangle, Lightbulb, CheckCircle, Clock, Sparkles, TrendingUp } from 'lucide-react'
 import { directUserServices } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { resolveApiUrl } from '../lib/apiUrlUtils'
 import toast from 'react-hot-toast'
-import documentGenerationService from '../lib/documentGenerationService'
-import { jsPDF } from 'jspdf' // Add jsPDF import
 
 // Helper function to normalize analysis results and handle different data structures
 function normalizeAnalysisResult(result) {
@@ -175,98 +173,11 @@ function AnalysisContent({ analysis, quickMatchScore }) {
   }
 }
 
-// Application Content Component
-function ApplicationContent({ 
-  generating, 
-  applicationDraft, 
-  handleCopyToClipboard, 
-  setApplicationDraft, 
-  handleGenerateApplication 
-}) {
-  return (
-    <div className="space-y-6">
-      {generating ? (
-        <div className="text-center py-16">
-          <div className="p-4 bg-emerald-50 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <FileText className="w-10 h-10 text-emerald-600 animate-pulse" />
-          </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Generating Application Draft</h3>
-          <p className="text-slate-600">AI is creating a customized application based on the analysis...</p>
-          <div className="mt-4 w-48 mx-auto bg-slate-200 rounded-full h-2 overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-          </div>
-        </div>
-      ) : applicationDraft ? (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-slate-900">Application Draft</h3>
-            <div className="flex space-x-3">
-              <button
-                onClick={handleCopyToClipboard}
-                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors duration-200 flex items-center"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy to Clipboard
-              </button>
-              <button
-                onClick={() => setApplicationDraft(null)}
-                className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors duration-200 flex items-center"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Generate New
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-slate-50 rounded-xl p-6 max-h-96 overflow-y-auto border border-slate-200">
-            <div className="whitespace-pre-wrap font-mono text-sm text-slate-800 leading-relaxed">
-              {applicationDraft}
-            </div>
-          </div>
-          
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="flex items-start">
-              <AlertTriangle className="w-5 h-5 text-amber-600 mr-3 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium text-amber-900 mb-1">Important Notice</h4>
-                <p className="text-sm text-amber-800">
-                  This is an AI-generated draft. Please review and customize it according to the specific requirements 
-                  of the funding opportunity. Always verify all information and add your organization's specific details.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-16">
-          <div className="p-4 bg-slate-50 rounded-full w-16 h-16 mx-auto mb-6 flex items-center justify-center">
-            <FileText className="w-8 h-8 text-slate-400" />
-          </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Application Draft Generator</h3>
-          <p className="text-slate-600 mb-6">
-            Generate a customized application draft based on the AI analysis and opportunity requirements
-          </p>
-          <button
-            onClick={handleGenerateApplication}
-            className="px-6 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors duration-200 flex items-center mx-auto"
-          >
-            <Zap className="w-5 h-5 mr-2" />
-            Generate Application Draft
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function AIAnalysisModal({ opportunity, project, userProfile, quickMatchScore, onClose }) {
   const { user, loading: authLoading, initializing } = useAuth()
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState(null)
-  const [activeTab, setActiveTab] = useState('analysis')
   const [projectOpportunity, setProjectOpportunity] = useState(null)
-  const [generating, setGenerating] = useState(false)
-  const [applicationDraft, setApplicationDraft] = useState(null)
 
   useEffect(() => {
     console.log('AIAnalysisModal useEffect - Auth State:', {
@@ -439,366 +350,12 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
     }
   }
 
-  const handleGenerateApplication = async () => {
-    setGenerating(true)
-    setActiveTab('application')
-
-    try {
-      if (!project?.id) {
-        throw new Error('Project ID is required')
-      }
-      
-      if (!opportunity?.id) {
-        throw new Error('Opportunity ID is required')
-      }
-      
-      if (!user?.id) {
-        console.error('Generate application: No user ID available', { 
-          user, 
-          authLoading, 
-          initializing 
-        })
-        throw new Error('User authentication required - please ensure you are logged in')
-      }
-      
-      console.log('Generate application: Starting', {
-        userId: user.id,
-        projectId: project.id,
-        opportunityId: opportunity.id
-      })
-      
-      // Ensure we have a project opportunity first
-      let currentProjectOpportunity = projectOpportunity
-      
-      if (!currentProjectOpportunity) {
-        console.log('Creating project opportunity first...')
-        currentProjectOpportunity = await handleAddToProject()
-        
-        if (!currentProjectOpportunity) {
-          throw new Error('Failed to create project opportunity')
-        }
-      }
-
-      console.log('Generating application for project opportunity:', currentProjectOpportunity.id)
-
-      const response = await fetch(resolveApiUrl('/api/ai/generate-application'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userProfile,
-          project,
-          opportunity,
-          analysis
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Application generation failed')
-      }
-      
-      const applicationDraftResponse = await response.json()
-      
-      // Store the content locally for display
-      setApplicationDraft(applicationDraftResponse.content)
-      
-      // Update project opportunity with draft
-      await directUserServices.projectOpportunities.updateProjectOpportunity(
-        user.id,
-        currentProjectOpportunity.id,
-        {
-          status: 'draft_generated',
-          application_draft: applicationDraftResponse.content
-        }
-      )
-
-      toast.success('Application draft generated!')
-    } catch (error) {
-      console.error('Application generation error:', error)
-      toast.error('Failed to generate application: ' + error.message)
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const handleCopyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(applicationDraft)
-      toast.success('Application draft copied to clipboard!')
-    } catch (error) {
-      toast.error('Failed to copy to clipboard')
-    }
-  }
-
-  // UPDATED: Handle document generation using our new system
-  const handleGenerateDocument = async () => {
-    try {
-      setGenerating(true)
-      
-      // Create application data combining analysis with project/opportunity info
-      const applicationData = {
-        opportunity,
-        project,
-        userProfile,
-        analysis,
-        applicationDraft,
-        createdAt: new Date().toISOString()
-      }
-
-      let dynamicFormStructure = null
-      let formTemplate = null
-
-      // Check for dynamic form structure from various sources
-      // Priority 1: Check for dynamic form structure from recent document analysis
-      if (opportunity.dynamicFormStructure?.formFields) {
-        dynamicFormStructure = opportunity.dynamicFormStructure
-        console.log('📝 Using dynamic form structure with', Object.keys(opportunity.dynamicFormStructure.formFields).length, 'fields')
-      }
-      // Priority 2: Check for uploaded documents with dynamic form structures
-      else if (opportunity.uploadedDocuments?.dynamicFormStructures?.length > 0) {
-        const latestFormStructure = opportunity.uploadedDocuments.dynamicFormStructures[0]
-        dynamicFormStructure = latestFormStructure.formStructure
-        console.log('📝 Using uploaded dynamic form structure from', latestFormStructure.fileName, 'with', Object.keys(latestFormStructure.formStructure.formFields || {}).length, 'fields')
-      }
-      // Priority 3: Check for uploaded forms with analysis results (legacy support)
-      else if (opportunity.uploadedForms && opportunity.uploadedForms.length > 0) {
-        const applicationForm = opportunity.uploadedForms.find(form => 
-          form.documentType === 'application' || form.analysisResults?.formFields
-        )
-        
-        if (applicationForm && applicationForm.analysisResults?.formFields) {
-          // Convert legacy format to new dynamic form structure
-          dynamicFormStructure = {
-            formFields: applicationForm.analysisResults.formFields,
-            formMetadata: {
-              title: applicationForm.fileName,
-              source: 'uploaded_form'
-            }
-          }
-          console.log('📝 Using legacy form template:', applicationForm.fileName)
-        }
-      }
-      // Priority 4: Check if project has stored dynamic form templates
-      else if (project.dynamicFormStructure?.formFields) {
-        dynamicFormStructure = project.dynamicFormStructure
-        console.log('📝 Using project dynamic form structure with', Object.keys(project.dynamicFormStructure.formFields).length, 'fields')
-      }
-
-      // If we have a dynamic form structure, use our new generation system
-      if (dynamicFormStructure?.formFields) {
-        console.log('🟢 Using NEW document generation system with dynamic form structure')
-        
-        // Call our new document generation API
-        const response = await fetch(resolveApiUrl('/api/ai/document-generation'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            formStructure: dynamicFormStructure,
-            userData: {
-              organization: userProfile?.organization || userProfile || {},
-              project: project || {},
-              user: userProfile || {}
-            },
-            options: {
-              includeEmptyFields: false,
-              addInstructions: true,
-              format: 'pdf'
-            },
-            action: 'generate'
-          })
-        })
-
-        if (!response.ok) {
-          throw new Error('Document generation API failed')
-        }
-
-        const result = await response.json()
-        if (result.success) {
-          // Generate client-side PDF using our document generation service
-          const generatedDoc = await documentGenerationService.generateCompletedForm(
-            dynamicFormStructure,
-            {
-              organization: userProfile?.organization || userProfile || {},
-              project: project || {},
-              user: userProfile || {}
-            },
-            {
-              fieldMappings: result.data.fieldMappings,
-              styles: { includeEmptyFields: false, addInstructions: true }
-            }
-          )
-
-          if (generatedDoc.success) {
-            // Download the generated PDF
-            const projectName = (project.name || project.title || 'Project').replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
-            const opportunityName = opportunity.title.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
-            
-            documentGenerationService.downloadPDF(
-              generatedDoc.document,
-              `${projectName}_${opportunityName}_completed_form.pdf`
-            )
-            
-            // Save to applications
-            const submittedAmount = opportunity.amount_max || opportunity.amount_min || project.budget || 25000
-            
-            await directUserServices.applications.createApplicationViaAPI(user.id, {
-              project_id: project.id,
-              opportunity_id: opportunity.id,
-              status: 'draft',
-              submitted_amount: submittedAmount,
-              application_data: applicationData,
-              generated_document: result.data,
-              ai_analysis: analysis
-            })
-
-            toast.success(`Completed form generated and downloaded! Based on ${dynamicFormStructure.formMetadata?.title || 'uploaded form'} with ${result.data.completionStats?.completionPercentage || 0}% completion.`)
-          } else {
-            throw new Error(generatedDoc.error || 'PDF generation failed')
-          }
-        } else {
-          throw new Error(result.message || 'Generation failed')
-        }
-      } else {
-        // Fallback to legacy system for opportunities without form structure
-        console.log('⚠️ No dynamic form structure found, using legacy document generation')
-        
-        const response = await fetch(resolveApiUrl('/api/ai/generate-document'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            applicationData,
-            documentType: 'grant-application'
-          }),
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to generate document')
-        }
-
-        const result = await response.json()
-        
-        // Save to applications
-        const submittedAmount = opportunity.amount_max || opportunity.amount_min || project.budget || 25000
-        
-        await directUserServices.applications.createApplicationViaAPI(user.id, {
-          project_id: project.id,
-          opportunity_id: opportunity.id,
-          status: 'draft',
-          submitted_amount: submittedAmount,
-          application_data: applicationData,
-          generated_document: result.formFields,
-          ai_analysis: analysis
-        })
-
-        // Generate basic PDF using legacy approach
-        const doc = new jsPDF()
-        const pageWidth = doc.internal.pageSize.getWidth()
-        const margin = 20
-        const lineHeight = 8
-        let yPosition = margin
-
-        // Header
-        doc.setFontSize(16)
-        doc.setFont('helvetica', 'bold')
-        doc.text('GRANT APPLICATION', pageWidth / 2, yPosition, { align: 'center' })
-        yPosition += lineHeight * 2
-
-        // Metadata section
-        doc.setFontSize(10)
-        doc.setFont('helvetica', 'normal')
-        const metadata = result.metadata || {}
-        doc.text(`Applicant: ${metadata.applicant || userProfile?.full_name || 'Applicant Name'}`, margin, yPosition)
-        yPosition += lineHeight
-        doc.text(`Date: ${metadata.date || new Date().toLocaleDateString()}`, margin, yPosition)
-        yPosition += lineHeight
-        doc.text(`Opportunity: ${opportunity.title}`, margin, yPosition)
-        yPosition += lineHeight * 2
-
-        // Form fields
-        doc.setFontSize(12)
-        const formFields = result.formFields || []
-        
-        for (const field of formFields) {
-          if (yPosition > doc.internal.pageSize.getHeight() - 40) {
-            doc.addPage()
-            yPosition = margin
-          }
-
-          doc.setFont('helvetica', 'bold')
-          doc.text(`${field.label}:`, margin, yPosition)
-          yPosition += lineHeight + 2
-
-          doc.setFont('helvetica', 'normal')
-          const textWidth = pageWidth - (margin * 2)
-          const lines = doc.splitTextToSize(field.value || '', textWidth)
-          
-          for (const line of lines) {
-            if (yPosition > doc.internal.pageSize.getHeight() - 20) {
-              doc.addPage()
-              yPosition = margin
-            }
-            doc.text(line, margin, yPosition)
-            yPosition += lineHeight
-          }
-          
-          yPosition += lineHeight
-        }
-
-        // Download PDF
-        const projectName = (project.name || project.title || 'Project').replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
-        const opportunityName = opportunity.title.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_')
-        
-        doc.save(`${projectName}_${opportunityName}_grant_application.pdf`)
-
-        toast.success('Grant application PDF generated and downloaded!')
-      }
-      
-    } catch (error) {
-      console.error('Document generation error:', error)
-      toast.error('Failed to generate document: ' + error.message)
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const handleGrantWriterReview = async () => {
-    try {
-      // Save current state to database for grant writer review
-      const reviewData = {
-        project_id: project.id,
-        opportunity_id: opportunity.id,
-        ai_analysis: analysis,
-        application_draft: applicationDraft,
-        status: 'pending_review',
-        requested_at: new Date().toISOString()
-      }
-
-      await directUserServices.createGrantWriterReview(user.id, reviewData)
-      
-      toast.success('Review request submitted! A grant writer will contact you within 24 hours.')
-      
-      // Navigate to grant writer review page (placeholder for now)
-      // window.location.href = '/grant-writer-review'
-      
-    } catch (error) {
-      console.error('Grant writer review error:', error)
-      toast.error('Failed to request review: ' + error.message)
-    }
-  }
-
   const getScoreColor = (score) => {
     if (score >= 80) return 'text-emerald-800 bg-emerald-100 border-emerald-200'
     if (score >= 60) return 'text-emerald-700 bg-emerald-50 border-emerald-200'
     if (score >= 40) return 'text-amber-700 bg-amber-50 border-amber-200'
     return 'text-red-700 bg-red-50 border-red-200'
   }
-
-  const tabs = [
-    { id: 'analysis', label: 'AI Analysis', icon: Zap },
-    { id: 'application', label: 'Application Draft', icon: FileText }
-  ]
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -809,7 +366,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
         className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-slate-200"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-600 to-yellow-600 p-6 text-white">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-2 bg-white/20 rounded-lg mr-4">
@@ -818,7 +375,7 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
               <div>
                 <h2 className="text-2xl font-bold">AI Opportunity Analysis</h2>
                 <p className="text-emerald-100 mt-1">
-                  {opportunity.title} • {project.name}
+                  Strategic fit analysis for {opportunity.title}
                 </p>
               </div>
             </div>
@@ -831,31 +388,8 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-slate-100 border-b border-slate-200 p-1 m-6 rounded-lg">
-          <div className="flex">
-            {tabs.map(tab => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center rounded-md transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
         {/* Content */}
-        <div className="p-6 max-h-[50vh] overflow-y-auto">
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
           {(loading || authLoading || initializing) ? (
             <div className="text-center py-16">
               <div className="p-4 bg-emerald-50 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
@@ -887,23 +421,9 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
                 Close
               </button>
             </div>
-          ) : (
-            <>
-              {activeTab === 'analysis' && analysis && (
-                <AnalysisContent analysis={analysis} quickMatchScore={quickMatchScore} />
-              )}
-
-              {activeTab === 'application' && (
-                <ApplicationContent 
-                  generating={generating}
-                  applicationDraft={applicationDraft}
-                  handleCopyToClipboard={handleCopyToClipboard}
-                  setApplicationDraft={setApplicationDraft}
-                  handleGenerateApplication={handleGenerateApplication}
-                />
-              )}
-            </>
-          )}
+          ) : analysis ? (
+            <AnalysisContent analysis={analysis} quickMatchScore={quickMatchScore} />
+          ) : null}
         </div>
 
         {/* Footer */}
@@ -911,31 +431,10 @@ export default function AIAnalysisModal({ opportunity, project, userProfile, qui
           <div className="flex items-center justify-between">
             <div className="flex items-center text-sm text-slate-600">
               <Sparkles className="w-4 h-4 mr-2" />
-              Analysis powered by AI • Results are recommendations only
+              Strategic analysis powered by AI • Results are recommendations only
             </div>
             
             <div className="flex space-x-3">
-              {analysis && (
-                <>
-                  <button
-                    onClick={handleGenerateDocument}
-                    disabled={generating}
-                    className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    {generating ? 'Generating...' : 'Download Application Draft'}
-                  </button>
-                  
-                  <button
-                    onClick={handleGrantWriterReview}
-                    className="px-6 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center"
-                  >
-                    <Target className="w-4 h-4 mr-2" />
-                    Review with Grant Writer
-                  </button>
-                </>
-              )}
-              
               {!projectOpportunity && analysis && (
                 <button
                   onClick={handleAddToProject}
