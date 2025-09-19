@@ -115,8 +115,23 @@ export default async function handler(req, res) {
             if (opportunities?.length > 0 && projects?.length > 0) {
               console.log('Performing comprehensive opportunity analysis...')
               
+              // Ensure we have a valid profile or create a fallback
+              const profileForAnalysis = userContext.profile || {
+                organization_type: 'unknown',
+                organization_name: 'Unknown Organization',
+                small_business: false,
+                woman_owned: false,
+                minority_owned: false,
+                veteran_owned: false
+              }
+              
+              console.log('Using profile for analysis:', {
+                organization_type: profileForAnalysis.organization_type,
+                has_profile: !!userContext.profile
+              })
+              
               // Trigger comprehensive opportunity analysis
-              const analysis = await analyzeAllOpportunities(userId, projects, opportunities, userContext.profile)
+              const analysis = await analyzeAllOpportunities(userId, projects, opportunities, profileForAnalysis)
               
               // Create decisions for top opportunities
               if (analysis.topMatches.length > 0) {
@@ -924,14 +939,50 @@ function detectSimpleDataQuery(message) {
 // Get recent conversation history for context
 async function getRecentConversationHistory(userId, limit = 20) {
   try {
-    const { data: conversations, error } = await supabase
+    // Try the new schema first, fallback to old schema if it fails
+    let { data: conversations, error } = await supabase
       .from('agent_conversations')
       .select('role, content, metadata, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
 
-    if (error) {
+    // If role column doesn't exist, try fallback selection
+    if (error && error.code === '42703') {
+      console.log('Role column not found, trying fallback query...')
+      const fallbackResult = await supabase
+        .from('agent_conversations')
+        .select('user_message, agent_response, created_at, context_data')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      
+      if (fallbackResult.error) {
+        console.error('Fallback conversation query failed:', fallbackResult.error)
+        return []
+      }
+      
+      // Convert fallback format to expected format
+      conversations = []
+      fallbackResult.data?.forEach(conv => {
+        if (conv.user_message) {
+          conversations.push({
+            role: 'user',
+            content: conv.user_message,
+            timestamp: conv.created_at,
+            metadata: conv.context_data || {}
+          })
+        }
+        if (conv.agent_response) {
+          conversations.push({
+            role: 'assistant', 
+            content: conv.agent_response,
+            timestamp: conv.created_at,
+            metadata: conv.context_data || {}
+          })
+        }
+      })
+    } else if (error) {
       console.error('Error fetching conversation history:', error)
       return []
     }
@@ -1237,12 +1288,21 @@ async function analyzeAllOpportunities(userId, projects, opportunities, userProf
 function calculateDetailedFitScore(project, opportunity, userProfile) {
   let score = 0
   
+  // Ensure userProfile is not null
+  const profile = userProfile || {
+    organization_type: 'unknown',
+    small_business: false,
+    woman_owned: false,
+    minority_owned: false,
+    veteran_owned: false
+  }
+  
   // Organization type match (STRICT) - 25 points
   if (opportunity.organization_types && opportunity.organization_types.length > 0) {
-    if (!userProfile.organization_type || userProfile.organization_type === 'unknown') {
+    if (!profile.organization_type || profile.organization_type === 'unknown') {
       // No points if org type not specified
       score += 0
-    } else if (opportunity.organization_types.includes(userProfile.organization_type)) {
+    } else if (opportunity.organization_types.includes(profile.organization_type)) {
       score += 25
     } else if (opportunity.organization_types.includes('all')) {
       score += 20
@@ -1297,10 +1357,10 @@ function calculateDetailedFitScore(project, opportunity, userProfile) {
   
   // Special qualifications (ONLY if explicitly specified) - 10 points max
   let specialQualPoints = 0
-  if (opportunity.small_business_only && userProfile.small_business) specialQualPoints += 3
-  if (opportunity.minority_business && userProfile.minority_owned) specialQualPoints += 3
-  if (opportunity.woman_owned_business && userProfile.woman_owned) specialQualPoints += 2
-  if (opportunity.veteran_owned_business && userProfile.veteran_owned) specialQualPoints += 2
+  if (opportunity.small_business_only && profile.small_business) specialQualPoints += 3
+  if (opportunity.minority_business && profile.minority_owned) specialQualPoints += 3
+  if (opportunity.woman_owned_business && profile.woman_owned) specialQualPoints += 2
+  if (opportunity.veteran_owned_business && profile.veteran_owned) specialQualPoints += 2
   score += Math.min(specialQualPoints, 10)
   
   return Math.min(score, 100)
@@ -1459,7 +1519,7 @@ async function getUserContext(userId) {
       campaignsResult,
       applicationsResult
     ] = await Promise.allSettled([
-      supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle(),
+      supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle(),
       supabase.from('projects').select('*').eq('user_id', userId),
       supabase.from('donors').select('*').eq('user_id', userId).limit(10),
       supabase.from('donations').select(`
@@ -1478,8 +1538,8 @@ async function getUserContext(userId) {
       `).eq('user_id', userId).order('submission_date', { ascending: false })
     ])
 
-    // Safely extract data from results
-    const profile = profileResult.status === 'fulfilled' ? profileResult.value.data : {}
+    // Safely extract data from results with proper null handling
+    const profile = profileResult.status === 'fulfilled' ? profileResult.value.data || null : null
     const projects = projectsResult.status === 'fulfilled' ? projectsResult.value.data || [] : []
     const donors = donorsResult.status === 'fulfilled' ? donorsResult.value.data || [] : []
     const donations = donationsResult.status === 'fulfilled' ? donationsResult.value.data || [] : []
