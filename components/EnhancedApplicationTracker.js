@@ -21,6 +21,7 @@ import {
   Edit,
   Save,
   ArrowRight,
+  ArrowDown,
   Clock,
   HelpCircle,
   Lightbulb,
