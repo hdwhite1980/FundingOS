@@ -1,17 +1,93 @@
 import aiProviderService from '../../../../lib/aiProviderService'
+import { buildOrgContext } from '../../../../lib/ai/contextBuilder'
 
 export async function POST(request) {
   try {
-    const { applicationData, documentType = 'grant-application' } = await request.json()
+    const requestData = await request.json()
+    let { userId, projectId, opportunityId, applicationData, documentType = 'grant-application' } = requestData
     
-    if (!applicationData?.opportunity || !applicationData?.project || !applicationData?.analysis) {
+    // Handle backward compatibility - if called with old applicationData format
+    if (!userId && applicationData?.userProfile?.user_id) {
+      userId = applicationData.userProfile.user_id
+    }
+    if (!projectId && applicationData?.project?.id) {
+      projectId = applicationData.project.id
+    }
+    if (!opportunityId && applicationData?.opportunity?.id) {
+      opportunityId = applicationData.opportunity.id
+    }
+    
+    // Validate required parameters
+    if (!userId) {
       return Response.json(
-        { error: 'Missing required application data' },
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+    
+    if (!projectId || !opportunityId) {
+      return Response.json(
+        { error: 'Project ID and Opportunity ID are required' },
         { status: 400 }
       )
     }
 
-    const { opportunity, project, userProfile, analysis, applicationDraft, formTemplate } = applicationData
+    console.log('🚀 AI Application Generation:', { userId, projectId, opportunityId })
+
+    // Build comprehensive context from Supabase
+    console.log('📊 Building user/org context from Supabase...')
+    const contextResult = await buildOrgContext(userId, { 
+      includeProjects: true, 
+      includeApplications: true,
+      includeOpportunities: true 
+    })
+    
+    if (contextResult.error) {
+      console.error('Context building failed:', contextResult.error)
+      return Response.json(
+        { error: 'Failed to fetch user context', details: contextResult.error },
+        { status: 500 }
+      )
+    }
+
+    const context = contextResult
+    console.log('✅ Context built successfully:', {
+      hasProfile: !!context.profile,
+      projectCount: context.projects?.length || 0,
+      applicationCount: context.applications?.length || 0,
+      opportunityCount: context.opportunities?.length || 0
+    })
+
+    // Find the specific project and opportunity from context
+    const project = context.projects?.find(p => p.id === projectId)
+    const opportunity = context.opportunities?.find(o => o.id === opportunityId)
+    
+    if (!project) {
+      return Response.json(
+        { error: 'Project not found or access denied' },
+        { status: 404 }
+      )
+    }
+    
+    if (!opportunity) {
+      return Response.json(
+        { error: 'Opportunity not found or access denied' },
+        { status: 404 }
+      )
+    }
+
+    // Use context data instead of passed applicationData, but allow fallback to passed data
+    const userProfile = context.profile
+    const analysis = applicationData?.analysis || {
+      fitScore: 85,
+      strengths: ['Strong project alignment'],
+      challenges: ['Standard application requirements'],
+      recommendations: ['Follow application guidelines'],
+      nextSteps: ['Complete application'],
+      reasoning: 'AI analysis based on current context'
+    }
+    
+    const { applicationDraft, formTemplate } = applicationData || {}
 
     // Enhanced form template detection - works with any dynamically extracted form structure
     let useFormTemplate = false
@@ -37,13 +113,13 @@ export async function POST(request) {
     }
 
     // Priority 1: Check for dynamic form analysis structure (new system)
-    if (applicationData.dynamicFormStructure?.formFields) {
+    if (applicationData?.dynamicFormStructure?.formFields) {
       useFormTemplate = true
       templateFields = convertToTemplateFields(applicationData.dynamicFormStructure.formFields, 'dynamic form analysis')
       formMetadata = applicationData.dynamicFormStructure.formMetadata || {}
     }
     // Priority 2: Check for direct formTemplate in applicationData (from Enhanced Application Tracker)
-    else if (applicationData.formTemplate?.formFields) {
+    else if (applicationData?.formTemplate?.formFields) {
       useFormTemplate = true
       templateFields = convertToTemplateFields(applicationData.formTemplate.formFields, 'direct form template')
       formMetadata = applicationData.formTemplate.formMetadata || {}
@@ -55,7 +131,7 @@ export async function POST(request) {
       formMetadata = formTemplate.formMetadata || {}
     }
     // Priority 4: Check for combined form fields from document analysis (legacy)
-    else if (applicationData.combinedFormFields && Object.keys(applicationData.combinedFormFields).length > 0) {
+    else if (applicationData?.combinedFormFields && Object.keys(applicationData.combinedFormFields).length > 0) {
       useFormTemplate = true
       templateFields = convertToTemplateFields(applicationData.combinedFormFields, 'combined form fields')
     }
@@ -74,18 +150,28 @@ CRITICAL REQUIREMENTS:
 5. Maintain the original form organization by sections
 6. Fill all required fields with substantive content, optionally fill others where appropriate
 
+ORGANIZATION PROFILE DATA AVAILABLE:
+- Organization: ${userProfile?.organization_name || userProfile?.full_name || 'Organization Name'}
+- Tax ID/EIN: ${userProfile?.tax_id || userProfile?.ein || 'Not specified'}
+- Address: ${userProfile?.address || userProfile?.location || 'Address not specified'}
+- Email: ${userProfile?.email || 'Contact email'}
+- Annual Budget: ${userProfile?.annual_budget ? `$${userProfile.annual_budget.toLocaleString()}` : 'Not specified'}
+- Years Operating: ${userProfile?.years_in_operation || userProfile?.years_operating || 'Not specified'}
+- Staff Count: ${userProfile?.full_time_staff || userProfile?.employee_count || 'Not specified'}
+- Board Size: ${userProfile?.board_size || userProfile?.board_members || 'Not specified'}
+
 FORM TYPE DETECTED: ${formMetadata.documentType || 'Unknown'}
 FORM TITLE: ${formMetadata.title || 'Application Form'}
 ORGANIZATION: ${formMetadata.organization || 'N/A'}
 
 FIELD TYPES TO HANDLE:
-- TEXT: Short responses (names, titles, single-line info)
+- TEXT: Short responses (names, titles, single-line info) - USE PROFILE DATA WHERE APPROPRIATE
 - TEXTAREA: Long responses (descriptions, narratives, explanations) 
-- EMAIL: Valid email addresses
-- PHONE: Properly formatted phone numbers
+- EMAIL: Valid email addresses - USE PROFILE EMAIL: ${userProfile?.email || 'email@organization.org'}
+- PHONE: Properly formatted phone numbers - USE PROFILE PHONE: ${userProfile?.phone || '(555) 123-4567'}
 - DATE: Formatted dates (MM/DD/YYYY or as specified)
-- CURRENCY: Dollar amounts with proper formatting
-- NUMBER: Numeric values (quantities, percentages)
+- CURRENCY: Dollar amounts with proper formatting - USE PROFILE BUDGET DATA WHERE RELEVANT
+- NUMBER: Numeric values (quantities, percentages) - USE PROFILE DATA (staff, years, etc.)
 - SELECT/RADIO: Choose from provided options
 - CHECKBOX: Select relevant options or Yes/No
 - FILE: Indicate what would be attached
@@ -96,14 +182,14 @@ RESPONSE FORMAT - Return ONLY valid JSON:
     {
       "fieldName": "exact_field_name_from_structure",
       "label": "Exact Field Label",
-      "value": "Professional response tailored to field type and purpose",
+      "value": "Professional response tailored to field type and purpose, using profile data where applicable",
       "type": "field_type",
       "section": "section_name"
     }
   ],
   "metadata": {
     "title": "${formMetadata.title || 'Application Form'}",
-    "applicant": "Organization name",
+    "applicant": "${userProfile?.organization_name || userProfile?.full_name || 'Organization'}",
     "date": "Current date",
     "templateUsed": true,
     "formType": "${formMetadata.documentType || 'unknown'}",
@@ -123,11 +209,11 @@ ${templateFields.map(field => {
 }).join('\n')}
 
 SECTIONS ORGANIZATION:
-${templateFields.reduce((sections: any, field) => {
+${JSON.stringify(templateFields.reduce((sections: any, field) => {
   if (!sections[field.section]) sections[field.section] = []
   sections[field.section].push(field.fieldName)
   return sections
-}, {})}
+}, {}), null, 2)}
 
 IMPORTANT: Each field value should be:
 - Professional and appropriate for the detected form type
@@ -135,9 +221,20 @@ IMPORTANT: Each field value should be:
 - Written by an experienced professional in the relevant domain
 - Appropriate for the field type, length constraints, and context
 - Complete and substantive (no placeholder text or "TBD")
-- Compliant with any validation rules or format requirements`
+- Compliant with any validation rules or format requirements
+- USE ACTUAL PROFILE DATA (organization name, EIN, address, etc.) for organizational fields`
         :
-        `You are an expert application writer. Generate a complete, professional application document.
+        `You are an expert application writer. Generate a complete, professional application document using the organization's profile data.
+
+ORGANIZATION PROFILE DATA:
+- Organization: ${userProfile?.organization_name || userProfile?.full_name || 'Organization Name'}
+- Tax ID/EIN: ${userProfile?.tax_id || userProfile?.ein || 'Not specified'}
+- Address: ${userProfile?.address || userProfile?.location || 'Address not specified'}  
+- Email: ${userProfile?.email || 'Contact email'}
+- Annual Budget: ${userProfile?.annual_budget ? `$${userProfile.annual_budget.toLocaleString()}` : 'Not specified'}
+- Years Operating: ${userProfile?.years_in_operation || userProfile?.years_operating || 'Not specified'}
+- Staff Count: ${userProfile?.full_time_staff || userProfile?.employee_count || 'Not specified'}
+- Board Size: ${userProfile?.board_size || userProfile?.board_members || 'Not specified'}
 
 RESPONSE FORMAT - Return ONLY valid JSON:
 {
@@ -145,35 +242,35 @@ RESPONSE FORMAT - Return ONLY valid JSON:
     {
       "fieldName": "field_identifier",
       "label": "Field Display Name",
-      "value": "Professional response content",
+      "value": "Professional response content using profile data where appropriate",
       "type": "text|textarea",
       "section": "section_name"
     }
   ],
   "metadata": {
     "title": "Application Document",
-    "applicant": "Organization Name",
+    "applicant": "${userProfile?.organization_name || userProfile?.full_name || 'Organization'}",
     "date": "Current Date",
     "templateUsed": false
   }
 }
 
 Generate comprehensive form fields covering all aspects of a professional application:
-1. Basic Information (organization, contact, project details)
+1. Basic Information (organization, contact, project details) - USE PROFILE DATA
 2. Project Description (goals, objectives, methodology)  
 3. Need Statement and Impact
 4. Timeline, Budget, and Resources
-5. Organizational Capacity and Experience
+5. Organizational Capacity and Experience - USE PROFILE DATA (years operating, staff, budget)
 6. Evaluation and Sustainability Plans
 
-Each response should be professional, detailed, and tailored to the specific project and opportunity.`
+Each response should be professional, detailed, and tailored to the specific project and opportunity, incorporating the organization's actual profile information.`
     }
 
     const userMessage = {
       role: 'user',
       content: `${useFormTemplate ? 
-        'Fill out the uploaded form template with the following information:' : 
-        'Generate a complete grant application document with the following information:'}
+        'Fill out the uploaded form template with the following information (using profile data for organizational fields):' : 
+        'Generate a complete grant application document with the following information (incorporating profile data):'}
 
 OPPORTUNITY DETAILS:
 - Title: ${opportunity.title}
@@ -191,10 +288,18 @@ PROJECT DETAILS:
 - Budget: ${project.budget ? `$${project.budget.toLocaleString()}` : 'To be determined'}
 - Timeline: ${project.timeline || '12-24 months'}
 
-ORGANIZATION DETAILS:
-- Organization: ${userProfile?.organization_name || 'Organization'}
-- Contact: ${userProfile?.full_name || 'Project Lead'}
-- Location: ${userProfile?.location || 'Location TBD'}
+ORGANIZATION DETAILS (USE THIS DATA FOR ORGANIZATIONAL FIELDS):
+- Organization: ${userProfile?.organization_name || userProfile?.full_name || 'Organization'}
+- Tax ID/EIN: ${userProfile?.tax_id || userProfile?.ein || 'Not specified'}
+- Address: ${userProfile?.address || userProfile?.location || 'Address not provided'}
+- Email: ${userProfile?.email || 'Contact email'}
+- Phone: ${userProfile?.phone || 'Phone number'}
+- Annual Budget: ${userProfile?.annual_budget ? `$${userProfile.annual_budget.toLocaleString()}` : 'Not specified'}
+- Years Operating: ${userProfile?.years_in_operation || userProfile?.years_operating || 'Not specified'}
+- Staff Count: ${userProfile?.full_time_staff || userProfile?.employee_count || 'Not specified'}
+- Board Size: ${userProfile?.board_size || userProfile?.board_members || 'Not specified'}
+- Executive Director: ${userProfile?.executive_director || userProfile?.director_name || 'Not specified'}
+- Board President: ${userProfile?.board_president || userProfile?.board_chair || 'Not specified'}
 
 AI ANALYSIS INSIGHTS:
 - Fit Score: ${analysis.fitScore}%
@@ -207,7 +312,7 @@ AI ANALYSIS INSIGHTS:
 ${useFormTemplate ? 
   `\nFORM TEMPLATE STRUCTURE:\n${templateFields.map(field => 
     `${field.label} (${field.type}${field.required ? ', Required' : ', Optional'})${field.placeholder ? ' - ' + field.placeholder : ''}`
-  ).join('\n')}\n\nPlease fill out each field from the template above with appropriate content based on the project and opportunity information provided.` 
+  ).join('\n')}\n\nPlease fill out each field from the template above with appropriate content based on the project and opportunity information provided. For organizational fields (name, address, EIN, etc.), USE THE ORGANIZATION DETAILS provided above.` 
   : ''
 }
 
@@ -217,8 +322,8 @@ ${applicationDraft}
 Please enhance and complete this draft with the above information.` : ''}
 
 ${useFormTemplate ? 
-  'Fill out the form template exactly as provided, ensuring all required fields are completed with professional, compelling content.' :
-  'Create a complete, professional grant application document that addresses all requirements and incorporates the AI analysis insights.'
+  'Fill out the form template exactly as provided, ensuring all required fields are completed with professional, compelling content. Use the actual organization profile data for any organizational/contact fields.' :
+  'Create a complete, professional grant application document that addresses all requirements and incorporates the AI analysis insights and organization profile data.'
 }`
     }
 
