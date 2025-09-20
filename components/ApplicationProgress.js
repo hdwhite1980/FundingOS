@@ -34,6 +34,7 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
   const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEnhancedTracker, setShowEnhancedTracker] = useState(false)
+  const [enhancedTrackerState, setEnhancedTrackerState] = useState(null)
   const [showDocumentModal, setShowDocumentModal] = useState(false)
   const [filters, setFilters] = useState({})
 
@@ -462,6 +463,8 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
           userProfile={userProfile}
           onClose={() => setShowEnhancedTracker(false)}
           onSubmit={handleCreateSubmission}
+          initialState={enhancedTrackerState}
+          onStateChange={setEnhancedTrackerState}
         />
       )}
 

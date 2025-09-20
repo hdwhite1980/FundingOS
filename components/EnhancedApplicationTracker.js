@@ -41,26 +41,48 @@ export default function EnhancedApplicationTracker({
   projects, 
   userProfile, 
   onClose, 
-  onSubmit 
+  onSubmit,
+  initialState = null,
+  onStateChange = null
 }) {
-  const [step, setStep] = useState('upload') // upload, analyze, missing_info, complete, review
-  const [uploadedFiles, setUploadedFiles] = useState([])
-  const [documentAnalysis, setDocumentAnalysis] = useState(null)
-  const [formCompletion, setFormCompletion] = useState(null)
-  const [filledForm, setFilledForm] = useState({})
-  const [missingQuestions, setMissingQuestions] = useState([])
-  const [userAnswers, setUserAnswers] = useState({})
-  const [selectedProject, setSelectedProject] = useState('')
+  const [step, setStep] = useState(initialState?.step || 'upload') // upload, analyze, missing_info, complete, review
+  const [uploadedFiles, setUploadedFiles] = useState(initialState?.uploadedFiles || [])
+  const [documentAnalysis, setDocumentAnalysis] = useState(initialState?.documentAnalysis || null)
+  const [formCompletion, setFormCompletion] = useState(initialState?.formCompletion || null)
+  const [filledForm, setFilledForm] = useState(initialState?.filledForm || {})
+  const [missingQuestions, setMissingQuestions] = useState(initialState?.missingQuestions || [])
+  const [userAnswers, setUserAnswers] = useState(initialState?.userAnswers || {})
+  const [selectedProject, setSelectedProject] = useState(initialState?.selectedProject || '')
   const [processing, setProcessing] = useState(false)
-  const [analysisComplete, setAnalysisComplete] = useState(false)
+  const [analysisComplete, setAnalysisComplete] = useState(initialState?.analysisComplete || false)
   const [showMissingInfo, setShowMissingInfo] = useState(false)
-  const [aiAnalysisResult, setAiAnalysisResult] = useState(null)
+  const [aiAnalysisResult, setAiAnalysisResult] = useState(initialState?.aiAnalysisResult || null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentFileName, setCurrentFileName] = useState('')
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false)
   const [showAIDocumentAnalysisModal, setShowAIDocumentAnalysisModal] = useState(false)
   const [analysisData, setAnalysisData] = useState(null)
-  const [enhancedFormStructure, setEnhancedFormStructure] = useState(null) // Updated from dynamicFormStructure
+  const [enhancedFormStructure, setEnhancedFormStructure] = useState(initialState?.enhancedFormStructure || null) // Updated from dynamicFormStructure
+
+  // Save state when it changes
+  useEffect(() => {
+    if (onStateChange) {
+      const currentState = {
+        step,
+        uploadedFiles,
+        documentAnalysis,
+        formCompletion,
+        filledForm,
+        missingQuestions,
+        userAnswers,
+        selectedProject,
+        analysisComplete,
+        aiAnalysisResult,
+        enhancedFormStructure
+      }
+      onStateChange(currentState)
+    }
+  }, [step, uploadedFiles, documentAnalysis, formCompletion, filledForm, missingQuestions, userAnswers, selectedProject, analysisComplete, aiAnalysisResult, enhancedFormStructure, onStateChange])
 
   // Enhanced file upload and analysis with better error handling and structure parsing
   const handleFileUpload = async (files) => {
@@ -784,22 +806,43 @@ export default function EnhancedApplicationTracker({
           </div>
           
           {Object.keys(filledForm).length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-slate-900">Sample Completed Fields:</h4>
-              <div className="max-h-48 overflow-y-auto space-y-2">
-                {Object.entries(filledForm).slice(0, 8).map(([field, value]) => (
-                  <div key={field} className="flex justify-between text-sm p-2 bg-white rounded border">
-                    <span className="text-slate-600 capitalize font-medium">{field.replace(/_/g, ' ')}:</span>
-                    <span className="text-slate-900 truncate max-w-xs ml-2">
-                      {typeof value === 'string' ? value.substring(0, 60) + (value.length > 60 ? '...' : '') : String(value)}
-                    </span>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-slate-900">Edit Application Fields:</h4>
+                <span className="text-sm text-slate-500">{Object.keys(filledForm).length} fields detected</span>
+              </div>
+              <div className="max-h-96 overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4">
+                {Object.entries(filledForm).map(([field, value]) => (
+                  <div key={field} className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700 capitalize">
+                      {field.replace(/_/g, ' ')}:
+                    </label>
+                    {field.toLowerCase().includes('description') || 
+                     field.toLowerCase().includes('narrative') ||
+                     field.toLowerCase().includes('summary') ||
+                     field.toLowerCase().includes('statement') ||
+                     (typeof value === 'string' && value.length > 100) ? (
+                      <textarea
+                        value={value || ''}
+                        onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
+                        className="w-full p-3 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                        rows={4}
+                        placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
+                      />
+                    ) : (
+                      <input
+                        type={field.toLowerCase().includes('amount') || field.toLowerCase().includes('budget') || field.toLowerCase().includes('funding') ? 'number' : 
+                              field.toLowerCase().includes('date') || field.toLowerCase().includes('deadline') ? 'date' : 
+                              field.toLowerCase().includes('email') ? 'email' : 
+                              field.toLowerCase().includes('phone') ? 'tel' : 'text'}
+                        value={value || ''}
+                        onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
+                        className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
+                      />
+                    )}
                   </div>
                 ))}
-                {Object.keys(filledForm).length > 8 && (
-                  <div className="text-xs text-slate-500 text-center">
-                    +{Object.keys(filledForm).length - 8} more fields completed
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -836,16 +879,28 @@ export default function EnhancedApplicationTracker({
       <div className="flex space-x-4">
         <button
           onClick={() => setStep('analyze')}
-          className="flex-1 py-3 px-4 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+          className="py-3 px-4 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
         >
           Back to Analysis
+        </button>
+        <button
+          onClick={handleDownloadApplication}
+          disabled={processing || !enhancedFormStructure}
+          className="py-3 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          {processing ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Download className="w-5 h-5" />
+          )}
+          <span>{processing ? 'Generating...' : 'Download Application'}</span>
         </button>
         <button
           onClick={() => setStep('review')}
           className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-2"
         >
           <Edit className="w-5 h-5" />
-          <span>Review Enhanced Application</span>
+          <span>Review & Submit</span>
         </button>
       </div>
     </div>
@@ -1274,9 +1329,20 @@ export default function EnhancedApplicationTracker({
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-slate-200">
             <h2 className="text-xl font-bold text-slate-900">Enhanced AI Application Tracker</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center space-x-2">
+              {(step !== 'upload' || uploadedFiles.length > 0) && (
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors flex items-center space-x-1"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save & Close</span>
+                </button>
+              )}
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Step indicators */}

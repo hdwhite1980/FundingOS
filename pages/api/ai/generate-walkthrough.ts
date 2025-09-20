@@ -69,24 +69,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('No response from AI service')
     }
 
-    // Helper function to clean markdown formatting from AI response
-    const cleanJsonResponse = (content: string): string => {
-      // Remove markdown code block formatting
-      const cleaned = content
-        .replace(/^```json\s*/i, '')  // Remove opening ```json
-        .replace(/```\s*$/, '')       // Remove closing ```
-        .trim()
-
-      return cleaned
-    }
-
     let walkthroughResult
     try {
-      const cleanedContent = cleanJsonResponse(String(responseContent))
-      walkthroughResult = JSON.parse(cleanedContent)
+      walkthroughResult = JSON.parse(String(responseContent))
     } catch (parseError) {
       console.error('Failed to parse AI walkthrough response:', parseError)
-      console.error('Raw response content:', String(responseContent))
       throw new Error('Invalid AI response format')
     }
 
