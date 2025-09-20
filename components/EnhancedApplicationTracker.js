@@ -432,6 +432,31 @@ export default function EnhancedApplicationTracker({
         })
       }
 
+      // Add ALL detected fields to filledForm for user editing (not just auto-filled ones)
+      if (enhancedFormStructure) {
+        // Add all data fields
+        Object.entries(enhancedFormStructure.dataFields || {}).forEach(([fieldId, fieldConfig]) => {
+          if (!legacyCompletion.filledForm[fieldId]) {
+            legacyCompletion.filledForm[fieldId] = fieldConfig.value || fieldConfig.extractedText || ''
+            legacyCompletion.dataFieldCompletions[fieldId] = legacyCompletion.filledForm[fieldId]
+          }
+        })
+
+        // Add all narrative fields
+        Object.entries(enhancedFormStructure.narrativeFields || {}).forEach(([fieldId, fieldConfig]) => {
+          if (!legacyCompletion.filledForm[fieldId]) {
+            legacyCompletion.filledForm[fieldId] = fieldConfig.value || fieldConfig.extractedText || fieldConfig.question || ''
+            legacyCompletion.narrativeFieldCompletions[fieldId] = legacyCompletion.filledForm[fieldId]
+          }
+        })
+
+        console.log('📝 Form populated with fields:', {
+          totalFields: Object.keys(legacyCompletion.filledForm).length,
+          dataFields: Object.keys(legacyCompletion.dataFieldCompletions).length,
+          narrativeFields: Object.keys(legacyCompletion.narrativeFieldCompletions).length
+        })
+      }
+
       setFormCompletion(legacyCompletion)
       
       // Merge data and narrative field completions
@@ -542,20 +567,39 @@ export default function EnhancedApplicationTracker({
         formType: enhancedFormStructure.formMetadata?.detectedFormType,
         totalFields: Object.keys(enhancedFormStructure.dataFields || {}).length + 
                     Object.keys(enhancedFormStructure.narrativeFields || {}).length,
-        projectName: project?.name || 'Unknown'
+        projectName: project?.name || 'Unknown',
+        filledFormFields: Object.keys(filledForm).length
       })
+
+      // Convert enhanced form structure to export API format
+      const exportFormStructure = {
+        formTitle: enhancedFormStructure.formMetadata?.detectedFormType || project?.name || 'Application Form',
+        fields: [
+          // Convert data fields to field array
+          ...Object.entries(enhancedFormStructure.dataFields || {}).map(([id, fieldConfig]) => ({
+            id,
+            label: fieldConfig.label || id.replace(/_/g, ' '),
+            type: fieldConfig.type || 'text',
+            ...fieldConfig
+          })),
+          // Convert narrative fields to field array
+          ...Object.entries(enhancedFormStructure.narrativeFields || {}).map(([id, fieldConfig]) => ({
+            id,
+            label: fieldConfig.question || fieldConfig.label || id.replace(/_/g, ' '),
+            type: 'textarea',
+            ...fieldConfig
+          }))
+        ],
+        sections: enhancedFormStructure.sections || []
+      }
 
       // Call enhanced document generation API (now form export)
       const response = await fetch('/api/form/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          formStructure: enhancedFormStructure,
-          completedData: {
-            dataFields: formCompletion?.dataFieldCompletions || {},
-            narrativeFields: formCompletion?.narrativeFieldCompletions || {},
-            userAnswers: userAnswers
-          },
+          formStructure: exportFormStructure,
+          completedData: filledForm, // Send filledForm directly instead of nested structure
           exportFormat: 'pdf',
           options: {
             includeEmptyFields: true,
@@ -811,16 +855,19 @@ export default function EnhancedApplicationTracker({
                 <h4 className="font-medium text-slate-900">Edit Application Fields:</h4>
                 <span className="text-sm text-slate-500">{Object.keys(filledForm).length} fields detected</span>
               </div>
-              <div className="max-h-96 overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4">
+              <div className="max-h-[400px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50">
                 {Object.entries(filledForm).map(([field, value]) => (
-                  <div key={field} className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 capitalize">
+                  <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
+                    <label className="text-sm font-medium text-slate-700 capitalize block mb-2">
                       {field.replace(/_/g, ' ')}:
                     </label>
                     {field.toLowerCase().includes('description') || 
                      field.toLowerCase().includes('narrative') ||
                      field.toLowerCase().includes('summary') ||
                      field.toLowerCase().includes('statement') ||
+                     field.toLowerCase().includes('objective') ||
+                     field.toLowerCase().includes('plan') ||
+                     field.toLowerCase().includes('approach') ||
                      (typeof value === 'string' && value.length > 100) ? (
                       <textarea
                         value={value || ''}
@@ -843,6 +890,12 @@ export default function EnhancedApplicationTracker({
                     )}
                   </div>
                 ))}
+                {Object.keys(filledForm).length === 0 && (
+                  <div className="text-center py-8 text-slate-500">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                    <p>No form fields detected. Please upload a document and run analysis first.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

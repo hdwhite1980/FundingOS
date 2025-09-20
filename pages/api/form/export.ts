@@ -30,23 +30,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('📄 Generating form export:', {
       formTitle: formStructure.formTitle || 'Unknown',
       format: exportFormat || 'pdf',
-      fieldsCompleted: Object.keys(completedData).length
+      fieldsCompleted: getTotalFieldsCount(completedData)
     })
+
+    // Flatten completedData structure for easier access
+    const flattenedData = flattenCompletedData(completedData)
 
     let exportResult
 
     switch (exportFormat) {
       case 'pdf':
-        exportResult = await generatePDFExport(formStructure, completedData, options)
+        exportResult = await generatePDFExport(formStructure, flattenedData, options)
         break
       case 'html':
-        exportResult = await generateHTMLExport(formStructure, completedData, options)
+        exportResult = await generateHTMLExport(formStructure, flattenedData, options)
         break
       case 'json':
-        exportResult = generateJSONExport(formStructure, completedData, options)
+        exportResult = generateJSONExport(formStructure, flattenedData, options)
         break
       case 'docx':
-        exportResult = await generateWordExport(formStructure, completedData, options)
+        exportResult = await generateWordExport(formStructure, flattenedData, options)
         break
       default:
         exportResult = await generatePDFExport(formStructure, completedData, options)
@@ -400,4 +403,62 @@ function sanitizeFilename(filename: string): string {
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '')
     .toLowerCase()
+}
+
+/**
+ * Flatten nested completedData structure for easier field access
+ */
+function flattenCompletedData(completedData: any): any {
+  const flattened: any = {}
+  
+  // Handle nested structure from EnhancedApplicationTracker
+  if (completedData.dataFields) {
+    Object.assign(flattened, completedData.dataFields)
+  }
+  
+  if (completedData.narrativeFields) {
+    Object.assign(flattened, completedData.narrativeFields)
+  }
+  
+  if (completedData.userAnswers) {
+    Object.assign(flattened, completedData.userAnswers)
+  }
+  
+  // Handle direct field mapping (legacy support)
+  Object.keys(completedData).forEach(key => {
+    if (!['dataFields', 'narrativeFields', 'userAnswers'].includes(key)) {
+      flattened[key] = completedData[key]
+    }
+  })
+  
+  return flattened
+}
+
+/**
+ * Count total completed fields from nested structure
+ */
+function getTotalFieldsCount(completedData: any): number {
+  let count = 0
+  
+  if (completedData.dataFields) {
+    count += Object.keys(completedData.dataFields).length
+  }
+  
+  if (completedData.narrativeFields) {
+    count += Object.keys(completedData.narrativeFields).length
+  }
+  
+  if (completedData.userAnswers) {
+    count += Object.keys(completedData.userAnswers).length
+  }
+  
+  // Count direct fields (excluding nested objects)
+  Object.keys(completedData).forEach(key => {
+    if (!['dataFields', 'narrativeFields', 'userAnswers'].includes(key) && 
+        typeof completedData[key] !== 'object') {
+      count++
+    }
+  })
+  
+  return count
 }
