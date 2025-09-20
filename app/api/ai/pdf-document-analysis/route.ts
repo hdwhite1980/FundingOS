@@ -26,12 +26,18 @@ async function extractPDFText(pdfBuffer: Buffer): Promise<{ text: string; pages:
       // ignore if canvas not available; pdfjs may still work
     }
 
-    const pdfjsLib: any = await import('pdfjs-dist/legacy/build/pdf.min.mjs')
+    const pdfjsLib: any = await import('pdfjs-dist/legacy/build/pdf.mjs')
     if (pdfjsLib?.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+      // Provide a dummy workerSrc and disable worker/eval to avoid setup
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.min.mjs'
     }
     const bytes = new Uint8Array(pdfBuffer)
-    const loadingTask = pdfjsLib.getDocument({ data: bytes, disableWorker: true })
+    const loadingTask = pdfjsLib.getDocument({
+      data: bytes,
+      disableWorker: true,
+      isEvalSupported: false,
+      useWorkerFetch: false
+    })
     const pdf = await loadingTask.promise
     let allText = ''
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
