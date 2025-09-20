@@ -26,11 +26,11 @@ async function extractPDFText(pdfBuffer: Buffer): Promise<{ text: string; pages:
       // ignore if canvas not available; pdfjs may still work
     }
 
-    const pdfjsLib: any = await import('pdfjs-dist')
+    const pdfjsLib: any = await import('pdfjs-dist/legacy/build/pdf.min.mjs')
     if (pdfjsLib?.GlobalWorkerOptions) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = ''
     }
-    const bytes = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer)
+    const bytes = new Uint8Array(pdfBuffer)
     const loadingTask = pdfjsLib.getDocument({ data: bytes, disableWorker: true })
     const pdf = await loadingTask.promise
     let allText = ''
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
 
     // Extract text (serverless-safe)
-    console.log('📄 Extracting text from PDF (pdf-parse)...')
+    console.log('📄 Extracting text from PDF (PDF.js)...')
     const { text: extractedText, pages, info } = await extractPDFText(buffer)
 
     if (!extractedText || extractedText.trim().length < 10) {
