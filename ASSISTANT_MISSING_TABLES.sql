@@ -1,7 +1,28 @@
 -- Missing Database Tables for WALI-OS Assistant
 -- Run this SQL in your Supabase SQL Editor to add missing tables
 
--- 1. Assistant Sessions Table
+-- 1. User Profiles Table (CRITICAL - Referenced by contextBuilder)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  full_name TEXT,
+  organization_name VARCHAR(255),
+  organization_id VARCHAR(100),
+  company VARCHAR(255),
+  address_line1 VARCHAR(255),
+  address_line2 VARCHAR(255),
+  city VARCHAR(100),
+  state VARCHAR(50),
+  zip_code VARCHAR(20),
+  country VARCHAR(100) DEFAULT 'United States',
+  phone VARCHAR(20),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- 2. Assistant Sessions Table
 CREATE TABLE IF NOT EXISTS assistant_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -70,6 +91,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
 );
 
 -- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_organization ON user_profiles(organization_name, organization_id);
 CREATE INDEX IF NOT EXISTS idx_assistant_sessions_user_id ON assistant_sessions(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_assistant_conversations_session ON assistant_conversations(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_ai_org_context_cache_refreshed ON ai_org_context_cache(refreshed_at DESC);
@@ -77,6 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_company_settings_user_id ON company_settings(user
 CREATE INDEX IF NOT EXISTS idx_company_settings_org_name ON company_settings(organization_name);
 
 -- Enable RLS
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assistant_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assistant_conversations ENABLE ROW LEVEL SECURITY;  
 ALTER TABLE ai_org_context_cache ENABLE ROW LEVEL SECURITY;
