@@ -49,40 +49,86 @@ export async function POST(request: NextRequest) {
     // Use AI to analyze form structure from text
     const analysisPrompt = buildFormAnalysisPrompt(file.name, extractedText, context)
     
-    const aiResponse = await aiProviderService.generateCompletion(
-      'pdf-form-analysis',
-      [
-        {
-          role: 'system',
-          content: analysisPrompt.system
-        },
-        {
-          role: 'user',
-          content: analysisPrompt.user
-        }
-      ],
-      {
-        temperature: 0.1,
-        max_tokens: 6000,
-        response_format: { type: 'json_object' }
-      }
-    )
-
-    const responseContent = aiResponse?.content || aiResponse
-    if (!responseContent) {
-      throw new Error('No response from AI service')
-    }
-
     let analysisResult
     try {
+      const aiResponse = await aiProviderService.generateCompletion(
+        'document-analysis',
+        [
+          {
+            role: 'system',
+            content: analysisPrompt.system
+          },
+          {
+            role: 'user',
+            content: analysisPrompt.user
+          }
+        ],
+        {
+          temperature: 0.1,
+          max_tokens: 6000,
+          response_format: { type: 'json_object' }
+        }
+      )
+
+      const responseContent = aiResponse?.content || aiResponse
+      if (!responseContent) {
+        throw new Error('No response from AI service')
+      }
+
       analysisResult = JSON.parse(String(responseContent))
-    } catch (parseError) {
-      console.error('Failed to parse AI response as JSON:', parseError)
-      throw new Error('Invalid AI response format')
+    } catch (aiError) {
+      console.error('AI service error:', aiError)
+      
+      // Check if this is due to missing API keys
+      if (aiError.message.includes('API key') || aiError.message.includes('not configured') || aiError.message.includes('All AI providers failed')) {
+        console.log('⚠️ AI service not configured, providing basic text analysis fallback')
+        
+        // Provide a basic fallback analysis based on text extraction
+        analysisResult = {
+          formTitle: file.name.replace('.pdf', '').replace(/_/g, ' '),
+          formType: 'application',
+          confidence: 0.5,
+          sections: [
+            {
+              id: 'section_1',
+              title: 'Application Form',
+              description: 'Basic application form extracted from PDF',
+              order: 1,
+              type: 'application'
+            }
+          ],
+          fields: [
+            {
+              id: 'application_text',
+              label: 'Application Content',
+              type: 'textarea',
+              required: true,
+              section: 'section_1',
+              canAutoFill: false,
+              question: 'Please review and complete the application form content'
+            }
+          ],
+          requirements: [
+            {
+              type: 'submission',
+              description: 'Complete and submit the application form',
+              mandatory: true
+            }
+          ],
+          attachments: [],
+          deadlines: [],
+          keyInformation: {
+            submissionMethod: 'Submit through the application portal'
+          }
+        }
+      } else {
+        // Re-throw other AI errors
+        throw aiError
+      }
     }
 
     // Structure the response
-    const structuredResult = {
+    const structuredResult: any = {
       success: true,
       data: {
         formAnalysis: {
@@ -112,6 +158,11 @@ export async function POST(request: NextRequest) {
           canAutoFill: (analysisResult.fields || []).filter(f => f.canAutoFill).length
         }
       }
+    }
+
+    // Add warning if using fallback analysis
+    if (analysisResult.confidence === 0.5) {
+      structuredResult.warning = 'AI analysis not available - using basic text extraction. Configure AI API keys for enhanced analysis.'
     }
 
     console.log('✅ PDF analysis complete:', {
