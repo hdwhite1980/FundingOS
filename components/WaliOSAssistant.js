@@ -292,20 +292,25 @@ export default function WaliOSAssistant({
 	const processUserInput = async (input) => {
 		const lowerInput = input.toLowerCase()
 		try {
-			// Build comprehensive context from all customer data  
+			// Build comprehensive context from all available data  
 			const context = {
-				customerData: customerData || {},
+				customerData: {
+					userProfile: userProfile,
+					allProjects: allProjects,
+					submissions: submissions,
+					opportunities: opportunities
+				},
 				fieldContext: fieldContext,
-				userProfile: customerData?.userProfile || userProfileState,
-				projects: customerData?.allProjects || allProjectsState,
-				submissions: customerData?.submissions || submissionsState,
-				opportunities: customerData?.opportunities || opportunitiesState,
+				userProfile: userProfile || userProfileState,
+				projects: allProjects || allProjectsState,
+				submissions: submissions || submissionsState,
+				opportunities: opportunities || opportunitiesState,
 				input: input
 			}
 
 			// Make API call to assistant with full context
-			if (userProfile?.user_id || userProfile?.id || customerData?.userProfile?.user_id) {
-				const userId = userProfile?.user_id || userProfile?.id || customerData?.userProfile?.user_id
+			if (userProfile?.user_id || userProfile?.id) {
+				const userId = userProfile?.user_id || userProfile?.id
 				const response = await fetch('/api/ai/assistant', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },

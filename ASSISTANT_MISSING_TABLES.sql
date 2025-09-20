@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   indirect_cost_rate DECIMAL(5,2),
   organization_type VARCHAR(100),
   website VARCHAR(255),
+  setup_completed BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(user_id)
@@ -308,6 +309,14 @@ BEGIN
     ALTER TABLE user_profiles ADD COLUMN website VARCHAR(255);
   END IF;
 
+  -- Add setup_completed if missing (for onboarding tracking)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'setup_completed'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN setup_completed BOOLEAN DEFAULT false;
+  END IF;
+
 END $$;
 
 -- Add RLS policy for user_profiles if table already exists
@@ -318,5 +327,23 @@ BEGIN
     DROP POLICY IF EXISTS "Users own their profiles" ON user_profiles;
     -- Create the policy
     CREATE POLICY "Users own their profiles" ON user_profiles FOR ALL USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- ============================================================================
+-- COMPATIBILITY: Add setup_completed to profiles table if it exists
+-- ============================================================================
+
+-- Add setup_completed to existing profiles table for compatibility with UnifiedManager
+DO $$
+BEGIN
+  -- Check if profiles table exists and add setup_completed if missing
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'profiles') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name = 'profiles' AND column_name = 'setup_completed'
+    ) THEN
+      ALTER TABLE profiles ADD COLUMN setup_completed BOOLEAN DEFAULT false;
+    END IF;
   END IF;
 END $$;
