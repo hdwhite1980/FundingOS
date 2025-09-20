@@ -71,10 +71,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let walkthroughResult
     try {
-      walkthroughResult = JSON.parse(String(responseContent))
+      // Clean and parse the AI response with robust JSON handling
+      const cleanedResponse = cleanJsonResponse(String(responseContent))
+      walkthroughResult = JSON.parse(cleanedResponse)
     } catch (parseError) {
       console.error('Failed to parse AI walkthrough response:', parseError)
-      throw new Error('Invalid AI response format')
+      console.error('Raw AI response:', String(responseContent))
+      
+      // Attempt JSON repair as fallback
+      try {
+        const repairedJson = repairJsonResponse(String(responseContent))
+        walkthroughResult = JSON.parse(repairedJson)
+        console.log('✅ Successfully repaired and parsed JSON response')
+      } catch (repairError) {
+        console.error('JSON repair also failed:', repairError)
+        throw new Error('Invalid AI response format - unable to parse or repair JSON')
+      }
     }
 
     // Structure the complete walkthrough
@@ -299,4 +311,45 @@ REQUIREMENTS:
 
 Focus on creating a smooth, guided experience that leverages AI assistance effectively.`
   }
+}
+
+/**
+ * Clean AI response by removing markdown code blocks and extra whitespace
+ */
+function cleanJsonResponse(response: string): string {
+  if (!response) return '{}'
+  
+  let cleaned = response.trim()
+  
+  // Remove markdown code blocks
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '')
+  cleaned = cleaned.replace(/\n?\s*```\s*$/i, '')
+  
+  // Remove any leading/trailing whitespace
+  cleaned = cleaned.trim()
+  
+  // If response starts with explanation text, try to extract JSON
+  if (!cleaned.startsWith('{') && !cleaned.startsWith('[')) {
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
+    if (jsonMatch) {
+      cleaned = jsonMatch[0]
+    }
+  }
+  
+  return cleaned
+}
+
+/**
+ * Attempt to repair common JSON formatting issues
+ */
+function repairJsonResponse(response: string): string {
+  let repaired = cleanJsonResponse(response)
+  
+  // Fix common AI response issues
+  repaired = repaired.replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+  repaired = repaired.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":') // Quote unquoted keys
+  repaired = repaired.replace(/:\s*'([^']*?)'/g, ': "$1"') // Convert single quotes to double quotes
+  repaired = repaired.replace(/\n/g, '\\n').replace(/\r/g, '\\r') // Escape newlines in strings
+  
+  return repaired
 }
