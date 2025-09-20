@@ -34,10 +34,10 @@ import toast from 'react-hot-toast'
 import smartFormCompletionService from '../lib/smartFormCompletionService'
 import documentAnalysisService from '../lib/documentAnalysisService'
 import documentGenerationService from '../lib/documentGenerationService'
+import { useAIAssistant } from '../hooks/useAIAssistant'
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
-import AIAssistantWindow from './AIAssistantWindow'
 
 export default function EnhancedApplicationTracker({ 
   projects, 
@@ -77,7 +77,28 @@ export default function EnhancedApplicationTracker({
   // AI Assistant state
   const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [currentFieldForAI, setCurrentFieldForAI] = useState(null)
+  const [aiPopupPosition, setAiPopupPosition] = useState({ top: 0, left: 0 })
   const [formCacheId, setFormCacheId] = useState(null)
+
+  // Initialize AI Assistant hook
+  const {
+    session,
+    messages,
+    isLoading: isAILoading,
+    isSessionLoading,
+    error: aiError,
+    createSession,
+    sendMessage,
+    generateFieldContent,
+    clearError,
+    hasSession
+  } = useAIAssistant({
+    userId: userProfile?.id || 'anonymous',
+    projectId: selectedProject,
+    formAnalysisId: formCacheId,
+    formData: filledForm,
+    userProfile: userProfile
+  })
 
   // Save state when it changes
   useEffect(() => {
@@ -908,8 +929,14 @@ export default function EnhancedApplicationTracker({
                         </label>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              const button = e.target.closest('button')
+                              const rect = button.getBoundingClientRect()
                               setCurrentFieldForAI(field)
+                              setAiPopupPosition({
+                                top: rect.bottom + 8,
+                                left: Math.max(10, rect.left - 200) // Position popup to the left of button, with min margin
+                              })
                               setShowAIAssistant(true)
                             }}
                             className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
@@ -1576,25 +1603,123 @@ export default function EnhancedApplicationTracker({
         />
       )}
       
-      {/* AI Assistant Window */}
-      <AIAssistantWindow
-        userId={userProfile?.id || 'anonymous'}
-        projectId={selectedProject}
-        formAnalysisId={formCacheId}
-        formData={filledForm}
-        userProfile={userProfile}
-        currentFieldName={currentFieldForAI}
-        onFieldContentGenerated={(fieldName, content) => {
-          setFilledForm(prev => ({
-            ...prev,
-            [fieldName]: content
-          }))
-          toast.success(`AI generated content for ${fieldName}`)
-        }}
-        isOpen={showAIAssistant}
-        onClose={() => setShowAIAssistant(false)}
-        onToggle={() => setShowAIAssistant(!showAIAssistant)}
-      />
+      {/* Contextual AI Assistant Popup */}
+      {showAIAssistant && currentFieldForAI && (
+        <div 
+          className="fixed z-50 w-80 max-h-96 bg-white rounded-lg shadow-2xl border border-gray-200"
+          style={{
+            top: `${aiPopupPosition.top}px`,
+            left: `${aiPopupPosition.left}px`
+          }}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-3 rounded-t-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-emerald-200 rounded-full animate-pulse"></div>
+              <h3 className="font-semibold text-sm">WALI-OS Field Help</h3>
+            </div>
+            <button
+              onClick={() => setShowAIAssistant(false)}
+              className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-4">
+            <div className="mb-3">
+              <p className="text-sm text-gray-600 mb-2">
+                <span className="font-medium">Helping with:</span> {currentFieldForAI}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => {
+                    if (currentFieldForAI) {
+                      generateFieldContent(currentFieldForAI, 'explain').then((content) => {
+                        if (content) {
+                          setFilledForm(prev => ({
+                            ...prev,
+                            [currentFieldForAI]: content
+                          }))
+                          toast.success(`AI generated content for ${currentFieldForAI}`)
+                        }
+                      })
+                    }
+                  }}
+                  disabled={isAILoading}
+                  className="text-xs px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200 disabled:opacity-50"
+                >
+                  Explain Field
+                </button>
+                <button
+                  onClick={() => {
+                    if (currentFieldForAI) {
+                      generateFieldContent(currentFieldForAI, 'generate').then((content) => {
+                        if (content) {
+                          setFilledForm(prev => ({
+                            ...prev,
+                            [currentFieldForAI]: content
+                          }))
+                          toast.success(`AI generated content for ${currentFieldForAI}`)
+                        }
+                      })
+                    }
+                  }}
+                  disabled={isAILoading}
+                  className="text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded border border-blue-200 disabled:opacity-50"
+                >
+                  Generate Content
+                </button>
+                <button
+                  onClick={() => {
+                    if (currentFieldForAI) {
+                      generateFieldContent(currentFieldForAI, 'review').then((content) => {
+                        if (content) {
+                          toast.success(`AI reviewed ${currentFieldForAI}`)
+                        }
+                      })
+                    }
+                  }}
+                  disabled={isAILoading}
+                  className="text-xs px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded border border-purple-200 disabled:opacity-50"
+                >
+                  Review Form
+                </button>
+              </div>
+            </div>
+
+            {/* Loading indicator */}
+            {isAILoading && (
+              <div className="text-center py-2">
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+                <span className="ml-2 text-xs text-gray-600">Processing...</span>
+              </div>
+            )}
+
+            {/* Error display */}
+            {aiError && (
+              <div className="bg-red-50 border border-red-200 rounded p-2 mb-2">
+                <p className="text-xs text-red-600">{aiError}</p>
+                <button
+                  onClick={clearError}
+                  className="text-xs text-red-500 hover:text-red-700 underline mt-1"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Overlay to close popup when clicking outside */}
+      {showAIAssistant && (
+        <div 
+          className="fixed inset-0 z-40"
+          onClick={() => setShowAIAssistant(false)}
+        />
+      )}
     </div>
   )
 }
