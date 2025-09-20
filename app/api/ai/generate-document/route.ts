@@ -36,21 +36,7 @@ export async function POST(request) {
 
     // Build comprehensive context from Supabase
     console.log('📊 Building user/org context from Supabase...')
-    const contextResult = await buildOrgContext(userId, { 
-      includeProjects: true, 
-      includeApplications: true,
-      includeOpportunities: true 
-    })
-    
-    if (contextResult.error) {
-      console.error('Context building failed:', contextResult.error)
-      return Response.json(
-        { error: 'Failed to fetch user context', details: contextResult.error },
-        { status: 500 }
-      )
-    }
-
-    const context = contextResult
+    const context = await buildOrgContext(userId)
     console.log('✅ Context built successfully:', {
       hasProfile: !!context.profile,
       projectCount: context.projects?.length || 0,
