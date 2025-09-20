@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
   const userPrompt = `User Message: ${message}\nHeuristic Intent: ${intent}\nFast Draft Answer: ${baseAnswer}\n\nConversation Summary (may be null): ${convoSummary?.summary || 'None yet'}\nRecent Turns (most recent last):\n${(convoSummary?.recentTurns||[]).map(t=>`- ${t.role}: ${t.content}`).join('\n')}\n\nOrg Context Snapshot JSON:\n${JSON.stringify(compactContext, null, 2)}\n\nRefine the draft answer if needed. Provide funding-relevant insight. If suggesting actions, bullet them. Avoid repeating already summarized info unless directly relevant.`
 
     let refined = baseAnswer
+    let llmError: string | null = null
     try {
       const llmResp: any = await aiProviderService.generateCompletion('conversation', [
         { role: 'system', content: systemPrompt },
@@ -86,9 +87,14 @@ export async function POST(request: NextRequest) {
       ], { maxTokens: 600, temperature: 0.4 })
       if (llmResp && typeof llmResp.content === 'string') {
         refined = llmResp.content.trim() || baseAnswer
+      } else {
+        llmError = 'No valid response from AI provider'
       }
     } catch (err: any) {
-      console.warn('LLM refinement failed, returning base answer', err?.message)
+      console.error('LLM refinement failed:', err?.message)
+      llmError = err?.message || 'AI provider error'
+      // Don't just fallback silently - let the user know there's an issue
+      refined = `⚠️ AI connection issue: ${llmError}\n\nHere's a quick answer based on your data:\n\n${baseAnswer}\n\n*Please check your OpenAI API configuration or try again later.*`
     }
 
     await logConversationTurn(activeSessionId, userId, 'assistant', refined)
