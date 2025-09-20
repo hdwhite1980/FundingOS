@@ -91,6 +91,23 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
     }
   }
 
+  const loadOpportunities = async () => {
+    try {
+      // Try to fetch opportunities from the API
+      const response = await fetch('/api/project-opportunities')
+      if (response.ok) {
+        const data = await response.json()
+        setOpportunities(data.opportunities || [])
+      } else {
+        // If API doesn't exist or fails, set empty array
+        setOpportunities([])
+      }
+    } catch (error) {
+      console.error('Failed to load opportunities:', error)
+      setOpportunities([])
+    }
+  }
+
   const handleCreateSubmission = async (submissionData) => {
     try {
       console.log('Submitting application data:', submissionData)
