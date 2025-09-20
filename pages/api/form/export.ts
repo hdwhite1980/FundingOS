@@ -3,23 +3,28 @@
  * /api/form/export
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextApiRequest, NextApiResponse } from 'next'
 import { jsPDF } from 'jspdf'
 
-export async function POST(request: NextRequest) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   try {
     const { 
       formStructure, 
       completedData, 
       exportFormat, 
       options 
-    } = await request.json()
+    } = req.body
 
     if (!formStructure || !completedData) {
-      return NextResponse.json(
-        { success: false, error: 'Form structure and completed data are required' },
-        { status: 400 }
-      )
+      return res.status(400).json({
+        success: false,
+        error: 'Form structure and completed data are required'
+      })
     }
 
     console.log('📄 Generating form export:', {
@@ -52,21 +57,18 @@ export async function POST(request: NextRequest) {
       size: exportResult.size || 'unknown'
     })
 
-    return NextResponse.json({
+    return res.status(200).json({
       success: true,
       data: exportResult
     })
 
   } catch (error) {
     console.error('Form export error:', error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Form export failed',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    )
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Form export failed',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    })
   }
 }
 
