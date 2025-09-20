@@ -96,7 +96,7 @@ export default function EnhancedApplicationTracker({
           console.log(`🔍 Sending ${file.name} to enhanced PDF analysis API...`)
           
           // Call the enhanced PDF analysis API
-          const analysisResponse = await fetch('/api/ai/pdf-document-analysis', {
+          const analysisResponse = await fetch('/api/pdf/analyze', {
             method: 'POST',
             body: formData
           })
@@ -111,46 +111,129 @@ export default function EnhancedApplicationTracker({
             throw new Error(analysisResult.error || 'Analysis failed')
           }
 
-          const analysis = analysisResult.data.analysis
+          // Map new API response to expected format
+          const formAnalysis = analysisResult.data.formAnalysis
           const formStructure = analysisResult.data.formStructure
-          const enhancedAnalysis = analysisResult.data.enhancedAnalysis
+          const walkthrough = analysisResult.data.walkthrough
+
+          // Convert new structure to legacy format for compatibility
+          const legacyAnalysis = {
+            documentType: formAnalysis.formType,
+            detectedFormType: formAnalysis.formType,
+            title: formAnalysis.formTitle,
+            totalPages: formAnalysis.totalPages,
+            confidence: formAnalysis.confidence,
+            extractionConfidence: formAnalysis.confidence,
+            // Convert fields to dataFields and narrativeFields
+            dataFields: {},
+            narrativeFields: {},
+            documentSections: formStructure.sections?.map(section => ({
+              title: section.title,
+              description: section.description,
+              type: section.type,
+              order: section.order
+            })) || [],
+            requirements: formStructure.requirements || [],
+            attachments: formStructure.attachments || []
+          }
+
+          // Categorize fields into data and narrative
+          formStructure.fields?.forEach(field => {
+            if (field.type === 'textarea' || field.type === 'narrative') {
+              legacyAnalysis.narrativeFields[field.id] = {
+                question: field.question || field.label,
+                type: field.type,
+                required: field.required,
+                wordLimit: field.wordLimit,
+                helpText: field.helpText,
+                canAutoFill: field.canAutoFill,
+                section: field.section
+              }
+            } else {
+              legacyAnalysis.dataFields[field.id] = {
+                label: field.label,
+                type: field.type,
+                required: field.required,
+                placeholder: field.placeholder,
+                validation: field.validation,
+                options: field.options,
+                canAutoFill: field.canAutoFill,
+                section: field.section
+              }
+            }
+          })
+
+          // Create legacy formStructure
+          const legacyFormStructure = {
+            dataFields: legacyAnalysis.dataFields,
+            narrativeFields: legacyAnalysis.narrativeFields,
+            formMetadata: {
+              detectedFormType: formAnalysis.formType,
+              totalFields: formStructure.metadata?.totalFields || 0,
+              sectionsFound: formStructure.metadata?.sectionsCount || 0,
+              complexity: formStructure.metadata?.complexity || 'moderate'
+            },
+            enhancedAnalysis: {
+              requirements: formStructure.requirements || [],
+              attachments: formStructure.attachments || [],
+              deadlines: formStructure.deadlines || []
+            }
+          }
+
+          // Create legacy enhancedAnalysis
+          const legacyEnhancedAnalysis = {
+            walkthrough: walkthrough,
+            keyInformation: {
+              estimatedTime: walkthrough.estimatedTime,
+              totalSteps: walkthrough.totalSteps,
+              canAutoFill: walkthrough.canAutoFill
+            }
+          }
+
+          // Create ocrStats
+          const ocrStats = {
+            documentComplexity: formStructure.metadata?.complexity || 'moderate',
+            structureQuality: formAnalysis.confidence > 0.8 ? 'high' : 'medium',
+            totalFields: formStructure.metadata?.totalFields || 0,
+            sectionsFound: formStructure.metadata?.sectionsCount || 0
+          }
 
           console.log('📊 Enhanced analysis result:', {
-            documentType: analysis.documentType,
-            detectedFormType: analysis.detectedFormType,
-            dataFields: Object.keys(analysis.dataFields || {}).length,
-            narrativeFields: Object.keys(analysis.narrativeFields || {}).length,
-            sections: analysis.documentSections?.length || 0,
-            requirements: analysis.requirements?.length || 0,
-            attachments: analysis.attachments?.length || 0
+            documentType: legacyAnalysis.documentType,
+            detectedFormType: legacyAnalysis.detectedFormType,
+            dataFields: Object.keys(legacyAnalysis.dataFields || {}).length,
+            narrativeFields: Object.keys(legacyAnalysis.narrativeFields || {}).length,
+            sections: legacyAnalysis.documentSections?.length || 0,
+            requirements: legacyAnalysis.requirements?.length || 0,
+            attachments: legacyAnalysis.attachments?.length || 0
           })
 
           // Store enhanced form structure for better processing
-          if (formStructure && (
-            Object.keys(formStructure.dataFields || {}).length > 0 ||
-            Object.keys(formStructure.narrativeFields || {}).length > 0
+          if (legacyFormStructure && (
+            Object.keys(legacyFormStructure.dataFields || {}).length > 0 ||
+            Object.keys(legacyFormStructure.narrativeFields || {}).length > 0
           )) {
             setEnhancedFormStructure({
-              ...formStructure,
-              enhancedAnalysis,
-              ocrStats: analysisResult.data.ocrStats
+              ...legacyFormStructure,
+              enhancedAnalysis: legacyEnhancedAnalysis,
+              ocrStats: ocrStats
             })
             console.log(`📝 Enhanced form structure extracted with ${
-              Object.keys(formStructure.dataFields || {}).length + 
-              Object.keys(formStructure.narrativeFields || {}).length
+              Object.keys(legacyFormStructure.dataFields || {}).length + 
+              Object.keys(legacyFormStructure.narrativeFields || {}).length
             } total fields`)
           }
           
           analyses.push({
             fileName: file.name,
             analysis: {
-              ...analysis,
-              enhancedAnalysis
+              ...legacyAnalysis,
+              enhancedAnalysis: legacyEnhancedAnalysis
             },
-            formStructure,
+            formStructure: legacyFormStructure,
             fileSize: file.size,
             fileType: file.type,
-            ocrStats: analysisResult.data.ocrStats
+            ocrStats: ocrStats
           })
 
         } catch (fileError) {
@@ -244,30 +327,35 @@ export default function EnhancedApplicationTracker({
         attachments: combinedAttachments.length
       })
 
-      // Call enhanced smart form completion API
-      const completionResponse = await fetch('/api/ai/smart-form-completion', {
+      // Call enhanced smart form completion API (now generate-walkthrough)
+      const completionResponse = await fetch('/api/ai/generate-walkthrough', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           formStructure: {
-            dataFields: combinedDataFields,
-            narrativeFields: combinedNarrativeFields,
-            formMetadata: enhancedFormStructure?.formMetadata || {},
-            enhancedAnalysis: {
-              requirements: combinedRequirements,
-              attachments: combinedAttachments
-            }
+            formTitle: enhancedFormStructure?.formMetadata?.detectedFormType || 'Application Form',
+            fields: [
+              ...Object.entries(enhancedFormStructure?.dataFields || {}).map(([id, field]) => ({
+                id,
+                ...field,
+                type: field.type || 'text'
+              })),
+              ...Object.entries(enhancedFormStructure?.narrativeFields || {}).map(([id, field]) => ({
+                id,
+                ...field,
+                type: 'textarea'
+              }))
+            ],
+            sections: enhancedFormStructure?.enhancedAnalysis?.requirements?.map((req, idx) => ({
+              id: `section_${idx}`,
+              title: req.type || 'Section',
+              description: req.description,
+              type: req.type
+            })) || []
           },
-          userData: {
-            userProfile,
-            project,
-            organization: userProfile
-          },
-          options: {
-            includeNarrativeFields: true,
-            generateMissingInfo: true,
-            enhancedCompletion: true
-          }
+          userProfile: userProfile,
+          projectData: project,
+          companySettings: userProfile // Use userProfile as company settings fallback
         })
       })
 
@@ -279,31 +367,68 @@ export default function EnhancedApplicationTracker({
 
       const completion = await completionResponse.json()
       console.log('✅ Enhanced form completion result:', {
-        completionPercentage: completion.completionPercentage,
-        confidence: completion.confidence,
-        dataFieldsCompleted: Object.keys(completion.dataFieldCompletions || {}).length,
-        narrativeFieldsCompleted: Object.keys(completion.narrativeFieldCompletions || {}).length
+        steps: completion.data?.walkthrough?.totalSteps || 0,
+        autoFilled: completion.data?.progress?.canAutoFill || 0,
+        needsInput: completion.data?.progress?.needsInput || 0,
+        aiAssisted: completion.data?.progress?.requiresAI || 0
       })
 
-      setFormCompletion(completion)
+      // Map new API response to legacy format for compatibility
+      const legacyCompletion = {
+        completionPercentage: Math.round(((completion.data?.progress?.canAutoFill || 0) / (completion.data?.progress?.totalFields || 1)) * 100),
+        confidence: 0.85, // Default confidence for walkthrough
+        dataFieldCompletions: {},
+        narrativeFieldCompletions: {},
+        filledForm: {},
+        opportunityTitle: completion.data?.walkthrough?.formTitle || 'AI-Enhanced Application',
+        opportunityDescription: `Generated walkthrough with ${completion.data?.walkthrough?.totalSteps || 0} steps`,
+        amountMin: project?.funding_needed || 0,
+        amountMax: project?.funding_needed || 100000,
+        deadline: null,
+        strengths: completion.data?.aiAssistance?.recommendations || ['Walkthrough generated successfully'],
+        challenges: completion.data?.complexFields?.map(f => f.reason) || [],
+        recommendations: completion.data?.aiAssistance?.availableHelp?.map(h => h.description) || [],
+        nextSteps: completion.data?.walkthrough?.steps?.map(s => s.title) || [],
+        reasoning: 'AI-generated guided completion walkthrough',
+        walkthrough: completion.data?.walkthrough,
+        autoFillData: completion.data?.autoFillData,
+        aiAssistance: completion.data?.aiAssistance
+      }
+
+      // Populate filled form from auto-fill suggestions
+      if (completion.data?.autoFillData?.suggestions) {
+        Object.entries(completion.data.autoFillData.suggestions).forEach(([fieldId, suggestion]) => {
+          if (suggestion.confidence > 0.7) {
+            legacyCompletion.filledForm[fieldId] = suggestion.value
+            // Categorize as data or narrative field
+            if (enhancedFormStructure?.dataFields?.[fieldId]) {
+              legacyCompletion.dataFieldCompletions[fieldId] = suggestion.value
+            } else if (enhancedFormStructure?.narrativeFields?.[fieldId]) {
+              legacyCompletion.narrativeFieldCompletions[fieldId] = suggestion.value
+            }
+          }
+        })
+      }
+
+      setFormCompletion(legacyCompletion)
       
       // Merge data and narrative field completions
       const mergedFilledForm = {
-        ...completion.dataFieldCompletions || {},
-        ...completion.narrativeFieldCompletions || {},
-        ...completion.filledForm || {} // Legacy compatibility
+        ...legacyCompletion.dataFieldCompletions || {},
+        ...legacyCompletion.narrativeFieldCompletions || {},
+        ...legacyCompletion.filledForm || {} // Legacy compatibility
       }
       setFilledForm(mergedFilledForm)
       
       // Create enhanced opportunity data
       const enhancedOpportunity = {
         id: `ai-enhanced-${Date.now()}`,
-        title: completion.opportunityTitle || 'AI-Enhanced Grant Opportunity',
-        description: completion.opportunityDescription || 'Opportunity analyzed from uploaded documents with enhanced structure recognition',
-        sponsor: completion.sponsor || 'Various Sponsors',
-        amount_min: completion.amountMin || 0,
-        amount_max: completion.amountMax || 100000,
-        deadline_date: completion.deadline || null,
+        title: legacyCompletion.opportunityTitle || 'AI-Enhanced Grant Opportunity',
+        description: legacyCompletion.opportunityDescription || 'Opportunity analyzed from uploaded documents with enhanced structure recognition',
+        sponsor: legacyCompletion.sponsor || 'Various Sponsors',
+        amount_min: legacyCompletion.amountMin || 0,
+        amount_max: legacyCompletion.amountMax || 100000,
+        deadline_date: legacyCompletion.deadline || null,
         eligibility_requirements: combinedRequirements.map(r => r.description).join('; ') || 'Standard requirements apply',
         form_type: enhancedFormStructure?.formMetadata?.detectedFormType || 'unknown',
         complexity: enhancedFormStructure?.ocrStats?.documentComplexity || 'moderate'
@@ -315,25 +440,25 @@ export default function EnhancedApplicationTracker({
         project: project,
         userProfile: userProfile,
         analysis: {
-          fitScore: completion.completionPercentage || 75,
-          strengths: completion.strengths || [
+          fitScore: legacyCompletion.completionPercentage || 75,
+          strengths: legacyCompletion.strengths || [
             'Enhanced document structure analysis completed',
             'Form fields automatically categorized',
             'Narrative and data fields distinguished'
           ],
-          challenges: completion.challenges || ['Some complex fields may need manual review'],
-          recommendations: completion.recommendations || [
+          challenges: legacyCompletion.challenges || ['Some complex fields may need manual review'],
+          recommendations: legacyCompletion.recommendations || [
             'Review AI-generated content for accuracy',
             'Complete any missing narrative sections',
             'Verify all data field mappings'
           ],
-          nextSteps: completion.nextSteps || [
+          nextSteps: legacyCompletion.nextSteps || [
             'Review enhanced application structure',
             'Complete missing information',
             'Download completed application'
           ],
-          confidence: completion.confidence || 0.85,
-          reasoning: completion.reasoning || 'Enhanced analysis with structure recognition and field categorization',
+          confidence: legacyCompletion.confidence || 0.85,
+          reasoning: legacyCompletion.reasoning || 'Enhanced analysis with structure recognition and field categorization',
           enhancedFeatures: {
             structureAnalysis: true,
             fieldCategorization: true,
@@ -342,7 +467,7 @@ export default function EnhancedApplicationTracker({
             attachmentIdentification: combinedAttachments.length > 0
           }
         },
-        quickMatchScore: completion.completionPercentage || 75,
+        quickMatchScore: legacyCompletion.completionPercentage || 75,
         enhancedStructure: enhancedFormStructure
       }
 
@@ -350,8 +475,8 @@ export default function EnhancedApplicationTracker({
       setStep('complete')
       
       // Handle blank applications or missing info
-      if (completion.requiresUserInput && completion.missingInformation?.length > 0) {
-        setAiAnalysisResult(completion)
+      if (legacyCompletion.walkthrough?.steps?.some(step => step.type === 'input_required') && legacyCompletion.autoFillData?.needsInput?.length > 0) {
+        setAiAnalysisResult(legacyCompletion)
         setShowMissingInfo(true)
         setStep('missing_info')
         toast.info('Additional information needed for optimal completion.')
@@ -386,30 +511,25 @@ export default function EnhancedApplicationTracker({
         projectName: project?.name || 'Unknown'
       })
 
-      // Call enhanced document generation API
-      const response = await fetch('/api/ai/document-generation', {
+      // Call enhanced document generation API (now form export)
+      const response = await fetch('/api/form/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           formStructure: enhancedFormStructure,
-          userData: {
-            organization: userProfile?.organization || userProfile || {},
-            project: project || {},
-            user: userProfile || {}
-          },
           completedData: {
             dataFields: formCompletion?.dataFieldCompletions || {},
             narrativeFields: formCompletion?.narrativeFieldCompletions || {},
             userAnswers: userAnswers
           },
+          exportFormat: 'pdf',
           options: {
             includeEmptyFields: true,
             addInstructions: true,
             format: 'pdf',
             enhancedGeneration: true,
             preserveStructure: true
-          },
-          action: 'generate_enhanced'
+          }
         })
       })
 
@@ -419,36 +539,33 @@ export default function EnhancedApplicationTracker({
 
       const result = await response.json()
       if (result.success) {
-        // Generate enhanced PDF
-        const generatedDoc = await documentGenerationService.generateEnhancedForm(
-          enhancedFormStructure,
-          {
-            organization: userProfile?.organization || userProfile || {},
-            project: project || {},
-            user: userProfile || {}
-          },
-          {
-            fieldMappings: result.data.fieldMappings,
-            styles: { 
-              includeEmptyFields: true, 
-              addInstructions: true,
-              preserveFormStructure: true,
-              highlightCompletedFields: true
-            },
-            completedData: {
-              dataFields: formCompletion?.dataFieldCompletions || {},
-              narrativeFields: formCompletion?.narrativeFieldCompletions || {},
-              userAnswers: userAnswers
-            }
+        // Handle the new export API response format
+        const exportData = result.data
+        
+        if (exportData.format === 'pdf' && exportData.data) {
+          // Convert data URL to blob and download
+          const dataUrl = exportData.data
+          const base64Data = dataUrl.split(',')[1]
+          const binaryData = atob(base64Data)
+          const bytes = new Uint8Array(binaryData.length)
+          for (let i = 0; i < binaryData.length; i++) {
+            bytes[i] = binaryData.charCodeAt(i)
           }
-        )
-
-        if (generatedDoc.success) {
-          const fileName = `enhanced-${enhancedFormStructure.formMetadata?.detectedFormType || 'application'}-${project?.name || 'document'}.pdf`
-          documentGenerationService.downloadPDF(generatedDoc.document, fileName)
+          const blob = new Blob([bytes], { type: exportData.mimeType || 'application/pdf' })
+          
+          // Create download link
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = exportData.filename || `enhanced-${enhancedFormStructure.formMetadata?.detectedFormType || 'application'}-${project?.name || 'document'}.pdf`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+          
           toast.success('Enhanced application document downloaded successfully!')
         } else {
-          throw new Error(generatedDoc.error)
+          throw new Error('Unsupported export format or missing data')
         }
       } else {
         throw new Error(result.message || 'Enhanced generation failed')
