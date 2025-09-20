@@ -37,6 +37,7 @@ import documentGenerationService from '../lib/documentGenerationService'
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
+import AIAssistantWindow from './AIAssistantWindow'
 
 export default function EnhancedApplicationTracker({ 
   projects, 
@@ -46,6 +47,14 @@ export default function EnhancedApplicationTracker({
   initialState = null,
   onStateChange = null
 }) {
+  // Helper function to generate file hash for caching
+  const generateFileHash = async (file) => {
+    const buffer = await file.arrayBuffer()
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
   const [step, setStep] = useState(initialState?.step || 'upload') // upload, analyze, missing_info, complete, review
   const [uploadedFiles, setUploadedFiles] = useState(initialState?.uploadedFiles || [])
   const [documentAnalysis, setDocumentAnalysis] = useState(initialState?.documentAnalysis || null)
@@ -64,6 +73,11 @@ export default function EnhancedApplicationTracker({
   const [showAIDocumentAnalysisModal, setShowAIDocumentAnalysisModal] = useState(false)
   const [analysisData, setAnalysisData] = useState(null)
   const [enhancedFormStructure, setEnhancedFormStructure] = useState(initialState?.enhancedFormStructure || null) // Updated from dynamicFormStructure
+  
+  // AI Assistant state
+  const [showAIAssistant, setShowAIAssistant] = useState(false)
+  const [currentFieldForAI, setCurrentFieldForAI] = useState(null)
+  const [formCacheId, setFormCacheId] = useState(null)
 
   // Save state when it changes
   useEffect(() => {
@@ -116,22 +130,77 @@ export default function EnhancedApplicationTracker({
         }))
 
         try {
-          console.log(`🔍 Sending ${file.name} to enhanced PDF analysis API...`)
+          console.log(`🔍 Checking cache for ${file.name}...`)
           
-          // Call the enhanced PDF analysis API
-          const analysisResponse = await fetch('/api/pdf/analyze', {
+          // Check if we have this form cached first
+          const cacheCheckResponse = await fetch('/api/form/cache', {
             method: 'POST',
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'get_cache',
+              fileName: file.name,
+              fileSize: file.size,
+              fileHash: await generateFileHash(file)
+            })
           })
-
-          if (!analysisResponse.ok) {
-            throw new Error(`Analysis failed: ${analysisResponse.statusText}`)
-          }
-
-          const analysisResult = await analysisResponse.json()
           
-          if (!analysisResult.success) {
-            throw new Error(analysisResult.error || 'Analysis failed')
+          let analysisResult = null
+          let fromCache = false
+          
+          if (cacheCheckResponse.ok) {
+            const cacheResult = await cacheCheckResponse.json()
+            if (cacheResult.success && cacheResult.data) {
+              console.log(`✅ Found cached analysis for ${file.name}`)
+              analysisResult = cacheResult.data
+              fromCache = true
+              setFormCacheId(cacheResult.data.id)
+            }
+          }
+          
+          if (!analysisResult) {
+            console.log(`🔍 Analyzing ${file.name} with AI...`)
+          
+            // Call the enhanced PDF analysis API
+            const analysisResponse = await fetch('/api/pdf/analyze', {
+              method: 'POST',
+              body: formData
+            })
+
+            if (!analysisResponse.ok) {
+              throw new Error(`Analysis failed: ${analysisResponse.statusText}`)
+            }
+
+            analysisResult = await analysisResponse.json()
+            
+            if (!analysisResult.success) {
+              throw new Error(analysisResult.error || 'Analysis failed')
+            }
+
+            // Cache the analysis result for future use
+            try {
+              const cacheResponse = await fetch('/api/form/cache', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'store_cache',
+                  fileName: file.name,
+                  fileSize: file.size,
+                  fileHash: await generateFileHash(file),
+                  analysisResult: analysisResult,
+                  userId: userProfile?.id || 'anonymous'
+                })
+              })
+              
+              if (cacheResponse.ok) {
+                const cacheStoreResult = await cacheResponse.json()
+                if (cacheStoreResult.success) {
+                  setFormCacheId(cacheStoreResult.data.id)
+                  console.log(`💾 Cached analysis for ${file.name}`)
+                }
+              }
+            } catch (cacheError) {
+              console.warn('Failed to cache analysis:', cacheError)
+            }
           }
 
           // Map new API response to expected format
@@ -860,9 +929,24 @@ export default function EnhancedApplicationTracker({
                 <div className="max-h-[400px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50 scroll-smooth" id="form-fields-container">
                   {Object.entries(filledForm).map(([field, value]) => (
                     <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
-                      <label className="text-sm font-medium text-slate-700 capitalize block mb-2">
-                        {field.replace(/_/g, ' ')}:
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-slate-700 capitalize">
+                          {field.replace(/_/g, ' ')}:
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              setCurrentFieldForAI(field)
+                              setShowAIAssistant(true)
+                            }}
+                            className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded flex items-center gap-1 transition-colors"
+                            title="Get AI help with this field"
+                          >
+                            <Brain className="w-3 h-3" />
+                            AI Help
+                          </button>
+                        </div>
+                      </div>
                       {field.toLowerCase().includes('description') || 
                        field.toLowerCase().includes('narrative') ||
                        field.toLowerCase().includes('summary') ||
@@ -874,6 +958,8 @@ export default function EnhancedApplicationTracker({
                         <textarea
                           value={value || ''}
                           onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
+                          onFocus={() => setCurrentFieldForAI(field)}
+                          onBlur={() => setCurrentFieldForAI(null)}
                           className="w-full p-3 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                           rows={4}
                           placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
@@ -886,6 +972,8 @@ export default function EnhancedApplicationTracker({
                                 field.toLowerCase().includes('phone') ? 'tel' : 'text'}
                           value={value || ''}
                           onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
+                          onFocus={() => setCurrentFieldForAI(field)}
+                          onBlur={() => setCurrentFieldForAI(null)}
                           className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
                         />
@@ -1535,6 +1623,26 @@ export default function EnhancedApplicationTracker({
           onClose={handleAIDocumentAnalysisModalClose}
         />
       )}
+      
+      {/* AI Assistant Window */}
+      <AIAssistantWindow
+        userId={userProfile?.id || 'anonymous'}
+        projectId={selectedProject}
+        formAnalysisId={formCacheId}
+        formData={filledForm}
+        userProfile={userProfile}
+        currentFieldName={currentFieldForAI}
+        onFieldContentGenerated={(fieldName, content) => {
+          setFilledForm(prev => ({
+            ...prev,
+            [fieldName]: content
+          }))
+          toast.success(`AI generated content for ${fieldName}`)
+        }}
+        isOpen={showAIAssistant}
+        onClose={() => setShowAIAssistant(false)}
+        onToggle={() => setShowAIAssistant(!showAIAssistant)}
+      />
     </div>
   )
 }
