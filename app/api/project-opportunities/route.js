@@ -11,6 +11,60 @@ const getSupabaseServiceClient = () => {
   )
 }
 
+export async function GET(request) {
+  try {
+    console.log('🔍 Project opportunity GET API endpoint called')
+    
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    
+    if (!userId) {
+      console.error('❌ No userId provided')
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Create service role client (bypasses RLS)
+    const supabase = getSupabaseServiceClient()
+    
+    console.log('💾 Fetching project opportunities with service role')
+
+    // Get opportunities using service role (bypasses RLS)
+    const { data, error } = await supabase
+      .from('project_opportunities')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('❌ Project opportunity fetch error:', error)
+      return NextResponse.json(
+        { 
+          error: 'Failed to fetch project opportunities', 
+          details: error.message,
+          code: error.code 
+        },
+        { status: 500 }
+      )
+    }
+
+    console.log(`✅ Retrieved ${data?.length || 0} project opportunities`)
+    return NextResponse.json({ projectOpportunities: data })
+
+  } catch (error) {
+    console.error('❌ API endpoint error:', error)
+    return NextResponse.json(
+      { 
+        error: 'Internal server error', 
+        details: error.message 
+      },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request) {
   try {
     console.log('🔧 Project opportunity creation API endpoint called')
