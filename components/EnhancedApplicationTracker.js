@@ -731,8 +731,8 @@ export default function EnhancedApplicationTracker({
   const renderAnalysisStep = () => (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="mx-auto w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-          <Brain className="w-6 h-6 text-blue-600" />
+        <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
+          <Brain className="w-6 h-6 text-emerald-600" />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">Enhanced Document Analysis Complete</h3>
         <p className="text-slate-600">AI has performed enhanced analysis with structure recognition and field categorization</p>
@@ -741,7 +741,7 @@ export default function EnhancedApplicationTracker({
       {documentAnalysis && (
         <div className="bg-slate-50 rounded-lg p-6 space-y-4">
           <h4 className="font-medium text-slate-900 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-blue-600" />
+            <FileText className="w-5 h-5 mr-2 text-emerald-600" />
             Enhanced Analysis Results:
           </h4>
           {documentAnalysis.map((doc, index) => (
@@ -771,7 +771,7 @@ export default function EnhancedApplicationTracker({
                   </div>
                   <div>
                     <span className="text-slate-600">Data Fields:</span>
-                    <div className="font-medium text-blue-600">{Object.keys(doc.analysis.dataFields || {}).length}</div>
+                    <div className="font-medium text-emerald-600">{Object.keys(doc.analysis.dataFields || {}).length}</div>
                   </div>
                   <div>
                     <span className="text-slate-600">Narrative Fields:</span>
@@ -795,7 +795,7 @@ export default function EnhancedApplicationTracker({
                   <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">Document Sections:</span>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {doc.analysis.documentSections.slice(0, 5).map((section, idx) => (
-                      <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-800">
                         {section.title}
                       </span>
                     ))}
@@ -807,33 +807,6 @@ export default function EnhancedApplicationTracker({
               )}
             </div>
           ))}
-
-          {enhancedFormStructure && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-4">
-              <h5 className="font-medium text-emerald-900 flex items-center mb-3">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Enhanced Structure Extracted
-              </h5>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-emerald-700">Form Type:</span>
-                  <div className="font-medium text-emerald-900">{enhancedFormStructure.formMetadata?.detectedFormType || 'Unknown'}</div>
-                </div>
-                <div>
-                  <span className="text-emerald-700">Total Fields:</span>
-                  <div className="font-medium text-emerald-900">{enhancedFormStructure.formMetadata?.totalFields || 0}</div>
-                </div>
-                <div>
-                  <span className="text-emerald-700">Complexity:</span>
-                  <div className="font-medium text-emerald-900 capitalize">{enhancedFormStructure.ocrStats?.documentComplexity || 'Unknown'}</div>
-                </div>
-                <div>
-                  <span className="text-emerald-700">Quality:</span>
-                  <div className="font-medium text-emerald-900 capitalize">{enhancedFormStructure.ocrStats?.structureQuality || 'Unknown'}</div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -939,11 +912,11 @@ export default function EnhancedApplicationTracker({
                               setCurrentFieldForAI(field)
                               setShowAIAssistant(true)
                             }}
-                            className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded flex items-center gap-1 transition-colors"
-                            title="Get AI help with this field"
+                            className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
+                            title="Get WALI-OS help with this field"
                           >
                             <Brain className="w-3 h-3" />
-                            AI Help
+                            WALI-OS Help
                           </button>
                         </div>
                       </div>
@@ -1247,27 +1220,6 @@ export default function EnhancedApplicationTracker({
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">Upload Application Documents</h3>
         <p className="text-slate-600">Upload forms for enhanced AI analysis with structure recognition and intelligent field categorization</p>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="font-medium text-blue-900 flex items-center mb-2">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Enhanced Analysis Features
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-blue-800">
-          <div className="flex items-center">
-            <Target className="w-4 h-4 mr-2" />
-            Field categorization
-          </div>
-          <div className="flex items-center">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Narrative recognition
-          </div>
-          <div className="flex items-center">
-            <Users className="w-4 h-4 mr-2" />
-            Structure mapping
-          </div>
-        </div>
       </div>
 
       <div>
