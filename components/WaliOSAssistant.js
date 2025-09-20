@@ -1,7 +1,4 @@
-/**
- * Wali-OS Assistant Component
- * Contextual AI funding assistant (formerly ClippyAssistant).
- */
+// WaliOSAssistant.js - Enhanced with better data handling
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -205,7 +202,7 @@ export default function WaliOSAssistant({
 	const startGenericGreeting = () => {
 		setIsThinking(true); setAssistantState('thinking')
 		setTimeout(() => {
-			const greeting = `👋 Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the Wali-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
+			const greeting = `👋 Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
 			showMessage(greeting, () => {
 				setTimeout(() => {
 					showMessage('What would you like to work on today?', () => { setShowInput(true); setAssistantState('listening') })
@@ -278,75 +275,89 @@ export default function WaliOSAssistant({
 
 	const handleUserInput = async (input) => {
 		if (!input.trim()) return
-		setInputValue(''); setShowInput(false); setAssistantState('thinking'); setIsThinking(true)
+		
+		console.log(`🎤 User input: "${input}"`)
+		
+		setInputValue('')
+		setShowInput(false)
+		setAssistantState('thinking')
+		setIsThinking(true)
+		
+		// Add user message to conversation
 		setConversation(prev => [...prev, { type: 'user', content: input, id: Date.now() }])
-		setTimeout(async () => {
-			const response = await processUserInput(input)
-			setConversation(prev => [...prev, { type: 'assistant', content: response, id: Date.now()+1 }])
-			showMessage(response, () => {
-				setTimeout(() => { showMessage('Anything else you’d like help with?', () => { setShowInput(true); setAssistantState('listening') }) }, 1600)
-			})
-		}, 1200)
-	}
-
-	const processUserInput = async (input) => {
-		const lowerInput = input.toLowerCase()
+		
 		try {
-			// Build comprehensive context from all available data  
-			const context = {
-				customerData: {
-					userProfile: userProfile,
-					allProjects: allProjects,
-					submissions: submissions,
-					opportunities: opportunities
+			// Call the assistant API with full context
+			const userId = userProfile?.user_id || userProfile?.id
+			
+			if (!userId) {
+				throw new Error('No user ID available')
+			}
+			
+			console.log(`📡 Calling assistant API for user ${userId}`)
+			
+			const response = await fetch('/api/ai/assistant', {
+				method: 'POST',
+				headers: { 
+					'Content-Type': 'application/json'
 				},
-				fieldContext: fieldContext,
-				userProfile: userProfile || userProfileState,
-				projects: allProjects || allProjectsState,
-				submissions: submissions || submissionsState,
-				opportunities: opportunities || opportunitiesState,
-				input: input
-			}
-
-			// Make API call to assistant with full context
-			if (userProfile?.user_id || userProfile?.id) {
-				const userId = userProfile?.user_id || userProfile?.id
-				const response = await fetch('/api/ai/assistant', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						userId,
-						message: input,
-						context: context,
-						useLLM: true,
-						includeFullContext: true
-					})
+				body: JSON.stringify({
+					userId,
+					message: input,
+					useLLM: true, // Always use LLM for better responses
+					includeFullContext: true,
+					context: {
+						customerData: {
+							userProfile: userProfile || userProfileState,
+							allProjects: allProjects || allProjectsState,
+							submissions: submissions || submissionsState,
+							opportunities: opportunities || opportunitiesState
+						},
+						fieldContext: fieldContext
+					}
 				})
+			})
 
-				if (response.ok) {
-					const json = await response.json()
-					return json.data?.message || json.message || 'Processing your request...'
-				}
+			if (!response.ok) {
+				const errorData = await response.json()
+				throw new Error(errorData.error || `API error: ${response.status}`)
 			}
-		} catch (e) { 
-			console.error('❌ Assistant API failed:', e)
+
+			const json = await response.json()
+			const assistantMessage = json.data?.message || json.message || 'I apologize, but I had trouble processing your request.'
+			
+			console.log(`🤖 Assistant response: "${assistantMessage.substring(0, 100)}..."`)
+			console.log(`📊 Debug info:`, json.data?.debugInfo)
+			
+			// Add assistant response to conversation
+			setConversation(prev => [...prev, { type: 'assistant', content: assistantMessage, id: Date.now() + 1 }])
+			
+			// Show the response with typewriter effect
+			showMessage(assistantMessage, () => {
+				setTimeout(() => {
+					showMessage('Anything else you\'d like help with?', () => {
+						setShowInput(true)
+						setAssistantState('listening')
+					})
+				}, 1600)
+			})
+			
+		} catch (error) {
+			console.error('❌ Assistant API failed:', error)
+			
+			const errorMessage = `I'm having trouble connecting to the assistant service. Error: ${error.message}`
+			
+			setConversation(prev => [...prev, { type: 'assistant', content: errorMessage, id: Date.now() + 1 }])
+			
+			showMessage(errorMessage, () => {
+				setTimeout(() => {
+					showMessage('Please try again in a moment.', () => {
+						setShowInput(true)
+						setAssistantState('listening')
+					})
+				}, 1000)
+			})
 		}
-		if (lowerInput.includes('deadline')) {
-			const upcoming = opportunities.filter(o => { const d = new Date(o.deadline || o.application_deadline); const diff = (d - Date.now())/86400000; return diff <= 30 && diff > 0 })
-			return upcoming.length ? `📅 ${upcoming.length} deadlines in 30 days. Closest: ${upcoming[0]?.title}` : '✅ No urgent deadlines in the next 30 days.'
-		}
-		if (lowerInput.includes('application')) {
-			const drafts = submissions.filter(s => ['draft','in_progress'].includes(s.status))
-			return drafts.length ? `📝 ${drafts.length} applications in progress. Want prioritization help?` : '💪 All applications submitted. Want new opportunities?'
-		}
-		if (lowerInput.includes('opportunity') || lowerInput.includes('grant')) {
-			const high = opportunities.filter(o => o.fit_score > 80)
-			return high.length ? `🎯 ${high.length} high-match (80%+) opportunities identified. Prioritize now?` : '🔍 I can scan for new high-fit opportunities.'
-		}
-		if (lowerInput.includes('help') || lowerInput.includes('what can')) {
-			return '🤖 I can help with:\n• Opportunity discovery & matching\n• Application completion & narrative improvement\n• Deadline tracking & reminders\n• Compliance readiness\n• Strategic funding insights\n\nWhat should we tackle first?'
-		}
-		return `I’ll analyze how "${input}" maps to your funding strategy and follow up with actionable steps.`
 	}
 
 	// Drag functionality
@@ -431,7 +442,7 @@ export default function WaliOSAssistant({
 									{!expanded && (
 										<GripHorizontal className="w-3 h-3 text-gray-400" />
 									)}
-									Wali-OS Assistant
+									WALI-OS Assistant
 									{isDragging && !expanded && (
 										<span className="text-emerald-500 text-xs">Moving...</span>
 									)}
