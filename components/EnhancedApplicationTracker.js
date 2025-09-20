@@ -479,14 +479,26 @@ export default function EnhancedApplicationTracker({
         setAiAnalysisResult(legacyCompletion)
         setShowMissingInfo(true)
         setStep('missing_info')
-        toast.info('Additional information needed for optimal completion.')
+        try {
+          toast?.info?.('Additional information needed for optimal completion.')
+        } catch (toastError) {
+          console.log('ℹ️ Additional information needed for optimal completion.')
+        }
       } else {
-        toast.success('Enhanced form analysis complete!')
+        try {
+          toast?.success?.('Enhanced form analysis complete!')
+        } catch (toastError) {
+          console.log('✅ Enhanced form analysis complete!')
+        }
       }
 
     } catch (error) {
       console.error('Enhanced form completion failed:', error)
-      toast.error('Failed to analyze form: ' + error.message)
+      try {
+        toast?.error?.('Failed to analyze form: ' + error.message)
+      } catch (toastError) {
+        console.error('❌ Failed to analyze form:', error.message)
+      }
     } finally {
       setProcessing(false)
     }
