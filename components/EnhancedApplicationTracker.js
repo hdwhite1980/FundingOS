@@ -35,6 +35,7 @@ import smartFormCompletionService from '../lib/smartFormCompletionService'
 import documentAnalysisService from '../lib/documentAnalysisService'
 import documentGenerationService from '../lib/documentGenerationService'
 import { useAIAssistant } from '../hooks/useAIAssistant'
+import WaliOSAssistant from './WaliOSAssistant'
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
@@ -74,31 +75,11 @@ export default function EnhancedApplicationTracker({
   const [analysisData, setAnalysisData] = useState(null)
   const [enhancedFormStructure, setEnhancedFormStructure] = useState(initialState?.enhancedFormStructure || null) // Updated from dynamicFormStructure
   
-  // AI Assistant state
-  const [showAIAssistant, setShowAIAssistant] = useState(false)
+  // AI Assistant state - using WaliOS Assistant instead
+  const [showWaliOSAssistant, setShowWaliOSAssistant] = useState(false)
   const [currentFieldForAI, setCurrentFieldForAI] = useState(null)
-  const [aiPopupPosition, setAiPopupPosition] = useState({ top: 0, left: 0 })
+  const [assistantContext, setAssistantContext] = useState(null)
   const [formCacheId, setFormCacheId] = useState(null)
-
-  // Initialize AI Assistant hook
-  const {
-    session,
-    messages,
-    isLoading: isAILoading,
-    isSessionLoading,
-    error: aiError,
-    createSession,
-    sendMessage,
-    generateFieldContent,
-    clearError,
-    hasSession
-  } = useAIAssistant({
-    userId: userProfile?.id || 'anonymous',
-    projectId: selectedProject,
-    formAnalysisId: formCacheId,
-    formData: filledForm,
-    userProfile: userProfile
-  })
 
   // Save state when it changes
   useEffect(() => {
@@ -523,6 +504,60 @@ export default function EnhancedApplicationTracker({
         })
       }
 
+      // Manually add company/user profile data for common field patterns
+      if (userProfile) {
+        const companyDataMapping = {
+          // EIN/Tax ID patterns
+          'tax_id': userProfile.tax_id_ein || userProfile.tax_id || userProfile.ein,
+          'ein': userProfile.tax_id_ein || userProfile.tax_id || userProfile.ein,  
+          'tax_id_ein': userProfile.tax_id_ein || userProfile.tax_id || userProfile.ein,
+          'federal_tax_id': userProfile.tax_id_ein || userProfile.tax_id || userProfile.ein,
+          'employer_identification_number': userProfile.tax_id_ein || userProfile.tax_id || userProfile.ein,
+          // Organization details
+          'organization_name': userProfile.organization_name || userProfile.full_name,
+          'organization_legal_name': userProfile.organization_name || userProfile.full_name,
+          'legal_name': userProfile.organization_name || userProfile.full_name,
+          'company_name': userProfile.organization_name || userProfile.full_name,
+          // Incorporation details
+          'date_incorporated': userProfile.date_incorporated,
+          'incorporation_date': userProfile.date_incorporated,
+          'state_incorporated': userProfile.state_incorporated,
+          'incorporation_state': userProfile.state_incorporated,
+          'state_of_incorporation': userProfile.state_incorporated,
+          // DUNS/UEI
+          'duns_number': userProfile.duns_uei_number || userProfile.duns,
+          'uei_number': userProfile.duns_uei_number || userProfile.uei,
+          'duns_uei_number': userProfile.duns_uei_number,
+          // Contact info
+          'contact_email': userProfile.email,
+          'email': userProfile.email,
+          'phone': userProfile.phone || userProfile.phone_number,
+          'phone_number': userProfile.phone || userProfile.phone_number
+        }
+
+        // Apply company data to fields that match
+        Object.entries(companyDataMapping).forEach(([fieldPattern, value]) => {
+          if (value) {
+            // Look for exact matches first
+            if (legacyCompletion.filledForm.hasOwnProperty(fieldPattern)) {
+              legacyCompletion.filledForm[fieldPattern] = value
+            }
+            
+            // Also check for fields that contain these patterns (case insensitive)
+            Object.keys(legacyCompletion.filledForm).forEach(fieldKey => {
+              const fieldLower = fieldKey.toLowerCase()
+              const patternLower = fieldPattern.toLowerCase()
+              
+              if (fieldLower.includes(patternLower) || patternLower.includes(fieldLower)) {
+                if (!legacyCompletion.filledForm[fieldKey]) {
+                  legacyCompletion.filledForm[fieldKey] = value
+                }
+              }
+            })
+          }
+        })
+      }
+
       // Add ALL detected fields to filledForm for user editing (not just auto-filled ones)
       if (enhancedFormStructure) {
         // Add all data fields
@@ -856,7 +891,7 @@ export default function EnhancedApplicationTracker({
 
   // Enhanced completion step rendering
   const renderCompletionStep = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 max-h-full overflow-y-auto">
       <div className="text-center">
         <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
           <CheckCircle className="w-6 h-6 text-emerald-600" />
@@ -920,7 +955,7 @@ export default function EnhancedApplicationTracker({
                 <span className="text-sm text-slate-500">{Object.keys(filledForm).length} fields detected</span>
               </div>
               <div className="relative">
-                <div className="max-h-[400px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50 scroll-smooth" id="form-fields-container">
+                <div className="max-h-[500px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50 scroll-smooth" id="form-fields-container">
                   {Object.entries(filledForm).map(([field, value]) => (
                     <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
@@ -929,15 +964,15 @@ export default function EnhancedApplicationTracker({
                         </label>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={(e) => {
-                              const button = e.target.closest('button')
-                              const rect = button.getBoundingClientRect()
+                            onClick={() => {
                               setCurrentFieldForAI(field)
-                              setAiPopupPosition({
-                                top: rect.bottom + 8,
-                                left: Math.max(10, rect.left - 200) // Position popup to the left of button, with min margin
+                              setAssistantContext({
+                                fieldName: field,
+                                fieldValue: value,
+                                formData: filledForm,
+                                question: `Please help me with the "${field.replace(/_/g, ' ')}" field. What should I include in this field for my grant application?`
                               })
-                              setShowAIAssistant(true)
+                              setShowWaliOSAssistant(true)
                             }}
                             className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
                             title="Get WALI-OS help with this field"
@@ -1053,6 +1088,18 @@ export default function EnhancedApplicationTracker({
             <Download className="w-5 h-5" />
           )}
           <span>{processing ? 'Generating...' : 'Download Application'}</span>
+        </button>
+        <button 
+          onClick={() => {
+            const element = document.getElementById('form-fields-container')
+            if (element) {
+              element.scrollTop = element.scrollHeight
+            }
+          }}
+          className="py-3 px-4 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center space-x-2"
+        >
+          <ArrowDown className="w-5 h-5" />
+          <span>Scroll Down</span>
         </button>
         <button
           onClick={() => setStep('review')}
@@ -1603,121 +1650,33 @@ export default function EnhancedApplicationTracker({
         />
       )}
       
-      {/* Contextual AI Assistant Popup */}
-      {showAIAssistant && currentFieldForAI && (
-        <div 
-          className="fixed z-50 w-80 max-h-96 bg-white rounded-lg shadow-2xl border border-gray-200"
-          style={{
-            top: `${aiPopupPosition.top}px`,
-            left: `${aiPopupPosition.left}px`
+      {/* WALI-OS Assistant Integration */}
+      {showWaliOSAssistant && (
+        <WaliOSAssistant
+          isVisible={showWaliOSAssistant}
+          onClose={() => {
+            setShowWaliOSAssistant(false)
+            setCurrentFieldForAI(null)
+            setAssistantContext(null)
           }}
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-3 rounded-t-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-200 rounded-full animate-pulse"></div>
-              <h3 className="font-semibold text-sm">WALI-OS Field Help</h3>
-            </div>
-            <button
-              onClick={() => setShowAIAssistant(false)}
-              className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="p-4">
-            <div className="mb-3">
-              <p className="text-sm text-gray-600 mb-2">
-                <span className="font-medium">Helping with:</span> {currentFieldForAI}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                <button
-                  onClick={() => {
-                    if (currentFieldForAI) {
-                      generateFieldContent(currentFieldForAI, 'explain').then((content) => {
-                        if (content) {
-                          setFilledForm(prev => ({
-                            ...prev,
-                            [currentFieldForAI]: content
-                          }))
-                          toast.success(`AI generated content for ${currentFieldForAI}`)
-                        }
-                      })
-                    }
-                  }}
-                  disabled={isAILoading}
-                  className="text-xs px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200 disabled:opacity-50"
-                >
-                  Explain Field
-                </button>
-                <button
-                  onClick={() => {
-                    if (currentFieldForAI) {
-                      generateFieldContent(currentFieldForAI, 'generate').then((content) => {
-                        if (content) {
-                          setFilledForm(prev => ({
-                            ...prev,
-                            [currentFieldForAI]: content
-                          }))
-                          toast.success(`AI generated content for ${currentFieldForAI}`)
-                        }
-                      })
-                    }
-                  }}
-                  disabled={isAILoading}
-                  className="text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded border border-blue-200 disabled:opacity-50"
-                >
-                  Generate Content
-                </button>
-                <button
-                  onClick={() => {
-                    if (currentFieldForAI) {
-                      generateFieldContent(currentFieldForAI, 'review').then((content) => {
-                        if (content) {
-                          toast.success(`AI reviewed ${currentFieldForAI}`)
-                        }
-                      })
-                    }
-                  }}
-                  disabled={isAILoading}
-                  className="text-xs px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded border border-purple-200 disabled:opacity-50"
-                >
-                  Review Form
-                </button>
-              </div>
-            </div>
-
-            {/* Loading indicator */}
-            {isAILoading && (
-              <div className="text-center py-2">
-                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
-                <span className="ml-2 text-xs text-gray-600">Processing...</span>
-              </div>
-            )}
-
-            {/* Error display */}
-            {aiError && (
-              <div className="bg-red-50 border border-red-200 rounded p-2 mb-2">
-                <p className="text-xs text-red-600">{aiError}</p>
-                <button
-                  onClick={clearError}
-                  className="text-xs text-red-500 hover:text-red-700 underline mt-1"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {/* Overlay to close popup when clicking outside */}
-      {showAIAssistant && (
-        <div 
-          className="fixed inset-0 z-40"
-          onClick={() => setShowAIAssistant(false)}
+          userProfile={userProfile}
+          allProjects={projects || []}
+          opportunities={[]}
+          submissions={[]}
+          isProactiveMode={false}
+          triggerContext={{
+            trigger: 'field_help',
+            context: assistantContext
+          }}
+          onFormUpdate={(fieldName, content) => {
+            if (fieldName && content) {
+              setFilledForm(prev => ({
+                ...prev,
+                [fieldName]: content
+              }))
+              toast.success(`Updated ${fieldName.replace(/_/g, ' ')}`)
+            }
+          }}
         />
       )}
     </div>
