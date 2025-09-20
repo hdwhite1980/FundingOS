@@ -2,11 +2,133 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import pdfParse from 'pdf-parse'
 import { IncomingForm } from 'formidable'
 import fs from 'fs'
+import aiProviderService from '../../../lib/aiProviderService'
 
 export const config = {
   api: {
     bodyParser: false,
   },
+}
+
+// AI Form Analysis Function
+async function analyzeFormStructure(documentText: string, context: any) {
+  try {
+    const prompt = buildFormAnalysisPrompt(documentText, context.userProfile, context.projectData)
+    
+    const response = await aiProviderService.generateCompletion(
+      'smart-form-completion',
+      [
+        {
+          role: 'system',
+          content: 'You are an expert grant application assistant. Analyze application forms and extract their structure. Always respond with valid JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      {
+        maxTokens: 4000,
+        temperature: 0.2,
+        responseFormat: 'json_object'
+      }
+    )
+
+    if (!response?.content) {
+      throw new Error('No response from AI provider')
+    }
+
+    const analysis = JSON.parse(response.content)
+    
+    return {
+      success: true,
+      data: {
+        formStructure: analysis,
+        extractionMetadata: {
+          confidence: analysis.extractionConfidence || 0.7,
+          analyzedAt: new Date().toISOString(),
+          provider: response.provider,
+          model: response.model
+        }
+      }
+    }
+  } catch (error) {
+    console.error('AI form analysis error:', error)
+    throw error
+  }
+}
+
+function buildFormAnalysisPrompt(formContent: string, userProfile: any, projectData: any) {
+  const textContent = typeof formContent === 'string' ? formContent : JSON.stringify(formContent)
+  
+  return `
+CRITICAL: This is a FORM TEMPLATE EXTRACTION task. Extract the exact form structure and fields from this document.
+
+APPLICATION FORM CONTENT:
+${textContent.substring(0, 12000)}
+
+TASK: Extract the form template structure from this document so it can be used to generate filled applications.
+
+ANALYSIS REQUIREMENTS:
+
+1. FORM FIELD EXTRACTION (MOST IMPORTANT):
+   - Identify ALL form fields, labels, and input areas
+   - Look for patterns like: "Field Name: ___", "Field Name: $_____", checkboxes, text areas
+   - Extract field types: text, textarea, email, phone, date, currency, select, checkbox
+   - Determine which fields are required vs optional
+   - Identify field groupings and sections
+
+2. FORM STRUCTURE:
+   - Extract section headers and organization
+   - Identify field dependencies and relationships
+   - Note any special formatting or constraints
+   - Extract validation rules or field limits
+
+3. METADATA:
+   - Form title and version
+   - Instructions or guidelines
+   - Submission requirements
+   - Contact information
+
+USER PROFILE FOR CONTEXT:
+${JSON.stringify(userProfile || {}, null, 2)}
+
+PROJECT DATA FOR CONTEXT:
+${JSON.stringify(projectData || {}, null, 2)}
+
+REQUIRED JSON RESPONSE FORMAT:
+{
+  "formFields": {
+    "field_name": {
+      "label": "Exact Label Text",
+      "type": "text|textarea|email|phone|date|currency|select|checkbox",
+      "required": true|false,
+      "section": "Section Name",
+      "placeholder": "hint text if any",
+      "validation": "any constraints",
+      "options": ["for select fields"]
+    }
+  },
+  "formSections": [
+    {
+      "title": "Section Title",
+      "fields": ["field_name1", "field_name2"],
+      "order": 1
+    }
+  ],
+  "formMetadata": {
+    "title": "Form Title",
+    "version": "version if specified",
+    "totalFields": number,
+    "requiredFields": number,
+    "documentType": "application|guidelines|requirements"
+  },
+  "extractionConfidence": number (0-1),
+  "detectedFormType": "missouri_grant|federal_grant|foundation|corporate|other"
+}
+
+FOCUS: Extract the actual form structure so it can be used as a template for document generation. This is NOT about filling out the form - it's about understanding the form's structure.
+  `
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -49,24 +171,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('📄 Processing PDF:', fileName, 'Pages:', pdfData.numpages)
     console.log('🔍 Extracted text length:', extractedText.length, 'characters')
 
-    // Call the AI document analysis service to properly analyze form structure
+    // Call AI form analysis directly instead of HTTP request to avoid serverless issues
     let analysisResult
     try {
-      const documentAnalysisResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/ai/document-analysis`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          documentContent: extractedText,
-          documentType: 'application',
-          userProfile: (context as any).userProfile || null,
-          projectData: (context as any).projectData || null
-        })
-      })
-
-      if (documentAnalysisResponse.ok) {
-        const aiAnalysis = await documentAnalysisResponse.json()
+      console.log('🤖 Starting AI form analysis...')
+      const aiAnalysis = await analyzeFormStructure(extractedText, context)
+      
+      if (aiAnalysis?.data?.formStructure) {
         console.log('✅ AI Analysis successful:', {
           fieldsFound: Object.keys(aiAnalysis.data.formStructure?.formFields || {}).length,
           sectionsFound: aiAnalysis.data.formStructure?.formSections?.length || 0
@@ -104,8 +215,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           deadlines: []
         }
       } else {
-        console.warn('❌ AI Analysis failed, using fallback')
-        throw new Error('AI analysis failed')
+        throw new Error('AI analysis returned invalid structure')
       }
     } catch (error) {
       console.warn('⚠️ Using fallback analysis due to:', error.message)
