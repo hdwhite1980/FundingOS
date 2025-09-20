@@ -14,29 +14,41 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    const { 
-      fileBuffer, 
-      fileName, 
-      fileSize, 
-      fileType, 
-      analysisData, 
-      enhancedFormStructure,
-      userId 
-    } = await request.json()
+    const body = await request.json()
+    const { action } = body
 
-    if (!fileBuffer || !fileName || !analysisData) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      )
+    switch (action) {
+      case 'get_cache':
+        return await getCacheByHash(body)
+      
+      case 'store_cache':
+        return await storeInCache(body)
+        
+      default:
+        // Legacy support for direct storage
+        return await storeInCache(body)
     }
 
-    // Generate file hash for duplicate detection
-    const fileHash = crypto
-      .createHash('sha256')
-      .update(Buffer.from(fileBuffer, 'base64'))
-      .digest('hex')
+  } catch (error) {
+    console.error('Form cache API error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Cache operation failed' },
+      { status: 500 }
+    )
+  }
+}
 
+async function getCacheByHash(body: any) {
+  const { fileHash, fileName, fileSize } = body
+
+  if (!fileHash) {
+    return NextResponse.json(
+      { success: false, error: 'File hash required' },
+      { status: 400 }
+    )
+  }
+
+  try {
     // Check if this form was already analyzed
     const { data: existingCache } = await supabase
       .from('form_analysis_cache')
@@ -45,39 +57,90 @@ export async function POST(request: Request) {
       .single()
 
     if (existingCache) {
-      // Update usage count and return existing analysis
+      // Update usage count
       await supabase.rpc('update_form_cache_usage', { cache_id: existingCache.id })
       
       return NextResponse.json({
         success: true,
-        cached: true,
         data: {
           id: existingCache.id,
-          analysisData: existingCache.analysis_data,
-          enhancedFormStructure: existingCache.enhanced_form_structure,
+          data: {
+            formAnalysis: existingCache.analysis_data?.formAnalysis || {},
+            formStructure: existingCache.enhanced_form_structure || {},
+            walkthrough: existingCache.analysis_data?.walkthrough || {}
+          },
           formTitle: existingCache.form_title,
           detectedFormType: existingCache.detected_form_type,
-          usageCount: existingCache.usage_count + 1
+          usageCount: existingCache.usage_count + 1,
+          fromCache: true
         }
+      })
+    } else {
+      return NextResponse.json({
+        success: false,
+        error: 'Not found in cache'
+      }, { status: 404 })
+    }
+
+  } catch (error) {
+    console.error('Cache lookup error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Cache lookup failed' },
+      { status: 500 }
+    )
+  }
+}
+
+async function storeInCache(body: any) {
+  const { 
+    fileName, 
+    fileSize, 
+    fileHash,
+    analysisResult,
+    userId 
+  } = body
+
+  if (!fileHash || !fileName || !analysisResult) {
+    return NextResponse.json(
+      { success: false, error: 'Missing required fields: fileHash, fileName, analysisResult' },
+      { status: 400 }
+    )
+  }
+
+  try {
+    // Check if already exists
+    const { data: existingCache } = await supabase
+      .from('form_analysis_cache')
+      .select('id')
+      .eq('file_hash', fileHash)
+      .single()
+
+    if (existingCache) {
+      return NextResponse.json({
+        success: true,
+        data: { id: existingCache.id },
+        message: 'Already cached'
       })
     }
 
     // Store new analysis in cache
+    const formAnalysis = analysisResult?.data?.formAnalysis || {}
+    const formStructure = analysisResult?.data?.formStructure || {}
+    
     const cacheEntry = {
       file_hash: fileHash,
       file_name: fileName,
       file_size: fileSize || 0,
-      file_type: fileType || 'application/pdf',
-      form_title: enhancedFormStructure?.formMetadata?.formTitle || analysisData?.documentType || 'Unknown Form',
-      detected_form_type: enhancedFormStructure?.formMetadata?.detectedFormType || analysisData?.detectedFormType || 'unknown',
-      analysis_data: analysisData,
-      enhanced_form_structure: enhancedFormStructure,
-      document_complexity: enhancedFormStructure?.ocrStats?.documentComplexity || 'moderate',
-      confidence_score: analysisData?.extractionConfidence || 0.85,
-      total_fields: (Object.keys(enhancedFormStructure?.dataFields || {}).length + 
-                    Object.keys(enhancedFormStructure?.narrativeFields || {}).length) || 0,
-      data_fields_count: Object.keys(enhancedFormStructure?.dataFields || {}).length || 0,
-      narrative_fields_count: Object.keys(enhancedFormStructure?.narrativeFields || {}).length || 0,
+      file_type: 'application/pdf',
+      form_title: formAnalysis?.formTitle || 'Unknown Form',
+      detected_form_type: formAnalysis?.formType || 'unknown',
+      analysis_data: analysisResult?.data || analysisResult,
+      enhanced_form_structure: formStructure,
+      document_complexity: formAnalysis?.documentComplexity || 'moderate',
+      confidence_score: formAnalysis?.confidence || 0.85,
+      total_fields: formStructure?.metadata?.totalFields || 0,
+      data_fields_count: Object.keys(formStructure?.dataFields || {}).length || 0,
+      narrative_fields_count: Object.keys(formStructure?.narrativeFields || {}).length || 0,
       created_by: userId
     }
 
@@ -97,20 +160,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      cached: false,
       data: {
-        id: newCache.id,
-        analysisData,
-        enhancedFormStructure,
-        formTitle: newCache.form_title,
-        detectedFormType: newCache.detected_form_type
+        id: newCache.id
       }
     })
 
   } catch (error) {
-    console.error('Form cache API error:', error)
+    console.error('Cache storage error:', error)
     return NextResponse.json(
-      { success: false, error: 'Cache operation failed' },
+      { success: false, error: 'Failed to store in cache' },
       { status: 500 }
     )
   }
