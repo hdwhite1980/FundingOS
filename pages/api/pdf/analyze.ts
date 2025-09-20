@@ -10,6 +10,22 @@ export const config = {
   },
 }
 
+// Helper function to clean JSON from markdown formatting
+function cleanJsonFromMarkdown(text: string): string {
+  if (!text) return text
+  
+  // Remove markdown code blocks
+  let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '')
+  
+  // Remove any remaining markdown markers
+  cleaned = cleaned.replace(/^```/gm, '').replace(/```$/gm, '')
+  
+  // Trim whitespace
+  cleaned = cleaned.trim()
+  
+  return cleaned
+}
+
 // AI Form Analysis Function
 async function analyzeFormStructure(documentText: string, context: any) {
   try {
@@ -38,7 +54,16 @@ async function analyzeFormStructure(documentText: string, context: any) {
       throw new Error('No response from AI provider')
     }
 
-    const analysis = JSON.parse(response.content)
+    // Clean and parse the AI response
+    let analysis
+    try {
+      const cleanedResponse = cleanJsonFromMarkdown(response.content)
+      analysis = JSON.parse(cleanedResponse)
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', parseError)
+      console.error('Raw AI response:', response.content?.substring(0, 500))
+      throw new Error('Invalid AI response format')
+    }
     
     return {
       success: true,
