@@ -17,6 +17,24 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   zip_code VARCHAR(20),
   country VARCHAR(100) DEFAULT 'United States',
   phone VARCHAR(20),
+  -- Additional fields for AI context (EIN, tax info, org capacity)
+  ein VARCHAR(20),
+  tax_id VARCHAR(20),
+  address TEXT, -- Combined address field for backward compatibility
+  location TEXT, -- Location field for backward compatibility
+  annual_budget BIGINT,
+  years_in_operation INTEGER,
+  years_operating INTEGER, -- Alternative field name
+  full_time_staff INTEGER,
+  employee_count INTEGER, -- Alternative field name  
+  board_size INTEGER,
+  board_members INTEGER, -- Alternative field name
+  part_time_staff INTEGER,
+  volunteers INTEGER,
+  incorporation_year INTEGER,
+  indirect_cost_rate DECIMAL(5,2),
+  organization_type VARCHAR(100),
+  website VARCHAR(255),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(user_id)
@@ -108,6 +126,7 @@ ALTER TABLE company_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+CREATE POLICY "Users own their profiles" ON user_profiles FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users own their assistant sessions" ON assistant_sessions FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users own their conversations" ON assistant_conversations FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users own their context cache" ON ai_org_context_cache FOR ALL USING (auth.uid() = user_id);
@@ -115,6 +134,7 @@ CREATE POLICY "Users own their company settings" ON company_settings FOR ALL USI
 CREATE POLICY "Users own their user settings" ON user_settings FOR ALL USING (auth.uid() = user_id);
 
 -- Grants
+GRANT ALL ON user_profiles TO authenticated;
 GRANT ALL ON assistant_sessions TO authenticated;
 GRANT ALL ON assistant_conversations TO authenticated;
 GRANT ALL ON ai_org_context_cache TO authenticated;
@@ -135,3 +155,168 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER trg_update_assistant_session
   AFTER INSERT ON assistant_conversations
   FOR EACH ROW EXECUTE FUNCTION update_assistant_session_timestamp();
+
+-- ============================================================================
+-- ALTER STATEMENTS FOR EXISTING TABLES
+-- Run these if user_profiles table already exists but is missing columns
+-- ============================================================================
+
+-- Add missing columns to existing user_profiles table
+DO $$
+BEGIN
+  -- Add organization_id if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'organization_id'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN organization_id VARCHAR(100);
+  END IF;
+
+  -- Add ein if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'ein'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN ein VARCHAR(20);
+  END IF;
+
+  -- Add tax_id if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'tax_id'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN tax_id VARCHAR(20);
+  END IF;
+
+  -- Add address if missing (for backward compatibility)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'address'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN address TEXT;
+  END IF;
+
+  -- Add location if missing (for backward compatibility)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'location'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN location TEXT;
+  END IF;
+
+  -- Add annual_budget if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'annual_budget'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN annual_budget BIGINT;
+  END IF;
+
+  -- Add years_in_operation if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'years_in_operation'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN years_in_operation INTEGER;
+  END IF;
+
+  -- Add years_operating if missing (alternative field name)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'years_operating'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN years_operating INTEGER;
+  END IF;
+
+  -- Add full_time_staff if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'full_time_staff'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN full_time_staff INTEGER;
+  END IF;
+
+  -- Add employee_count if missing (alternative field name)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'employee_count'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN employee_count INTEGER;
+  END IF;
+
+  -- Add board_size if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'board_size'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN board_size INTEGER;
+  END IF;
+
+  -- Add board_members if missing (alternative field name)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'board_members'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN board_members INTEGER;
+  END IF;
+
+  -- Add part_time_staff if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'part_time_staff'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN part_time_staff INTEGER;
+  END IF;
+
+  -- Add volunteers if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'volunteers'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN volunteers INTEGER;
+  END IF;
+
+  -- Add incorporation_year if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'incorporation_year'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN incorporation_year INTEGER;
+  END IF;
+
+  -- Add indirect_cost_rate if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'indirect_cost_rate'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN indirect_cost_rate DECIMAL(5,2);
+  END IF;
+
+  -- Add organization_type if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'organization_type'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN organization_type VARCHAR(100);
+  END IF;
+
+  -- Add website if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_profiles' AND column_name = 'website'
+  ) THEN
+    ALTER TABLE user_profiles ADD COLUMN website VARCHAR(255);
+  END IF;
+
+END $$;
+
+-- Add RLS policy for user_profiles if table already exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'user_profiles') THEN
+    -- Drop existing policy if it exists
+    DROP POLICY IF EXISTS "Users own their profiles" ON user_profiles;
+    -- Create the policy
+    CREATE POLICY "Users own their profiles" ON user_profiles FOR ALL USING (auth.uid() = user_id);
+  END IF;
+END $$;
