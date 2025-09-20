@@ -11,45 +11,45 @@ import aiProviderService from '../../../../lib/aiProviderService.js'
 // Ensure Node.js runtime for Buffer/pdf-parse support on Vercel
 export const runtime = 'nodejs'
 
-// Extract text using PDF.js (serverless-safe, no file I/O, no workers)
+// Extract text using pdf2json (pure Node, no workers or native deps)
 async function extractPDFText(pdfBuffer: Buffer): Promise<{ text: string; pages: number; info: any }> {
-  try {
-    // Polyfill DOMMatrix in Node using canvas if missing
+  const mod: any = await import('pdf2json')
+  const PDFParser = mod?.default || mod
+  return await new Promise((resolve, reject) => {
     try {
-      if (!(globalThis as any).DOMMatrix) {
-        const canvasMod: any = await import('canvas')
-        if (canvasMod?.DOMMatrix) {
-          ;(globalThis as any).DOMMatrix = canvasMod.DOMMatrix
+      const parser = new PDFParser()
+      parser.on('pdfParser_dataError', (err: any) => {
+        const msg = err?.parserError?.message || err?.parserError || String(err)
+        reject(new Error(msg))
+      })
+      parser.on('pdfParser_dataReady', (pdfData: any) => {
+        try {
+          const pagesArr = pdfData?.Pages || []
+          let allText = ''
+          for (const p of pagesArr) {
+            const texts = p?.Texts || []
+            for (const t of texts) {
+              const runs = t?.R || []
+              for (const r of runs) {
+                const encoded = r?.T || ''
+                const decoded = decodeURIComponent(encoded)
+                allText += decoded + ' '
+              }
+            }
+            allText += '\n\n'
+          }
+          const pages = pagesArr.length || 0
+          const info = pdfData?.Meta || {}
+          resolve({ text: allText.trim(), pages, info })
+        } catch (e: any) {
+          reject(new Error(e?.message || String(e)))
         }
-      }
-    } catch (_) {
-      // ignore if canvas not available; pdfjs may still work
+      })
+      parser.parseBuffer(pdfBuffer)
+    } catch (e: any) {
+      reject(new Error(e?.message || String(e)))
     }
-
-    const pdfjsLib: any = await import('pdfjs-dist/legacy/build/pdf.mjs')
-    if (pdfjsLib?.GlobalWorkerOptions) {
-      // Provide a dummy workerSrc and disable worker/eval to avoid setup
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.min.mjs'
-    }
-    const bytes = new Uint8Array(pdfBuffer)
-    const loadingTask = pdfjsLib.getDocument({
-      data: bytes,
-      disableWorker: true,
-      isEvalSupported: false,
-      useWorkerFetch: false
-    })
-    const pdf = await loadingTask.promise
-    let allText = ''
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum)
-      const textContent = await page.getTextContent()
-      const pageText = textContent.items.map((it: any) => (it?.str ? String(it.str) : '')).join(' ')
-      allText += pageText + '\n\n'
-    }
-    return { text: allText.trim(), pages: pdf.numPages || 0, info: {} }
-  } catch (error: any) {
-    throw new Error(`PDF text extraction failed: ${error?.message || String(error)}`)
-  }
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
 
     // Extract text (serverless-safe)
-    console.log('📄 Extracting text from PDF (PDF.js)...')
+  console.log('📄 Extracting text from PDF (pdf2json)...')
     const { text: extractedText, pages, info } = await extractPDFText(buffer)
 
     if (!extractedText || extractedText.trim().length < 10) {
