@@ -4,6 +4,12 @@ import './globals.css'
 import ErrorBoundary from '../components/ErrorBoundary'
 import Script from 'next/script'
 
+// Import the main components
+import FormCompletionWizard from '../components/FormCompletionWizard'
+
+// Or just the service
+import formCompletionService from '../lib/formCompletionService'
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
