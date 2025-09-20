@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { loadCompleteCustomerData } from '../lib/customerDataLoader'
+import assistantManager from '../utils/assistantManager'
 import { 
   FileText, 
   Upload, 
@@ -29,6 +31,8 @@ import EnhancedApplicationTracker from './EnhancedApplicationTracker'
 
 export default function ApplicationProgress({ user, userProfile, projects, onNavigateToProject }) {
   const [submissions, setSubmissions] = useState([])
+  const [opportunities, setOpportunities] = useState([])
+  const [customerData, setCustomerData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({})
   const [selectedSubmission, setSelectedSubmission] = useState(null)
@@ -41,8 +45,26 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
   useEffect(() => {
     if (user) {
       loadSubmissions()
+      loadOpportunities()
+      loadCompleteCustomerDataAsync()
     }
   }, [user, filters])
+
+  const loadCompleteCustomerDataAsync = async () => {
+    if (!user?.id) return
+    
+    try {
+      const completeData = await loadCompleteCustomerData(user.id)
+      setCustomerData(completeData)
+      
+      // Update assistant manager with complete customer data
+      assistantManager.updateCustomerData(completeData)
+      
+      console.log('✅ Updated assistant with complete customer data')
+    } catch (error) {
+      console.error('❌ Failed to load complete customer data:', error)
+    }
+  }
 
   const loadSubmissions = async () => {
     try {
@@ -461,6 +483,9 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
         <EnhancedApplicationTracker
           projects={projects}
           userProfile={userProfile}
+          opportunities={opportunities || []}
+          submissions={submissions || []}
+          customerData={customerData}
           onClose={() => setShowEnhancedTracker(false)}
           onSubmit={handleCreateSubmission}
           initialState={enhancedTrackerState}

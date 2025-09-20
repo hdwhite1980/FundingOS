@@ -37,6 +37,7 @@ import documentAnalysisService from '../lib/documentAnalysisService'
 import documentGenerationService from '../lib/documentGenerationService'
 import { useAIAssistant } from '../hooks/useAIAssistant'
 import WaliOSAssistant from './WaliOSAssistant'
+import assistantManager from '../utils/assistantManager'
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
@@ -44,6 +45,9 @@ import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
 export default function EnhancedApplicationTracker({ 
   projects, 
   userProfile, 
+  opportunities = [],
+  submissions = [],
+  customerData = null,
   onClose, 
   onSubmit,
   initialState = null,
@@ -967,13 +971,20 @@ export default function EnhancedApplicationTracker({
                           <button
                             onClick={() => {
                               setCurrentFieldForAI(field)
-                              setAssistantContext({
+                              const fieldContext = {
                                 fieldName: field,
                                 fieldValue: value,
                                 formData: filledForm,
                                 question: `Please help me with the "${field.replace(/_/g, ' ')}" field. What should I include in this field for my grant application?`
-                              })
-                              setShowWaliOSAssistant(true)
+                              }
+                              setAssistantContext(fieldContext)
+                              
+                              // Try to use existing assistant instance
+                              const existingAssistant = assistantManager.openAssistant({ fieldContext })
+                              if (!existingAssistant) {
+                                // No assistant exists, create one
+                                setShowWaliOSAssistant(true)
+                              }
                             }}
                             className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
                             title="Get WALI-OS help with this field"
@@ -1660,10 +1671,11 @@ export default function EnhancedApplicationTracker({
             setCurrentFieldForAI(null)
             setAssistantContext(null)
           }}
-          userProfile={userProfile}
-          allProjects={projects || []}
-          opportunities={[]}
-          submissions={[]}
+          userProfile={customerData?.userProfile || userProfile}
+          allProjects={customerData?.allProjects || projects || []}
+          opportunities={customerData?.opportunities || opportunities || []}
+          submissions={customerData?.submissions || submissions || []}
+          customerData={customerData}
           isProactiveMode={false}
           triggerContext={{
             trigger: 'field_help',

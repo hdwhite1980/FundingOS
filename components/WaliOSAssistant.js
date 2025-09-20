@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageCircle, X, Sparkles, Send, GripHorizontal } from 'lucide-react'
+import assistantManager from '../utils/assistantManager'
 
 export default function WaliOSAssistant({ 
 	isVisible = true,
@@ -19,15 +20,51 @@ export default function WaliOSAssistant({
 	onFormUpdate,
 	onSuggestionApply
 }) {
-	// Singleton pattern - prevent multiple instances
-	useEffect(() => {
-		const existingAssistant = document.querySelector('[data-wali-assistant="true"]')
-		if (existingAssistant && existingAssistant !== document.querySelector('[data-wali-assistant="true"]')) {
-			console.log('WALI-OS Assistant already exists, preventing duplicate')
+	// Register with global assistant manager
+	const assistantInstanceRef = useRef({
+		show: (context) => {
+			setIsOpen(true)
+			if (context?.fieldContext) {
+				setFieldContext(context.fieldContext)
+			}
+		},
+		hide: () => {
+			setIsOpen(false)
 			onClose && onClose()
-			return
+		},
+		close: () => {
+			setIsOpen(false)
+			onClose && onClose()
+		},
+		setFieldContext: (context) => {
+			setFieldContext(context)
+			if (context && !isOpen) {
+				setIsOpen(true)
+			}
+		},
+		updateData: (data) => {
+			// Update component state with new data
+			if (data.userProfile) setUserProfile(data.userProfile)
+			if (data.allProjects) setAllProjects(data.allProjects)
+			if (data.opportunities) setOpportunities(data.opportunities)  
+			if (data.submissions) setSubmissions(data.submissions)
 		}
-	}, [onClose])
+	})
+
+	useEffect(() => {
+		assistantManager.setInstance(assistantInstanceRef.current)
+		assistantManager.updateCustomerData({
+			userProfile,
+			allProjects,
+			opportunities,
+			submissions
+		})
+		
+		return () => {
+			// Don't clear the instance on unmount, let manager handle it
+		}
+	}, [])
+	
 	const [isOpen, setIsOpen] = useState(false)
 	const [expanded, setExpanded] = useState(false)
 	const [currentMessage, setCurrentMessage] = useState('')
@@ -40,6 +77,13 @@ export default function WaliOSAssistant({
 	const scrollRef = useRef(null)
 	const [eyesBlink, setEyesBlink] = useState(false)
 	const [isAnimating, setIsAnimating] = useState(false)
+	const [fieldContext, setFieldContext] = useState(null)
+	
+	// State for customer data that can be updated
+	const [userProfileState, setUserProfile] = useState(userProfile)
+	const [allProjectsState, setAllProjects] = useState(allProjects)
+	const [opportunitiesState, setOpportunities] = useState(opportunities)
+	const [submissionsState, setSubmissions] = useState(submissions)
 	
 	// Drag and drop state
 	const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -79,16 +123,69 @@ export default function WaliOSAssistant({
 		if (isVisible && !isOpen) {
 			setTimeout(() => {
 				setIsOpen(true)
-				if (isProactiveMode) {
+				if (fieldContext) {
+					// Start with field-specific help
+					setTimeout(() => startFieldHelp(), 500)
+				} else if (isProactiveMode) {
 					setTimeout(() => startProactiveConversation(), 500)
 				} else {
 					setTimeout(() => startGenericGreeting(), 500)
 				}
 			}, 500)
 		}
-	}, [isVisible, isProactiveMode])
+	}, [isVisible, isProactiveMode, fieldContext])
+
+	useEffect(() => {
+		// When field context changes and assistant is already open
+		if (fieldContext && isOpen) {
+			startFieldHelp()
+		}
+	}, [fieldContext, isOpen])
 
 	useEffect(() => { if (showInput && inputRef.current) inputRef.current.focus() }, [showInput])
+
+	const startFieldHelp = () => {
+		if (!fieldContext) return
+		
+		setIsThinking(true)
+		setAssistantState('thinking')
+		setTimeout(() => {
+			const fieldName = fieldContext.fieldName?.replace(/_/g, ' ') || 'this field'
+			const message = `🎯 I can help you with the "${fieldName}" field! Let me provide some guidance.`
+			showMessage(message, () => {
+				setTimeout(() => {
+					const helpMessage = generateFieldHelpMessage(fieldContext)
+					showMessage(helpMessage, () => {
+						setTimeout(() => {
+							showMessage('Would you like me to generate content for this field, or do you have specific questions?', () => {
+								setShowInput(true)
+								setAssistantState('listening')
+							})
+						}, 1500)
+					})
+				}, 1200)
+			})
+		}, 500)
+	}
+
+	const generateFieldHelpMessage = (context) => {
+		const fieldName = context.fieldName?.toLowerCase() || ''
+		const fieldDisplayName = context.fieldName?.replace(/_/g, ' ') || 'this field'
+		
+		if (fieldName.includes('abstract') || fieldName.includes('summary')) {
+			return `📝 For the ${fieldDisplayName}, provide a concise overview of your project's goals, methods, and expected outcomes. Keep it clear and compelling - this is often the first thing reviewers read.`
+		} else if (fieldName.includes('description') || fieldName.includes('narrative')) {
+			return `📖 For the ${fieldDisplayName}, provide detailed information about your project. Include background, methodology, timeline, and expected impact. Be specific and thorough.`
+		} else if (fieldName.includes('budget') || fieldName.includes('cost')) {
+			return `💰 For the ${fieldDisplayName}, provide detailed financial information. Include direct and indirect costs, and justify all expenses. Make sure numbers align with your project scope.`
+		} else if (fieldName.includes('timeline') || fieldName.includes('schedule')) {
+			return `📅 For the ${fieldDisplayName}, provide a realistic timeline with key milestones. Break down major phases and deliverables with specific dates.`
+		} else if (fieldName.includes('personnel') || fieldName.includes('staff') || fieldName.includes('team')) {
+			return `👥 For the ${fieldDisplayName}, describe your team's qualifications and roles. Highlight relevant experience and how each member contributes to project success.`
+		} else {
+			return `💡 For the ${fieldDisplayName}, I can help you create content based on your project details and similar successful applications. Let me know what specific guidance you need.`
+		}
+	}
 
 	const startProactiveConversation = () => {
 		setIsThinking(true); setAssistantState('thinking')
@@ -195,12 +292,40 @@ export default function WaliOSAssistant({
 	const processUserInput = async (input) => {
 		const lowerInput = input.toLowerCase()
 		try {
-			if (userProfile?.user_id || userProfile?.id) {
-				const userId = userProfile.user_id || userProfile.id
-				const resp = await fetch('/api/ai/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, message: input, useLLM: true }) })
-				if (resp.ok) { const json = await resp.json(); return json.data?.message || 'Processing your request...' }
+			// Build comprehensive context from all customer data  
+			const context = {
+				customerData: customerData || {},
+				fieldContext: fieldContext,
+				userProfile: customerData?.userProfile || userProfileState,
+				projects: customerData?.allProjects || allProjectsState,
+				submissions: customerData?.submissions || submissionsState,
+				opportunities: customerData?.opportunities || opportunitiesState,
+				input: input
 			}
-		} catch (e) { console.warn('Assistant API failed; using heuristic fallback', e) }
+
+			// Make API call to assistant with full context
+			if (userProfile?.user_id || userProfile?.id || customerData?.userProfile?.user_id) {
+				const userId = userProfile?.user_id || userProfile?.id || customerData?.userProfile?.user_id
+				const response = await fetch('/api/ai/assistant', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						userId,
+						message: input,
+						context: context,
+						useLLM: true,
+						includeFullContext: true
+					})
+				})
+
+				if (response.ok) {
+					const json = await response.json()
+					return json.data?.message || json.message || 'Processing your request...'
+				}
+			}
+		} catch (e) { 
+			console.error('❌ Assistant API failed:', e)
+		}
 		if (lowerInput.includes('deadline')) {
 			const upcoming = opportunities.filter(o => { const d = new Date(o.deadline || o.application_deadline); const diff = (d - Date.now())/86400000; return diff <= 30 && diff > 0 })
 			return upcoming.length ? `📅 ${upcoming.length} deadlines in 30 days. Closest: ${upcoming[0]?.title}` : '✅ No urgent deadlines in the next 30 days.'
