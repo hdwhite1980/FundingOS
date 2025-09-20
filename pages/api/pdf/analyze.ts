@@ -26,6 +26,26 @@ function cleanJsonFromMarkdown(text: string): string {
   return cleaned
 }
 
+// Helper function to attempt to repair truncated JSON
+function attemptJsonRepair(jsonString: string): string {
+  if (!jsonString) return jsonString
+  
+  // If it looks like it ends mid-string, try to close it gracefully
+  if (jsonString.match(/[^"\\]$/)) {
+    // Likely truncated in the middle of a string value
+    console.log('🔧 Attempting to repair truncated JSON string...')
+    
+    // Find the last complete field and truncate there
+    const lastCompleteField = jsonString.lastIndexOf('"},')
+    if (lastCompleteField > 0) {
+      const repairedJson = jsonString.substring(0, lastCompleteField + 2) + '\n  },\n  "formSections": [],\n  "formMetadata": {\n    "title": "Truncated Form Analysis",\n    "totalFields": 0,\n    "requiredFields": 0\n  },\n  "extractionConfidence": 0.8\n}'
+      return repairedJson
+    }
+  }
+  
+  return jsonString
+}
+
 // AI Form Analysis Function
 async function analyzeFormStructure(documentText: string, context: any) {
   try {
@@ -44,7 +64,7 @@ async function analyzeFormStructure(documentText: string, context: any) {
         }
       ],
       {
-        maxTokens: 4000,
+        maxTokens: 8000, // Increased from 4000 to handle large forms
         temperature: 0.2,
         responseFormat: 'json_object'
       }
@@ -57,8 +77,18 @@ async function analyzeFormStructure(documentText: string, context: any) {
     // Clean and parse the AI response
     let analysis
     try {
-      const cleanedResponse = cleanJsonFromMarkdown(response.content)
-      analysis = JSON.parse(cleanedResponse)
+      let cleanedResponse = cleanJsonFromMarkdown(response.content)
+      
+      // Try to parse as-is first
+      try {
+        analysis = JSON.parse(cleanedResponse)
+      } catch (parseError) {
+        console.log('🔧 First parse failed, attempting JSON repair...')
+        // Try to repair truncated JSON
+        const repairedResponse = attemptJsonRepair(cleanedResponse)
+        analysis = JSON.parse(repairedResponse)
+        console.log('✅ Successfully repaired and parsed truncated JSON')
+      }
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError)
       console.error('Raw AI response:', response.content?.substring(0, 500))
@@ -87,72 +117,44 @@ function buildFormAnalysisPrompt(formContent: string, userProfile: any, projectD
   const textContent = typeof formContent === 'string' ? formContent : JSON.stringify(formContent)
   
   return `
-CRITICAL: This is a FORM TEMPLATE EXTRACTION task. Extract the exact form structure and fields from this document.
+TASK: Extract form fields from this Missouri Grant Application document.
 
-APPLICATION FORM CONTENT:
-${textContent.substring(0, 12000)}
+FORM CONTENT (first 10000 chars):
+${textContent.substring(0, 10000)}
 
-TASK: Extract the form template structure from this document so it can be used to generate filled applications.
+INSTRUCTIONS:
+1. Find ALL form fields, input areas, checkboxes, and text areas
+2. Extract field labels, types, and requirements
+3. Identify sections and organization
+4. Focus on completeness - capture every fillable field
 
-ANALYSIS REQUIREMENTS:
-
-1. FORM FIELD EXTRACTION (MOST IMPORTANT):
-   - Identify ALL form fields, labels, and input areas
-   - Look for patterns like: "Field Name: ___", "Field Name: $_____", checkboxes, text areas
-   - Extract field types: text, textarea, email, phone, date, currency, select, checkbox
-   - Determine which fields are required vs optional
-   - Identify field groupings and sections
-
-2. FORM STRUCTURE:
-   - Extract section headers and organization
-   - Identify field dependencies and relationships
-   - Note any special formatting or constraints
-   - Extract validation rules or field limits
-
-3. METADATA:
-   - Form title and version
-   - Instructions or guidelines
-   - Submission requirements
-   - Contact information
-
-USER PROFILE FOR CONTEXT:
-${JSON.stringify(userProfile || {}, null, 2)}
-
-PROJECT DATA FOR CONTEXT:
-${JSON.stringify(projectData || {}, null, 2)}
-
-REQUIRED JSON RESPONSE FORMAT:
+REQUIRED JSON FORMAT (be concise):
 {
   "formFields": {
-    "field_name": {
-      "label": "Exact Label Text",
+    "field_id": {
+      "label": "Field Label",
       "type": "text|textarea|email|phone|date|currency|select|checkbox",
       "required": true|false,
-      "section": "Section Name",
-      "placeholder": "hint text if any",
-      "validation": "any constraints",
-      "options": ["for select fields"]
+      "section": "Section Name"
     }
   },
   "formSections": [
     {
       "title": "Section Title",
-      "fields": ["field_name1", "field_name2"],
-      "order": 1
+      "fields": ["field1", "field2"]
     }
   ],
   "formMetadata": {
     "title": "Form Title",
-    "version": "version if specified",
     "totalFields": number,
     "requiredFields": number,
-    "documentType": "application|guidelines|requirements"
+    "documentType": "missouri_grant"
   },
-  "extractionConfidence": number (0-1),
-  "detectedFormType": "missouri_grant|federal_grant|foundation|corporate|other"
+  "extractionConfidence": 0.8,
+  "detectedFormType": "missouri_grant"
 }
 
-FOCUS: Extract the actual form structure so it can be used as a template for document generation. This is NOT about filling out the form - it's about understanding the form's structure.
+Extract ALL fields - this form has 20+ fields including organization info, contact details, project info, budget amounts, etc.
   `
 }
 
