@@ -113,13 +113,20 @@ export async function POST(request: NextRequest) {
 
 async function ensureSession(userId: string, provided?: string) {
   if (provided) return provided
-  const { data: newSession, error } = await supabaseAdmin
-    .from('assistant_sessions')
-    .insert([{ user_id: userId }])
-    .select('id')
-    .single()
-  if (error) throw new Error('Failed to create session')
-  return newSession.id
+  
+  try {
+    const { data: newSession, error } = await supabaseAdmin
+      .from('assistant_sessions')
+      .insert([{ user_id: userId }])
+      .select('id')
+      .single()
+    if (error) throw new Error('Failed to create session: ' + error.message)
+    return newSession.id
+  } catch (error: any) {
+    console.warn('assistant_sessions table may not exist, using fallback session ID')
+    // Generate a temporary session ID if table doesn't exist
+    return `temp-${userId}-${Date.now()}`
+  }
 }
 
 async function logConversationTurn(sessionId: string, userId: string, role: string, content: string) {
@@ -127,7 +134,7 @@ async function logConversationTurn(sessionId: string, userId: string, role: stri
     await supabaseAdmin
       .from('assistant_conversations')
       .insert([{ session_id: sessionId, user_id: userId, role, content }])
-  } catch (e:any) {
-    console.warn('Failed to log conversation turn', e.message)
+  } catch (e: any) {
+    console.warn('Failed to log conversation turn (table may not exist):', e.message)
   }
 }

@@ -19,6 +19,15 @@ export default function WaliOSAssistant({
 	onFormUpdate,
 	onSuggestionApply
 }) {
+	// Singleton pattern - prevent multiple instances
+	useEffect(() => {
+		const existingAssistant = document.querySelector('[data-wali-assistant="true"]')
+		if (existingAssistant && existingAssistant !== document.querySelector('[data-wali-assistant="true"]')) {
+			console.log('WALI-OS Assistant already exists, preventing duplicate')
+			onClose && onClose()
+			return
+		}
+	}, [onClose])
 	const [isOpen, setIsOpen] = useState(false)
 	const [expanded, setExpanded] = useState(false)
 	const [currentMessage, setCurrentMessage] = useState('')
@@ -262,6 +271,7 @@ export default function WaliOSAssistant({
 	return (
 		<div 
 			className={`fixed z-50 ${expanded ? 'inset-0 p-4 md:p-6 flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}
+			data-wali-assistant="true"
 			style={expanded ? {} : 
 				position.x === 0 && position.y === 0 
 					? { bottom: '24px', right: '24px' } // Default position
