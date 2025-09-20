@@ -27,7 +27,8 @@ import {
   Download,
   BookOpen,
   Target,
-  Users
+  Users,
+  ChevronDown
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import smartFormCompletionService from '../lib/smartFormCompletionService'
@@ -855,46 +856,63 @@ export default function EnhancedApplicationTracker({
                 <h4 className="font-medium text-slate-900">Edit Application Fields:</h4>
                 <span className="text-sm text-slate-500">{Object.keys(filledForm).length} fields detected</span>
               </div>
-              <div className="max-h-[400px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50">
-                {Object.entries(filledForm).map(([field, value]) => (
-                  <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
-                    <label className="text-sm font-medium text-slate-700 capitalize block mb-2">
-                      {field.replace(/_/g, ' ')}:
-                    </label>
-                    {field.toLowerCase().includes('description') || 
-                     field.toLowerCase().includes('narrative') ||
-                     field.toLowerCase().includes('summary') ||
-                     field.toLowerCase().includes('statement') ||
-                     field.toLowerCase().includes('objective') ||
-                     field.toLowerCase().includes('plan') ||
-                     field.toLowerCase().includes('approach') ||
-                     (typeof value === 'string' && value.length > 100) ? (
-                      <textarea
-                        value={value || ''}
-                        onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
-                        className="w-full p-3 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-                        rows={4}
-                        placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
-                      />
-                    ) : (
-                      <input
-                        type={field.toLowerCase().includes('amount') || field.toLowerCase().includes('budget') || field.toLowerCase().includes('funding') ? 'number' : 
-                              field.toLowerCase().includes('date') || field.toLowerCase().includes('deadline') ? 'date' : 
-                              field.toLowerCase().includes('email') ? 'email' : 
-                              field.toLowerCase().includes('phone') ? 'tel' : 'text'}
-                        value={value || ''}
-                        onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
-                        className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
-                      />
-                    )}
-                  </div>
-                ))}
-                {Object.keys(filledForm).length === 0 && (
-                  <div className="text-center py-8 text-slate-500">
-                    <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                    <p>No form fields detected. Please upload a document and run analysis first.</p>
-                  </div>
+              <div className="relative">
+                <div className="max-h-[400px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50 scroll-smooth" id="form-fields-container">
+                  {Object.entries(filledForm).map(([field, value]) => (
+                    <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
+                      <label className="text-sm font-medium text-slate-700 capitalize block mb-2">
+                        {field.replace(/_/g, ' ')}:
+                      </label>
+                      {field.toLowerCase().includes('description') || 
+                       field.toLowerCase().includes('narrative') ||
+                       field.toLowerCase().includes('summary') ||
+                       field.toLowerCase().includes('statement') ||
+                       field.toLowerCase().includes('objective') ||
+                       field.toLowerCase().includes('plan') ||
+                       field.toLowerCase().includes('approach') ||
+                       (typeof value === 'string' && value.length > 100) ? (
+                        <textarea
+                          value={value || ''}
+                          onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
+                          className="w-full p-3 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                          rows={4}
+                          placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
+                        />
+                      ) : (
+                        <input
+                          type={field.toLowerCase().includes('amount') || field.toLowerCase().includes('budget') || field.toLowerCase().includes('funding') ? 'number' : 
+                                field.toLowerCase().includes('date') || field.toLowerCase().includes('deadline') ? 'date' : 
+                                field.toLowerCase().includes('email') ? 'email' : 
+                                field.toLowerCase().includes('phone') ? 'tel' : 'text'}
+                          value={value || ''}
+                          onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
+                          className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  {Object.keys(filledForm).length === 0 && (
+                    <div className="text-center py-8 text-slate-500">
+                      <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                      <p>No form fields detected. Please upload a document and run analysis first.</p>
+                    </div>
+                  )}
+                </div>
+                {/* Scroll to bottom indicator */}
+                {Object.keys(filledForm).length > 5 && (
+                  <button
+                    onClick={() => {
+                      const container = document.getElementById('form-fields-container')
+                      if (container) {
+                        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+                      }
+                    }}
+                    className="absolute bottom-2 right-2 bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
+                    title="Scroll to bottom"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
                 )}
               </div>
             </div>
@@ -1184,69 +1202,117 @@ export default function EnhancedApplicationTracker({
         <label className="text-xs font-medium text-slate-600 uppercase tracking-wide mb-2 block">
           Upload Application Forms
         </label>
-        <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-emerald-400 hover:bg-emerald-50 transition-all">
-          <input
-            type="file"
-            multiple
-            accept=".pdf,.doc,.docx,.txt"
-            onChange={(e) => handleFileUpload(e.target.files)}
-            className="hidden"
-            id="file-upload"
-            disabled={!selectedProject || processing}
-          />
-          <label 
-            htmlFor="file-upload" 
-            className={`cursor-pointer ${!selectedProject || processing ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-slate-900 mb-2">
-              Drop files here or click to upload
-            </h4>
-            <p className="text-slate-600">
-              Supports PDF, Word documents, and text files
-            </p>
-            <p className="text-xs text-emerald-600 mt-2">
-              Enhanced AI will analyze structure, categorize fields, and extract requirements
-            </p>
-          </label>
-          
-          {/* Upload Progress Bar */}
-          {processing && (
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-emerald-600">
-                  {currentFileName ? `Enhanced analysis: ${currentFileName}` : 'Processing with enhanced AI...'}
-                </span>
-                <span className="text-sm text-slate-500">{Math.round(uploadProgress)}%</span>
+        
+        {uploadedFiles.length === 0 ? (
+          <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-emerald-400 hover:bg-emerald-50 transition-all">
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={(e) => handleFileUpload(e.target.files)}
+              className="hidden"
+              id="file-upload"
+              disabled={!selectedProject || processing}
+            />
+            <label 
+              htmlFor="file-upload" 
+              className={`cursor-pointer ${!selectedProject || processing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+              <h4 className="text-lg font-medium text-slate-900 mb-2">
+                Drop files here or click to upload
+              </h4>
+              <p className="text-slate-600">
+                Supports PDF, Word documents, and text files
+              </p>
+              <p className="text-xs text-emerald-600 mt-2">
+                Enhanced AI will analyze structure, categorize fields, and extract requirements
+              </p>
+            </label>
+          </div>
+        ) : (
+          <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
+                <h4 className="font-medium text-emerald-900">Documents Uploaded</h4>
               </div>
-              <div className="w-full bg-slate-200 rounded-full h-2">
-                <div 
-                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+              <div className="text-sm text-emerald-700">
+                {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''}
               </div>
-              <p className="text-xs text-slate-500 mt-2">Enhanced AI is analyzing structure and categorizing fields...</p>
             </div>
-          )}
-        </div>
+            
+            <div className="space-y-2 mb-4">
+              {uploadedFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between bg-white rounded-md p-3 border border-emerald-100">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-medium text-slate-900">{file.name}</span>
+                    <span className="text-xs text-slate-500">({Math.round(file.size / 1024)}KB)</span>
+                  </div>
+                  <div className="text-xs text-emerald-600">Ready for analysis</div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Option to upload additional files */}
+            <div className="pt-3 border-t border-emerald-200">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={(e) => handleFileUpload(e.target.files)}
+                className="hidden"
+                id="additional-file-upload"
+                disabled={!selectedProject || processing}
+              />
+              <label 
+                htmlFor="additional-file-upload" 
+                className="flex items-center justify-center space-x-2 text-sm text-emerald-700 hover:text-emerald-800 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add more documents</span>
+              </label>
+            </div>
+          </div>
+        )}
+        
+        {/* Upload Progress Bar */}
+        {processing && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-700">
+                {currentFileName ? `Enhanced analysis: ${currentFileName}` : 'Processing with enhanced AI...'}
+              </span>
+              <span className="text-sm text-blue-600">{Math.round(uploadProgress)}%</span>
+            </div>
+            <div className="w-full bg-blue-200 rounded-full h-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-blue-600 mt-2">Enhanced AI is analyzing structure and categorizing fields...</p>
+          </div>
+        )}
       </div>
-
-      {uploadedFiles.length > 0 && (
-        <div className="bg-slate-50 rounded-lg p-4">
-          <h4 className="font-medium text-slate-900 mb-2">Uploaded Files:</h4>
-          {uploadedFiles.map((file, index) => (
-            <div key={index} className="flex items-center space-x-2 text-sm text-slate-600">
-              <FileText className="w-4 h-4" />
-              <span>{file.name}</span>
-              <span className="text-xs">({Math.round(file.size / 1024)}KB)</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {!selectedProject && (
         <div className="text-center text-amber-600 text-sm">
           Please select a project before uploading documents
+        </div>
+      )}
+
+      {/* Navigation buttons */}
+      {uploadedFiles.length > 0 && selectedProject && !processing && (
+        <div className="flex justify-end pt-4 border-t border-slate-200">
+          <button
+            onClick={() => setStep('analyze')}
+            className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <ArrowRight className="w-4 h-4" />
+            <span>Proceed to Analysis</span>
+          </button>
         </div>
       )}
     </div>

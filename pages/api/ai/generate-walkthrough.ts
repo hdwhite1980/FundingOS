@@ -146,9 +146,13 @@ function generateAutoFillSuggestions(fields: any[], userProfile: any, projectDat
     let confidence = 0
     let source: string | null = null
 
-    // Organization/Company auto-fill
-    if (field.autoFillSource === 'organization' || field.label?.toLowerCase().includes('organization')) {
-      if (companySettings?.name && field.label?.toLowerCase().includes('name')) {
+    // Organization/Company auto-fill - Enhanced with more field types
+    if (field.autoFillSource === 'organization' || 
+        field.label?.toLowerCase().includes('organization') ||
+        field.label?.toLowerCase().includes('company') ||
+        field.label?.toLowerCase().includes('business')) {
+      
+      if (companySettings?.name && (field.label?.toLowerCase().includes('name') || field.label?.toLowerCase().includes('entity'))) {
         autoFillValue = companySettings.name
         confidence = 0.9
         source = 'company_settings'
@@ -156,51 +160,89 @@ function generateAutoFillSuggestions(fields: any[], userProfile: any, projectDat
         autoFillValue = companySettings.address
         confidence = 0.85
         source = 'company_settings'
-      } else if (companySettings?.phone && field.type === 'phone') {
+      } else if (companySettings?.phone && (field.type === 'phone' || field.label?.toLowerCase().includes('phone'))) {
         autoFillValue = companySettings.phone
         confidence = 0.8
         source = 'company_settings'
-      } else if (companySettings?.email && field.type === 'email') {
+      } else if (companySettings?.email && (field.type === 'email' || field.label?.toLowerCase().includes('email'))) {
         autoFillValue = companySettings.email
         confidence = 0.8
+        source = 'company_settings'
+      } else if (companySettings?.ein && (field.label?.toLowerCase().includes('ein') || field.label?.toLowerCase().includes('tax'))) {
+        autoFillValue = companySettings.ein
+        confidence = 0.95
+        source = 'company_settings'
+      } else if (companySettings?.duns && field.label?.toLowerCase().includes('duns')) {
+        autoFillValue = companySettings.duns
+        confidence = 0.95
         source = 'company_settings'
       }
     }
 
-    // User profile auto-fill
+    // Enhanced User profile auto-fill
     if (!autoFillValue && userProfile) {
-      if (field.label?.toLowerCase().includes('contact') || field.label?.toLowerCase().includes('name')) {
-        if (userProfile.full_name && field.label?.toLowerCase().includes('name')) {
+      const fieldLabel = field.label?.toLowerCase() || ''
+      
+      if (fieldLabel.includes('contact') || fieldLabel.includes('name')) {
+        if (userProfile.full_name && fieldLabel.includes('name')) {
           autoFillValue = userProfile.full_name
           confidence = 0.85
           source = 'user_profile'
-        } else if (userProfile.email && field.type === 'email') {
+        } else if (userProfile.email && (field.type === 'email' || fieldLabel.includes('email'))) {
           autoFillValue = userProfile.email
           confidence = 0.9
           source = 'user_profile'
-        } else if (userProfile.phone && field.type === 'phone') {
+        } else if (userProfile.phone && (field.type === 'phone' || fieldLabel.includes('phone'))) {
           autoFillValue = userProfile.phone
           confidence = 0.85
           source = 'user_profile'
         }
+      } else if (fieldLabel.includes('title') && userProfile.title) {
+        autoFillValue = userProfile.title
+        confidence = 0.8
+        source = 'user_profile'
+      } else if (fieldLabel.includes('department') && userProfile.department) {
+        autoFillValue = userProfile.department
+        confidence = 0.8
+        source = 'user_profile'
       }
     }
 
-    // Project data auto-fill
+    // Enhanced Project data auto-fill
     if (!autoFillValue && projectData) {
-      if (field.label?.toLowerCase().includes('project') && projectData.name) {
+      const fieldLabel = field.label?.toLowerCase() || ''
+      
+      if (fieldLabel.includes('project') && projectData.name) {
         autoFillValue = projectData.name
         confidence = 0.9
         source = 'project_data'
-      } else if (field.label?.toLowerCase().includes('amount') || field.type === 'currency') {
-        if (projectData.funding_needed) {
-          autoFillValue = projectData.funding_needed
-          confidence = 0.8
-          source = 'project_data'
-        }
-      } else if (field.label?.toLowerCase().includes('description') && projectData.description) {
+      } else if ((fieldLabel.includes('amount') || fieldLabel.includes('budget') || fieldLabel.includes('funding') || field.type === 'currency') && projectData.funding_needed) {
+        autoFillValue = projectData.funding_needed
+        confidence = 0.8
+        source = 'project_data'
+      } else if (fieldLabel.includes('description') && projectData.description) {
         autoFillValue = projectData.description
         confidence = 0.7
+        source = 'project_data'
+      } else if (fieldLabel.includes('title') && projectData.name) {
+        autoFillValue = projectData.name
+        confidence = 0.85
+        source = 'project_data'
+      } else if (fieldLabel.includes('category') && projectData.project_type) {
+        autoFillValue = projectData.project_type.replace('_', ' ')
+        confidence = 0.8
+        source = 'project_data'
+      } else if (fieldLabel.includes('location') && projectData.location) {
+        autoFillValue = projectData.location
+        confidence = 0.8
+        source = 'project_data'
+      } else if ((fieldLabel.includes('start') || fieldLabel.includes('begin')) && projectData.start_date) {
+        autoFillValue = projectData.start_date
+        confidence = 0.8
+        source = 'project_data'
+      } else if ((fieldLabel.includes('end') || fieldLabel.includes('completion')) && projectData.end_date) {
+        autoFillValue = projectData.end_date
+        confidence = 0.8
         source = 'project_data'
       }
     }
