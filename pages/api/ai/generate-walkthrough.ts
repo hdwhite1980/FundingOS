@@ -3,18 +3,22 @@
  * /api/ai/generate-walkthrough
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextApiRequest, NextApiResponse } from 'next'
 import aiProviderService from '../../../lib/aiProviderService'
 
-export async function POST(request: NextRequest) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
   try {
-    const { formStructure, userProfile, projectData, companySettings } = await request.json()
+    const { formStructure, userProfile, projectData, companySettings } = req.body
 
     if (!formStructure || !formStructure.fields) {
-      return NextResponse.json(
-        { success: false, error: 'Form structure is required' },
-        { status: 400 }
-      )
+      return res.status(400).json({
+        success: false,
+        error: 'Form structure is required'
+      })
     }
 
     console.log('🚀 Generating walkthrough for form:', {
@@ -107,18 +111,15 @@ export async function POST(request: NextRequest) {
       aiAssisted: completeWalkthrough.data.progress.requiresAI
     })
 
-    return NextResponse.json(completeWalkthrough)
+    return res.status(200).json(completeWalkthrough)
 
   } catch (error) {
     console.error('Walkthrough generation error:', error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Walkthrough generation failed',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    )
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Walkthrough generation failed',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    })
   }
 }
 
