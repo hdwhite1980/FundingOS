@@ -59,21 +59,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Basic heuristic intent classification
-    const intent = classifyAssistantIntent(message)
+    const intent = classifyAssistantIntent(message) as string
     console.log(`Classified intent: ${intent}`)
 
     // Persist user message early
     await logConversationTurn(activeSessionId, userId, 'user', message)
 
-    // For funding strategy advice, always use LLM - skip base generation to avoid duplication
+    // Check if we should use LLM
     const shouldUseLLM = useLLM || intent === 'funding_strategy_advice'
 
+    // COMPLETELY SEPARATE PATHS - NO MIXING
+    if (intent === 'funding_strategy_advice') {
+      // FUNDING STRATEGY: LLM ONLY - no base generation at all
+      console.log('🎯 Funding strategy detected - using LLM only')
+      return await handleFundingStrategyWithLLM(context, message, intent, activeSessionId, userId, convoSummary, cached)
+    }
+
     if (!shouldUseLLM) {
-      // Generate structured base answer using REAL DATA
+      // NON-LLM PATH: Base response only
       let baseAnswer
       try {
         baseAnswer = await generateAssistantResponse(intent, context, message, userId)
-        console.log(`Generated response length: ${baseAnswer?.length || 0} chars`)
+        console.log(`Generated base response length: ${baseAnswer?.length || 0} chars`)
       } catch (error) {
         console.error('Response generation failed:', error)
         baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
@@ -81,7 +88,7 @@ export async function POST(request: NextRequest) {
 
       await logConversationTurn(activeSessionId, userId, 'assistant', baseAnswer)
       
-      console.log(`Fast response returned (${baseAnswer.length} chars)`)
+      console.log(`✅ Fast response returned (${baseAnswer.length} chars)`)
       
       return NextResponse.json({
         data: {
@@ -104,17 +111,21 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // LLM refinement path: Enhanced for funding strategy
+    // LLM ENHANCEMENT PATH: Base response + LLM enhancement for other intents
+    console.log('🔄 Using LLM enhancement for intent:', intent)
+    
+    // Generate base response first
+    let baseAnswer
+    try {
+      baseAnswer = await generateAssistantResponse(intent, context, message, userId)
+    } catch (error) {
+      console.error('Base response generation failed:', error)
+      baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
+    }
+
     const systemPrompt = `You are the WALI-OS Funding Assistant, an expert in grant strategy and funding discovery. You help users with comprehensive funding strategies, grant applications, and organizational data.
 
 IMPORTANT: The user has real data in the system. Use the specific information provided rather than giving generic responses.
-
-For funding strategy requests:
-- Provide specific, actionable recommendations
-- Reference actual project data when available
-- Suggest concrete next steps
-- Include deadlines and amounts when known
-- Focus on matching user profile to actual opportunities
 
 Key principles:
 - Be concise and actionable
@@ -125,12 +136,12 @@ Key principles:
 
     // Build enhanced context for LLM - special handling for funding strategy
     let contextSummary
-    let userPrompt: string
+    let userPrompt
     
     if (intent === 'funding_strategy_advice') {
       // For funding strategy, generate response directly with LLM using comprehensive context
       contextSummary = {
-        request_type: 'funding_strategy',
+        request_type: 'funding_strategy_advice',
         organization: {
           name: context.profile?.organization_name || 'Not specified',
           type: context.profile?.organization_type || 'Not specified',
@@ -164,7 +175,7 @@ Key principles:
           total_campaign_raised: context.funding_summary?.total_campaign_raised || 0
         }
       }
-
+      
       userPrompt = `The user is asking for funding strategy advice: "${message}"
 
 This is their organization and project data:
@@ -178,7 +189,6 @@ Please provide a comprehensive funding strategy response that:
 5. Gives actionable advice they can implement immediately
 
 Do not generate generic advice - use their specific project data and organizational profile.`
-
     } else {
       // For other intents, first generate base answer then enhance with LLM
       let baseAnswer
@@ -217,6 +227,10 @@ Do not generate generic advice - use their specific project data and organizatio
             amount: a.amount_requested,
             deadline: a.deadline
           })) || []
+        },
+        campaigns: {
+          count: context.campaigns?.length || 0,
+          total_raised: context.funding_summary?.total_campaign_raised || 0,
         }
       }
 
@@ -232,7 +246,6 @@ Real User Data:
 ${JSON.stringify(contextSummary, null, 2)}
 
 Please review the initial response and enhance it with the specific data shown above. If the initial response used generic language, replace it with specific information from the user's actual data. Be direct and helpful.`
-    }
 
     let finalResponse = "I'm having trouble generating a response right now."
     let llmError: string | null = null
@@ -253,7 +266,7 @@ Please review the initial response and enhance it with the specific data shown a
         console.warn('LLM returned empty/invalid response')
         
         // Fallback to base response for non-funding strategy intents
-        if (intent !== 'funding_strategy_advice') {
+        if (intent !== 'funding_strategy') {
           try {
             finalResponse = await generateAssistantResponse(intent, context, message, userId)
           } catch (fallbackError) {
@@ -304,13 +317,133 @@ Please review the initial response and enhance it with the specific data shown a
         }
       }
     })
+    }
+
   } catch (error: any) {
-    console.error('Assistant API error:', error)
-    return NextResponse.json({ 
-      error: error.message || 'Internal error',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    }, { status: 500 })
+    console.error('Request failed:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+}
+
+// SEPARATE FUNCTION: Handle funding strategy with LLM only
+async function handleFundingStrategyWithLLM(context, message, intent, activeSessionId, userId, convoSummary, cached) {
+  const systemPrompt = `You are the WALI-OS Funding Assistant, an expert in grant strategy and funding discovery. You help users with comprehensive funding strategies, grant applications, and organizational data.
+
+IMPORTANT: The user has real data in the system. Use the specific information provided rather than giving generic responses.
+
+For funding strategy requests:
+- Provide specific, actionable recommendations
+- Reference actual project data when available  
+- Suggest concrete next steps
+- Include deadlines and amounts when known
+- Focus on matching user profile to actual opportunities
+
+Key principles:
+- Be concise and actionable
+- Use specific data when available (EIN numbers, project names, deadlines, amounts)
+- If data is missing, tell them exactly what's missing
+- Focus on funding strategy and grant applications
+- Use formatting for visual clarity but avoid excessive emojis`
+
+  const contextSummary = {
+    request_type: 'funding_strategy',
+    organization: {
+      name: context.profile?.organization_name || 'Not specified',
+      type: context.profile?.organization_type || 'Not specified', 
+      ein: context.profile?.ein || context.profile?.tax_id || 'Not on file',
+      location: `${context.profile?.city || ''} ${context.profile?.state || ''}`.trim() || 'Not specified',
+      certifications: {
+        minority_owned: context.profile?.minority_owned || false,
+        woman_owned: context.profile?.woman_owned || false,
+        veteran_owned: context.profile?.veteran_owned || false,
+        small_business: context.profile?.small_business || false
+      }
+    },
+    projects: {
+      count: context.projects?.length || 0,
+      total_funding_needed: context.projects?.reduce((sum, p) => {
+        const amount = p.funding_request_amount || p.funding_needed || p.total_project_budget || 0
+        return sum + parseFloat(amount || 0)
+      }, 0) || 0,
+      active_projects: context.projects?.filter(p => ['active', 'in_progress', 'draft'].includes(p.status)).map(p => ({
+        name: p.name,
+        type: p.project_type,
+        industry: p.industry,
+        funding_needed: p.funding_request_amount || p.funding_needed || p.total_project_budget,
+        description: p.description?.substring(0, 200)
+      })) || []
+    },
+    funding_history: {
+      applications_count: context.applications?.length || 0,
+      total_requested: context.funding_summary?.total_requested || 0,
+      campaigns_count: context.campaigns?.length || 0,
+      total_campaign_raised: context.funding_summary?.total_campaign_raised || 0
+    }
+  }
+
+  const userPrompt = `The user is asking for funding strategy advice: "${message}"
+
+This is their organization and project data:
+${JSON.stringify(contextSummary, null, 2)}
+
+Please provide a comprehensive funding strategy response that:
+1. Analyzes their current projects and funding needs
+2. Provides specific grant recommendations based on their profile
+3. Suggests concrete next steps  
+4. References their actual data (project names, amounts, EIN, etc.)
+5. Gives actionable advice they can implement immediately
+
+Do not generate generic advice - use their specific project data and organizational profile.`
+
+  let finalResponse = "I'm having trouble generating funding strategy recommendations right now."
+  let llmError: string | null = null
+
+  try {
+    console.log('🤖 Calling LLM for funding strategy...')
+    
+    const llmResp = await aiProviderService.generateCompletion('conversation', [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], { maxTokens: 1200, temperature: 0.3 })
+    
+    if (llmResp && typeof llmResp.content === 'string' && llmResp.content.trim()) {
+      finalResponse = llmResp.content.trim()
+      console.log(`✅ Funding strategy response generated (${finalResponse.length} chars)`)
+    } else {
+      llmError = 'No valid response from AI provider'
+      console.warn('⚠️ LLM returned empty/invalid response')
+      finalResponse = "I'm having trouble generating funding strategy recommendations. Please try again in a moment."
+    }
+  } catch (err) {
+    console.error('❌ LLM funding strategy failed:', err?.message)
+    llmError = err?.message || 'AI provider error'
+    finalResponse = "I'm having trouble generating funding strategy recommendations right now. Please try again in a moment."
+  }
+
+  await logConversationTurn(activeSessionId, userId, 'assistant', finalResponse)
+  
+  return NextResponse.json({
+    data: {
+      mode: 'chat',
+      intent,
+      message: finalResponse,
+      usedLLM: true,
+      llmError,
+      contextMeta: context.meta,
+      sessionId: activeSessionId,
+      cachedContext: cached,
+      convoSummary,
+      apiIntegration: 'active',
+      debugInfo: {
+        projectsCount: context.projects?.length || 0,
+        applicationsCount: context.applications?.length || 0,
+        campaignsCount: context.campaigns?.length || 0,
+        hasEIN: !!(context.profile?.ein || context.profile?.tax_id),
+        orgName: context.profile?.organization_name || 'Unknown',
+        fundingStrategy: true
+      }
+    }
+  })
 }
 
 async function ensureSession(userId: string, provided?: string) {
