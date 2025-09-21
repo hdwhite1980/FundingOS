@@ -1,6 +1,6 @@
 // WaliOSAssistant.js - Enhanced with API integration support
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageCircle, X, Sparkles, Send, GripHorizontal, Search, Database } from 'lucide-react'
 import assistantManager from '../utils/assistantManager'
@@ -17,14 +17,11 @@ export default function WaliOSAssistant({
 	onFormUpdate,
 	onSuggestionApply
 }) {
-	// Debug logging
-	console.log('🟢 WaliOSAssistant mounted with props:', {
-		isVisible,
-		triggerContext,
-		userProfile: userProfile ? 'Present' : 'Missing',
-		allProjects: allProjects?.length || 0,
-		opportunities: opportunities?.length || 0
-	})
+	// Debug logging - reduced to prevent render loop spam
+	useEffect(() => {
+		console.log('🟢 WaliOSAssistant mounted/updated')
+	}, [])
+	
 	// Register with global assistant manager
 	const assistantInstanceRef = useRef({
 		show: (context) => {
@@ -158,18 +155,18 @@ export default function WaliOSAssistant({
 				}
 			}, 500)
 		}
-	}, [isOpen, fieldContext, isProactiveMode])
+	}, [isOpen, fieldContext, isProactiveMode, startFieldHelp, startProactiveConversation, startGenericGreeting])
 
 	useEffect(() => {
 		// When field context changes and assistant is already open
 		if (fieldContext && isOpen) {
 			startFieldHelp()
 		}
-	}, [fieldContext, isOpen])
+	}, [fieldContext, isOpen, startFieldHelp])
 
 	useEffect(() => { if (showInput && inputRef.current) inputRef.current.focus() }, [showInput])
 
-	const startFieldHelp = () => {
+	const startFieldHelp = useCallback(() => {
 		if (!fieldContext) return
 		
 		setIsThinking(true)
@@ -191,7 +188,7 @@ export default function WaliOSAssistant({
 				}, 1200)
 			})
 		}, 500)
-	}
+	}, [fieldContext])
 
 	const generateFieldHelpMessage = (context) => {
 		const fieldName = context.fieldName?.toLowerCase() || ''
@@ -212,7 +209,7 @@ export default function WaliOSAssistant({
 		}
 	}
 
-	const startProactiveConversation = () => {
+	const startProactiveConversation = useCallback(() => {
 		setIsThinking(true); setAssistantState('thinking')
 		setTimeout(() => {
 			const message = generateProactiveMessage()
@@ -230,9 +227,9 @@ export default function WaliOSAssistant({
 				}, 1800)
 			})
 		}, 800)
-	}
+	}, [generateProactiveMessage, showMessage, setIsThinking, setAssistantState, setShowInput])
 
-	const startGenericGreeting = () => {
+	const startGenericGreeting = useCallback(() => {
 		setIsThinking(true); setAssistantState('thinking')
 		setTimeout(() => {
 			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
@@ -242,9 +239,9 @@ export default function WaliOSAssistant({
 				}, 1600)
 			})
 		}, 800)
-	}
+	}, [userProfile?.full_name, showMessage, setIsThinking, setAssistantState, setShowInput])
 
-	const generateProactiveMessage = () => {
+	const generateProactiveMessage = useCallback(() => {
 		const { trigger, context } = triggerContext
 		
 		// Only generate messages if we have real data to support them
@@ -289,9 +286,9 @@ export default function WaliOSAssistant({
 			default: 
 				return null // Don't show generic messages
 		}
-	}
+	}, [triggerContext])
 
-	const showMessage = (message, onComplete) => {
+	const showMessage = useCallback((message, onComplete) => {
 		setIsThinking(false) 
 		setAssistantState('talking')
 		setIsAnimating(true)
@@ -323,7 +320,7 @@ export default function WaliOSAssistant({
 			
 			typeWriter()
 		}, 50) // Small delay to ensure state is reset
-	}
+	}, [setIsThinking, setAssistantState, setIsAnimating, setCurrentMessage])
 
 	const handleUserInput = async (input) => {
 		if (!input.trim()) return
