@@ -424,13 +424,15 @@ export default function WaliOSAssistant({
 		const newX = e.clientX - dragStart.x
 		const newY = e.clientY - dragStart.y
 		
-		// Keep assistant within viewport bounds
+		// Keep assistant within viewport bounds with better calculations
 		const windowWidth = window.innerWidth
 		const windowHeight = window.innerHeight
-		const assistantWidth = 320 // approximate width
-		const assistantHeight = 400 // approximate height
+		const assistantWidth = expanded ? 600 : 320 // Dynamic width based on state
+		const assistantHeight = expanded ? Math.min(windowHeight * 0.8, 600) : Math.min(windowHeight * 0.7, 500) // Dynamic height
 		
-		const boundedX = Math.max(-assistantWidth + 64, Math.min(windowWidth - 64, newX))
+		// Ensure minimum visibility (at least 100px visible)
+		const minVisible = 100
+		const boundedX = Math.max(-assistantWidth + minVisible, Math.min(windowWidth - minVisible, newX))
 		const boundedY = Math.max(0, Math.min(windowHeight - assistantHeight, newY))
 		
 		setPosition({ x: boundedX, y: boundedY })
@@ -476,9 +478,21 @@ export default function WaliOSAssistant({
 				.resize {
 					resize: both;
 					overflow: auto;
+					min-height: 200px;
+					max-height: 70vh;
 				}
 				.resize::-webkit-resizer {
 					background: linear-gradient(-45deg, transparent 0px, transparent 2px, #ddd 2px, #ddd 4px, transparent 4px);
+				}
+				.assistant-container {
+					max-height: 70vh;
+					display: flex;
+					flex-direction: column;
+				}
+				.assistant-content {
+					flex: 1;
+					overflow-y: auto;
+					overflow-x: hidden;
 				}
 			`}</style>
 			<div 
@@ -498,7 +512,7 @@ export default function WaliOSAssistant({
 							initial={{ opacity: 0, scale: 0.95, y: 20 }}
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 20 }}
-							className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : 'w-80 max-w-[90vw]'} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col p-4 min-h-[300px] ${isDragging && !expanded ? 'shadow-2xl ring-2 ring-emerald-500/50' : ''} ${expanded ? 'resize-none' : 'resize overflow-hidden min-w-64 max-w-[500px]'}`}
+							className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : 'w-80 max-w-[90vw] max-h-[70vh]'} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col p-4 min-h-[300px] ${isDragging && !expanded ? 'shadow-2xl ring-2 ring-emerald-500/50' : ''} ${expanded ? 'resize-none' : 'resize overflow-auto min-w-64 max-w-[500px] min-h-[200px]'}`}
 							style={!expanded ? { 
 								cursor: isDragging ? 'grabbing' : 'default',
 								transition: isDragging ? 'none' : 'all 0.2s ease'
