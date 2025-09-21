@@ -226,6 +226,111 @@ const debounce = (func, wait) => {
   }
 }
 
+// Smart Document Analysis & Structure Recognition
+const enhanceDocumentAnalysis = async (file, context) => {
+  const analysis = await analyzeDocument(file)
+  
+  // Add semantic understanding
+  const enhancedAnalysis = {
+    ...analysis,
+    semanticStructure: {
+      requiredSections: identifyRequiredSections(analysis.text),
+      optionalSections: identifyOptionalSections(analysis.text),
+      dependencies: findFieldDependencies(analysis.fields),
+      completionOrder: suggestOptimalOrder(analysis.fields)
+    },
+    intelligentDefaults: generateSmartDefaults(analysis.fields, context),
+    riskAssessment: assessApplicationRisk(analysis, context)
+  }
+  
+  return enhancedAnalysis
+}
+
+// Identify section relationships and dependencies
+const findFieldDependencies = (fields) => {
+  const dependencies = {}
+  
+  fields.forEach(field => {
+    if (field.name.includes('budget_narrative') && 
+        fields.some(f => f.name.includes('total_budget'))) {
+      dependencies[field.name] = ['total_budget']
+    }
+    
+    if (field.name.includes('project_description') &&
+        fields.some(f => f.name.includes('project_title'))) {
+      dependencies[field.name] = ['project_title']
+    }
+
+    if (field.name.includes('evaluation_plan') &&
+        fields.some(f => f.name.includes('project_activities'))) {
+      dependencies[field.name] = ['project_activities']
+    }
+
+    if (field.name.includes('sustainability_plan') &&
+        fields.some(f => f.name.includes('project_outcomes'))) {
+      dependencies[field.name] = ['project_outcomes']
+    }
+  })
+  
+  return dependencies
+}
+
+const identifyRequiredSections = (text) => {
+  const sections = []
+  const indicators = {
+    'project_narrative': ['project description', 'statement of need', 'project summary'],
+    'budget_section': ['budget', 'financial plan', 'cost breakdown'],
+    'evaluation_section': ['evaluation', 'assessment', 'measurement'],
+    'organization_info': ['organization', 'applicant', 'entity information']
+  }
+
+  Object.entries(indicators).forEach(([section, keywords]) => {
+    if (keywords.some(keyword => text.toLowerCase().includes(keyword))) {
+      sections.push(section)
+    }
+  })
+
+  return sections
+}
+
+const suggestOptimalOrder = (fields) => {
+  const orderPriority = {
+    'organization_name': 1,
+    'project_title': 2,
+    'project_description': 3,
+    'statement_of_need': 4,
+    'project_activities': 5,
+    'budget_amount': 6,
+    'budget_narrative': 7,
+    'evaluation_plan': 8,
+    'sustainability_plan': 9
+  }
+
+  return fields.sort((a, b) => {
+    const aPriority = orderPriority[a.name] || 999
+    const bPriority = orderPriority[b.name] || 999
+    return aPriority - bPriority
+  })
+}
+
+const generateSmartDefaults = (fields, context) => {
+  const defaults = {}
+  
+  fields.forEach(field => {
+    if (field.name.includes('contact_email') && context.userProfile?.email) {
+      defaults[field.name] = context.userProfile.email
+    }
+    if (field.name.includes('organization_name') && context.userProfile?.organization_name) {
+      defaults[field.name] = context.userProfile.organization_name
+    }
+    if (field.name.includes('ein') && context.userProfile?.ein) {
+      defaults[field.name] = context.userProfile.ein
+    }
+  })
+
+  return defaults
+}
+
 // Format time ago utility
 const formatTimeAgo = (date) => {
   const seconds = Math.floor((new Date() - date) / 1000)
@@ -381,6 +486,186 @@ const getNextMilestone = (completionPercentage) => {
   if (completionPercentage < 75) return "Get to 75% for 'Almost There' status"
   if (completionPercentage < 90) return "Push to 90% for 'Final Stretch' achievement"
   return "You're almost done! Complete the application!"
+}
+
+// Visual save indicator component
+const SaveIndicator = ({ status, lastSaved }) => (
+  <div className="text-xs text-slate-500 flex items-center gap-1">
+    {status === 'saving' && <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
+    {status === 'success' && <div className="w-3 h-3 bg-green-500 rounded-full" />}
+    {status === 'error' && <div className="w-3 h-3 bg-red-500 rounded-full" />}
+    {lastSaved && `Saved ${formatTimeAgo(lastSaved)}`}
+  </div>
+)
+
+// Interactive Application Preview
+const ApplicationPreview = ({ formData, formStructure }) => {
+  const [previewMode, setPreviewMode] = useState('funder')
+  
+  return (
+    <div className="border-l-4 border-blue-500 bg-blue-50 p-4 mt-4">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-medium">Preview: How Funders Will See This</h4>
+        <div className="flex items-center gap-2">
+          <select value={previewMode} onChange={(e) => setPreviewMode(e.target.value)} className="text-sm border rounded px-2 py-1">
+            <option value="funder">Funder's View</option>
+            <option value="print">Print Version</option>
+          </select>
+        </div>
+      </div>
+      <div className="bg-white rounded border max-h-64 overflow-y-auto p-3">
+        {Object.entries(formData).map(([field, value]) => (
+          <div key={field} className="mb-2 border-b pb-2">
+            <div className="text-xs font-medium text-slate-600">
+              {formStructure?.dataFields?.[field]?.label || field.replace(/_/g, ' ')}
+            </div>
+            <div className="text-sm">
+              {value || <span className="text-red-400 italic">Missing</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Smart Deadline Management
+const DeadlineContext = ({ deadline, completionPercentage }) => {
+  if (!deadline) return null
+  const daysLeft = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
+  const estimatedTimeLeft = Math.ceil((100 - completionPercentage) * 0.5)
+  if (daysLeft < 0) return null
+
+  return (
+    <div className={`p-3 rounded-lg mb-4 ${
+      daysLeft <= 3 ? 'bg-red-50 border border-red-200' :
+      daysLeft <= 7 ? 'bg-amber-50 border border-amber-200' :
+      'bg-blue-50 border border-blue-200'
+    }`}>
+      <div className="flex justify-between items-center">
+        <div>
+          <div className="font-medium">{daysLeft} days until deadline</div>
+          <div className="text-sm text-slate-600">Estimated {estimatedTimeLeft} hours remaining</div>
+        </div>
+        {daysLeft <= 7 && (
+          <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm">
+            Schedule Work Time
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Intelligent Error Prevention
+const ErrorPrevention = ({ fieldName, value, allFormData }) => {
+  const errors = detectPotentialErrors(fieldName, value, allFormData)
+  if (errors.length === 0) return null
+  return (
+    <div className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded">
+      <div className="text-sm font-medium text-amber-800">Potential Issues:</div>
+      {errors.map((error, idx) => (
+        <div key={idx} className="text-xs text-amber-700 flex items-center gap-1">
+          <div className="w-3 h-3 bg-amber-500 rounded-full" />
+          {error.message}
+          {error.suggestion && (
+            <button 
+              onClick={() => error.fix && error.fix()}
+              className="text-blue-600 hover:text-blue-800 underline ml-1"
+            >
+              Fix this
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Content Library for reusing past application content
+const ContentLibrary = ({ userApplicationHistory, currentField, onApplyContent }) => {
+  const relevantContent = findRelevantPastContent(currentField, userApplicationHistory)
+  
+  if (relevantContent.length === 0) return null
+  
+  return (
+    <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
+      <div className="text-sm font-medium text-blue-900 mb-2">
+        Similar content from past applications:
+      </div>
+      {relevantContent.map((content, idx) => (
+        <div key={idx} className="mb-2 last:mb-0">
+          <div className="text-xs text-blue-700 mb-1">
+            From "{content.applicationName}" - {content.successRate}% success rate
+          </div>
+          <div className="text-sm bg-white p-2 rounded border cursor-pointer hover:bg-blue-50"
+               onClick={() => onApplyContent && onApplyContent(content.text)}>
+            {content.text.substring(0, 100)}...
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Mobile-First Design Improvements
+const MobileOptimizedField = ({ field, value, onChange }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  return (
+    <div className="mb-4">
+      <div 
+        className="flex justify-between items-center p-3 bg-white border rounded-lg cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="font-medium">{field.label}</div>
+        <div className="flex items-center gap-2">
+          {value && <div className="w-4 h-4 bg-green-500 rounded-full" />}
+          <div className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</div>
+        </div>
+      </div>
+      
+      {isExpanded && (
+        <div className="mt-2 p-3 bg-slate-50 rounded-lg">
+          {field.helpText && (
+            <div className="text-sm text-slate-600 mb-2">{field.helpText}</div>
+          )}
+          <input
+            type="text"
+            value={value || ''}
+            onChange={onChange}
+            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+            placeholder={field.placeholder}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Collaborative Features (stub for future expansion)
+const CollaborationPanel = ({ applicationId, currentUser }) => {
+  const [collaborators, setCollaborators] = useState([])
+  const [comments, setComments] = useState([])
+
+  return (
+    <div className="bg-slate-50 rounded-lg p-4">
+      <h4 className="font-medium mb-3">Team Collaboration</h4>
+      <div className="space-y-2">
+        {comments.map(comment => (
+          <div key={comment.id} className="bg-white rounded p-2 border-l-2 border-blue-500">
+            <div className="text-xs text-slate-500">
+              {comment.fieldName} - {comment.author} - {comment.timestamp}
+            </div>
+            <div className="text-sm">{comment.text}</div>
+          </div>
+        ))}
+      </div>
+      <button className="text-sm text-blue-600 hover:text-blue-800">
+        + Invite team member to review
+      </button>
+    </div>
+  )
 }
 
 export default function EnhancedApplicationTracker({ 
@@ -1565,6 +1850,13 @@ export default function EnhancedApplicationTracker({
                         
                         {/* Error prevention */}
                         <ErrorPrevention fieldName={field} value={value} allFormData={filledForm} />
+                        
+                        {/* Content Library for reusing past content */}
+                        <ContentLibrary 
+                          userApplicationHistory={customerData?.userApplicationHistory || []}
+                          currentField={field}
+                          onApplyContent={(content) => setFilledForm(prev => ({ ...prev, [field]: content }))}
+                        />
                       </div>
                     )
                   })}
@@ -1604,6 +1896,14 @@ export default function EnhancedApplicationTracker({
                     </button>
                   </div>
                 )}
+              </div>
+              
+              {/* Save Status Indicator */}
+              <div className="flex justify-between items-center mt-4">
+                <SaveIndicator status={saveStatus} lastSaved={lastSaved} />
+                <div className="text-xs text-slate-500">
+                  Auto-save {unsavedChanges ? 'pending...' : 'up to date'}
+                </div>
               </div>
               
               {/* Application Preview */}
