@@ -190,6 +190,13 @@ export default function WaliOSAssistant({
 		setIsThinking(true); setAssistantState('thinking')
 		setTimeout(() => {
 			const message = generateProactiveMessage()
+			
+			// If no valid proactive message, fall back to generic greeting
+			if (!message) {
+				startGenericGreeting()
+				return
+			}
+			
 			showMessage(message, () => {
 				setTimeout(() => {
 					const followUp = 'Would you like help with this now?'
@@ -213,6 +220,8 @@ export default function WaliOSAssistant({
 
 	const generateProactiveMessage = () => {
 		const { trigger, context } = triggerContext
+		
+		// Only generate messages if we have real data to support them
 		switch (trigger) {
 			case 'deadline_approaching': {
 				const { context } = triggerContext
@@ -227,11 +236,32 @@ export default function WaliOSAssistant({
 					return `You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
 				}
 			}
-			case 'incomplete_application': return `One application is ${context?.completionPercentage}% complete. I can help you finish it quickly.`
-			case 'compliance_issue': return `Some compliance items need attention for ${context?.projectName}. Shall we review them?`
-			case 'new_opportunity': return `I found ${context?.matchCount} new high-fit opportunities for your portfolio.`
-			case 'grant_writing_assistance': return `I can strengthen your grant narratives and impact statements. Interested?`
-			default: return 'I have strategic recommendations to optimize your funding pipeline.'
+			case 'incomplete_application': 
+				// Only show if we have actual completion data
+				if (context?.completionPercentage && context.completionPercentage < 100) {
+					return `One application is ${context.completionPercentage}% complete. I can help you finish it quickly.`
+				}
+				return null // Don't show message if no real data
+				
+			case 'compliance_issue': 
+				// Only show if we have actual compliance issues identified
+				if (context?.complianceIssues && context.complianceIssues.length > 0) {
+					return `Some compliance items need attention for ${context?.projectName}. Shall we review them?`
+				}
+				return null // Don't show message if no actual compliance issues
+				
+			case 'new_opportunity': 
+				// Only show if we have actual new opportunities
+				if (context?.matchCount && context.matchCount > 0) {
+					return `I found ${context.matchCount} new high-fit opportunities for your portfolio.`
+				}
+				return null
+				
+			case 'grant_writing_assistance': 
+				return `I can strengthen your grant narratives and impact statements. Interested?`
+				
+			default: 
+				return null // Don't show generic messages
 		}
 	}
 
