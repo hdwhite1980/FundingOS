@@ -41,6 +41,171 @@ import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
 
+// Enhanced Field Context Helper Functions
+// Helper function to create field-specific context
+const createFieldSpecificContext = (fieldName, fieldType, project) => {
+  const fieldLower = fieldName.toLowerCase()
+  
+  if (fieldLower.includes('ein') || fieldLower.includes('tax_id')) {
+    return {
+      purpose: "Your organization's Employer Identification Number (EIN) is required for tax purposes and grant eligibility verification",
+      requirements: "Must be 9 digits in format XX-XXXXXXX",
+      tips: "This should match your IRS documentation exactly",
+      example: "12-3456789"
+    }
+  }
+  
+  if (fieldLower.includes('organization_name') || fieldLower.includes('legal_name')) {
+    return {
+      purpose: "The exact legal name of your organization as registered with state/federal agencies",
+      requirements: "Must match incorporation documents and IRS records",
+      tips: "Use the full legal name, including LLC, Inc, etc. if applicable",
+      example: project?.organization_name || "Community Health Solutions, Inc."
+    }
+  }
+  
+  if (fieldLower.includes('project_description') || fieldLower.includes('narrative')) {
+    return {
+      purpose: "Detailed explanation of your project's goals, methodology, and expected outcomes",
+      requirements: "Should clearly articulate the problem, solution, and impact",
+      tips: "Include specific numbers, timelines, and measurable outcomes when possible",
+      structure: ["Problem statement", "Proposed solution", "Implementation plan", "Expected outcomes"]
+    }
+  }
+  
+  if (fieldLower.includes('budget') || fieldLower.includes('funding')) {
+    return {
+      purpose: "Total amount of funding requested for this project",
+      requirements: "Should align with project scope and be well-justified",
+      tips: "Include breakdown of major expense categories if space allows",
+      example: project?.funding_needed ? `$${Number(project.funding_needed).toLocaleString()}` : "$50,000"
+    }
+  }
+  
+  if (fieldLower.includes('timeline') || fieldLower.includes('duration')) {
+    return {
+      purpose: "Project timeline showing key milestones and completion dates",
+      requirements: "Should be realistic and align with funding period",
+      tips: "Break down into phases with specific deliverables",
+      example: "Phase 1 (Months 1-3): Planning and setup, Phase 2 (Months 4-8): Implementation"
+    }
+  }
+
+  // Default context for unknown fields
+  return {
+    purpose: `Information required for the ${fieldName.replace(/_/g, ' ')} field`,
+    requirements: "Please provide accurate and complete information",
+    tips: "Ensure this information aligns with your project goals and organization details"
+  }
+}
+
+// Helper to find related fields that might inform this one
+const findRelatedFields = (fieldName, formData) => {
+  const related = []
+  const fieldLower = fieldName.toLowerCase()
+  
+  Object.keys(formData).forEach(otherField => {
+    if (otherField !== fieldName) {
+      const otherLower = otherField.toLowerCase()
+      
+      // Find fields that might be related
+      if ((fieldLower.includes('organization') && otherLower.includes('organization')) ||
+          (fieldLower.includes('project') && otherLower.includes('project')) ||
+          (fieldLower.includes('budget') && otherLower.includes('amount')) ||
+          (fieldLower.includes('contact') && otherLower.includes('contact'))) {
+        related.push({
+          fieldName: otherField,
+          value: formData[otherField],
+          relationship: 'related'
+        })
+      }
+    }
+  })
+  
+  return related.slice(0, 3) // Limit to most relevant
+}
+
+// Generate specific completion suggestions
+const generateCompletionSuggestions = (fieldName, fieldType, project, userProfile) => {
+  const suggestions = []
+  const fieldLower = fieldName.toLowerCase()
+  
+  if (fieldLower.includes('organization_name') && userProfile?.organization_name) {
+    suggestions.push({
+      type: 'auto_fill',
+      value: userProfile.organization_name,
+      confidence: 0.9,
+      source: 'user_profile'
+    })
+  }
+  
+  if (fieldLower.includes('ein') && (userProfile?.ein || userProfile?.tax_id)) {
+    suggestions.push({
+      type: 'auto_fill',
+      value: userProfile.ein || userProfile.tax_id,
+      confidence: 0.95,
+      source: 'user_profile'
+    })
+  }
+  
+  if (fieldLower.includes('project_title') && project?.name) {
+    suggestions.push({
+      type: 'auto_fill',
+      value: project.name,
+      confidence: 0.8,
+      source: 'project_data'
+    })
+  }
+  
+  return suggestions
+}
+
+// Helper to infer field type from name if not specified
+const inferFieldTypeFromName = (fieldName) => {
+  const fieldLower = fieldName.toLowerCase()
+  
+  if (fieldLower.includes('email')) return 'email'
+  if (fieldLower.includes('phone')) return 'tel'
+  if (fieldLower.includes('date') || fieldLower.includes('deadline')) return 'date'
+  if (fieldLower.includes('amount') || fieldLower.includes('budget') || fieldLower.includes('funding')) return 'number'
+  if (fieldLower.includes('description') || fieldLower.includes('narrative') || fieldLower.includes('summary')) return 'textarea'
+  if (fieldLower.includes('url') || fieldLower.includes('website')) return 'url'
+  
+  return 'text'
+}
+
+// Helper to generate a specific question based on context
+const generateSpecificQuestion = (fieldName, context) => {
+  const { fieldType, specificGuidance, projectContext, isRequired } = context
+  
+  let question = `I need help with the "${fieldName.replace(/_/g, ' ')}" field. `
+  
+  if (specificGuidance?.purpose) {
+    question += `This field is for: ${specificGuidance.purpose}. `
+  }
+  
+  if (isRequired) {
+    question += `This is a required field. `
+  }
+  
+  if (fieldType === 'textarea') {
+    question += `Please help me write compelling content that covers the key requirements. `
+  } else {
+    question += `What specific information should I provide? `
+  }
+  
+  if (projectContext?.name) {
+    question += `My project is "${projectContext.name}" `
+    if (projectContext.type) {
+      question += `which is a ${projectContext.type} project. `
+    }
+  }
+  
+  question += `Please provide specific, actionable guidance for completing this field effectively.`
+  
+  return question
+}
+
 export default function EnhancedApplicationTracker({ 
   projects, 
   userProfile, 
@@ -113,6 +278,60 @@ export default function EnhancedApplicationTracker({
       onStateChange(currentState)
     }
   }, [step, uploadedFiles, documentAnalysis, formCompletion, filledForm, missingQuestions, userAnswers, selectedProject, analysisComplete, aiAnalysisResult, enhancedFormStructure, onStateChange])
+
+  // Enhanced Field Context Creation Function
+  const createEnhancedFieldContext = (fieldName, fieldValue) => {
+    // Get field configuration from enhanced structure
+    const dataFieldConfig = enhancedFormStructure?.dataFields?.[fieldName]
+    const narrativeFieldConfig = enhancedFormStructure?.narrativeFields?.[fieldName]
+    const fieldConfig = dataFieldConfig || narrativeFieldConfig
+
+    // Get project context
+    const currentProject = projects.find(p => p.id === selectedProject)
+    
+    // Determine field type and requirements
+    const fieldType = fieldConfig?.type || inferFieldTypeFromName(fieldName)
+    const isRequired = fieldConfig?.required || false
+    const wordLimit = fieldConfig?.wordLimit
+    const helpText = fieldConfig?.helpText
+    const section = fieldConfig?.section
+
+    // Create specific context based on field type and name
+    const specificContext = createFieldSpecificContext(fieldName, fieldType, currentProject)
+
+    return {
+      fieldName,
+      fieldValue,
+      fieldType,
+      isRequired,
+      wordLimit,
+      helpText,
+      section,
+      formType: enhancedFormStructure?.formMetadata?.detectedFormType,
+      fieldConfiguration: fieldConfig,
+      projectContext: {
+        name: currentProject?.name,
+        type: currentProject?.project_type,
+        budget: currentProject?.funding_needed || currentProject?.total_project_budget,
+        description: currentProject?.description,
+        targetPopulation: currentProject?.target_population
+      },
+      organizationContext: {
+        name: userProfile?.organization_name,
+        type: userProfile?.organization_type,
+        ein: userProfile?.ein || userProfile?.tax_id,
+        certifications: {
+          minorityOwned: userProfile?.minority_owned,
+          womanOwned: userProfile?.woman_owned,
+          veteranOwned: userProfile?.veteran_owned,
+          smallBusiness: userProfile?.small_business
+        }
+      },
+      specificGuidance: specificContext,
+      relatedFields: findRelatedFields(fieldName, filledForm),
+      completionSuggestions: generateCompletionSuggestions(fieldName, fieldType, currentProject, userProfile)
+    }
+  }
 
   // Enhanced file upload and analysis with better error handling and structure parsing
   const handleFileUpload = async (files) => {
@@ -978,18 +1197,17 @@ export default function EnhancedApplicationTracker({
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => {
-                              console.log('🔧 WALI-OS Help button clicked for field:', field)
-                              setCurrentFieldForAI(field)
-                              const fieldContext = {
-                                fieldName: field,
-                                fieldValue: value,
-                                formData: filledForm,
-                                question: `Please help me with the "${field.replace(/_/g, ' ')}" field. What should I include in this field for my grant application?`
-                              }
-                              setAssistantContext(fieldContext)
+                              console.log('🔧 Enhanced WALI-OS Help clicked for field:', field)
                               
-                              // Always open the WALI-OS assistant
-                              console.log('🚀 Opening WALI-OS Assistant...')
+                              const enhancedContext = createEnhancedFieldContext(field, value)
+                              setCurrentFieldForAI(field)
+                              setAssistantContext({
+                                ...enhancedContext,
+                                specificQuestion: generateSpecificQuestion(field, enhancedContext),
+                                actionableHelp: true
+                              })
+                              
+                              console.log('🎯 Enhanced context created:', enhancedContext)
                               setShowWaliOSAssistant(true)
                             }}
                             className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
