@@ -624,7 +624,441 @@ export default function WaliOSAssistant({
 		}
 	}, [findSpecificGrants, generateSpecificAssistance]) // Minimal dependencies
 
-	// ========== END ENHANCED PROJECT-SPECIFIC FUNCTIONS ==========
+	// ========== DYNAMIC FIELD DEFINITION SYSTEM ==========
+	
+	// Build comprehensive context for field analysis
+	const buildFieldContext = async (fieldName, formContext) => {
+		return {
+			fieldName,
+			userProfile: formContext?.userProfile || userProfile || userProfileState,
+			currentProject: formContext?.currentProject || (allProjects || allProjectsState)?.[0],
+			allProjects: formContext?.allProjects || allProjects || allProjectsState,
+			formType: formContext?.formType || 'grant_application',
+			currentSection: formContext?.currentSection || 'application_form',
+			relatedFields: formContext?.allFormData || {},
+			organizationHistory: formContext?.organizationHistory || {}
+		}
+	}
+
+	// Generate smart defaults based on customer data
+	const generateSmartDefaults = (fieldName, context) => {
+		const suggestions = []
+		const fieldLower = fieldName.toLowerCase()
+		
+		// Organization fields
+		if (fieldLower.includes('organization') && context.userProfile?.organization_name) {
+			suggestions.push({
+				value: context.userProfile.organization_name,
+				confidence: 0.95,
+				source: 'organization profile'
+			})
+		}
+		
+		// EIN/Tax fields
+		if ((fieldLower.includes('ein') || fieldLower.includes('tax')) && context.userProfile?.ein) {
+			suggestions.push({
+				value: context.userProfile.ein,
+				confidence: 0.98,
+				source: 'organization profile'
+			})
+		}
+		
+		// Project-specific fields
+		if (fieldLower.includes('project') && fieldLower.includes('title') && context.currentProject?.name) {
+			suggestions.push({
+				value: context.currentProject.name,
+				confidence: 0.9,
+				source: 'current project'
+			})
+		}
+		
+		// Budget fields with smart calculations
+		if (fieldLower.includes('budget') || fieldLower.includes('amount')) {
+			if (context.currentProject?.budget) {
+				suggestions.push({
+					value: context.currentProject.budget,
+					confidence: 0.85,
+					source: 'project budget'
+				})
+			}
+			
+			// Calculate common budget breakdowns
+			if (fieldLower.includes('personnel') && context.currentProject?.budget) {
+				const personnelEstimate = Math.round(context.currentProject.budget * 0.6)
+				suggestions.push({
+					value: personnelEstimate,
+					confidence: 0.7,
+					source: 'calculated (60% of total budget)',
+					explanation: 'Personnel costs typically represent 60% of project budgets'
+				})
+			}
+		}
+		
+		return suggestions
+	}
+
+	// Identify what information is missing and ask for it
+	const identifyInformationGaps = (fieldName, context) => {
+		const gaps = []
+		const fieldLower = fieldName.toLowerCase()
+		
+		// Check for missing organization info
+		if (fieldLower.includes('organization')) {
+			if (!context.userProfile?.organization_type) {
+				gaps.push({
+					type: 'organization_type',
+					question: 'What type of organization are you? (nonprofit, for-profit, government, etc.)',
+					importance: 'high',
+					reason: 'Needed for eligibility and field completion'
+				})
+			}
+			
+			if (!context.userProfile?.ein) {
+				gaps.push({
+					type: 'ein',
+					question: 'What is your organization\'s EIN or Tax ID?',
+					importance: 'high',
+					reason: 'Required for most grant applications'
+				})
+			}
+		}
+		
+		// Check for missing project details
+		if (fieldLower.includes('project')) {
+			if (!context.currentProject?.description) {
+				gaps.push({
+					type: 'project_description',
+					question: 'Can you describe what your project does and what problem it solves?',
+					importance: 'high',
+					reason: 'Essential for providing relevant field guidance'
+				})
+			}
+			
+			if (!context.currentProject?.target_population) {
+				gaps.push({
+					type: 'target_population',
+					question: 'Who will benefit from your project? (target audience/population)',
+					importance: 'medium',
+					reason: 'Helps tailor application language and impact metrics'
+				})
+			}
+		}
+		
+		// Check for missing timeline info
+		if (fieldLower.includes('timeline') || fieldLower.includes('period')) {
+			if (!context.currentProject?.timeline) {
+				gaps.push({
+					type: 'project_timeline',
+					question: 'What is your planned project timeline? How long will it take to complete?',
+					importance: 'high',
+					reason: 'Critical for funding period and milestone planning'
+				})
+			}
+		}
+		
+		return gaps.filter(gap => gap.importance === 'high').slice(0, 2) // Focus on most important gaps
+	}
+
+	// Generate targeted questions to fill information gaps
+	const generateInformationGatheringQuestions = (gaps, fieldName) => {
+		if (gaps.length === 0) return null
+		
+		let questionText = `To give you the most accurate help with the "${fieldName.replace(/_/g, ' ')}" field, I need a bit more information:\n\n`
+		
+		gaps.forEach((gap, index) => {
+			questionText += `${index + 1}. ${gap.question}\n`
+		})
+		
+		questionText += `\nOnce I have these details, I can provide specific, tailored guidance for completing this field effectively.`
+		
+		return questionText
+	}
+
+	// Build field analysis prompt for AI
+	const buildFieldAnalysisPrompt = (fieldName, fieldValue, context) => {
+		return `You are helping a user understand a form field in their grant application.
+
+FIELD NAME: "${fieldName}"
+CURRENT VALUE: "${fieldValue || 'empty'}"
+
+USER CONTEXT:
+- Organization: ${context.userProfile?.organization_name || 'Unknown'}
+- Organization Type: ${context.userProfile?.organization_type || 'Unknown'}
+- Project: ${context.currentProject?.name || 'Unknown'}
+- Project Type: ${context.currentProject?.project_type || 'Unknown'}
+- Budget: $${context.currentProject?.budget?.toLocaleString() || 'Unknown'}
+
+FORM CONTEXT:
+- Form Type: ${context.formType || 'Unknown'}
+- Section: ${context.currentSection || 'Unknown'}
+
+Provide a helpful explanation that includes:
+1. What this field means in plain language
+2. What specific information should go here
+3. Format or structure expected
+4. Tips specific to their project/organization
+5. Example based on their context
+6. Common mistakes to avoid
+
+Be specific and actionable. If you need more information about their project to give better advice, ask targeted questions.
+
+Response format:
+DEFINITION: [Clear explanation]
+PURPOSE: [Why this field exists]
+FORMAT: [How to structure the answer]
+EXAMPLE: [Specific to their context]
+TIPS: [3-4 actionable tips]
+QUESTIONS: [What you need to know to help better, if anything]`
+	}
+
+	// AI-powered field analysis
+	const analyzeFieldWithAI = async (fieldName, fieldValue, context) => {
+		const prompt = buildFieldAnalysisPrompt(fieldName, fieldValue, context)
+		
+		try {
+			// Call the assistant API for AI analysis
+			const response = await fetch('/api/ai/assistant', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					userId: userProfile?.user_id || userProfile?.id,
+					message: `Analyze this field: ${prompt}`,
+					useLLM: true,
+					includeFullContext: true,
+					context: {
+						customerData: {
+							userProfile: context.userProfile,
+							allProjects: context.allProjects || [],
+							submissions: submissionsState || [],
+							opportunities: opportunitiesState || []
+						},
+						fieldContext: { fieldName, fieldValue }
+					}
+				})
+			})
+			
+			if (!response.ok) {
+				throw new Error(`AI analysis failed: ${response.status}`)
+			}
+			
+			const result = await response.json()
+			return parseAIFieldResponse(result.data?.message || result.message, fieldName, context)
+		} catch (error) {
+			console.error('AI field analysis failed:', error)
+			return getFallbackFieldHelp(fieldName)
+		}
+	}
+
+	// Parse AI response into structured field help
+	const parseAIFieldResponse = (aiResponse, fieldName, context) => {
+		// Simple parser for AI response
+		const sections = {
+			definition: '',
+			purpose: '',
+			format: '',
+			example: '',
+			tips: [],
+			questions: ''
+		}
+		
+		try {
+			const lines = aiResponse.split('\n')
+			let currentSection = null
+			
+			lines.forEach(line => {
+				const upper = line.toUpperCase()
+				if (upper.startsWith('DEFINITION:')) {
+					currentSection = 'definition'
+					sections.definition = line.substring(11).trim()
+				} else if (upper.startsWith('PURPOSE:')) {
+					currentSection = 'purpose'
+					sections.purpose = line.substring(8).trim()
+				} else if (upper.startsWith('FORMAT:')) {
+					currentSection = 'format'
+					sections.format = line.substring(7).trim()
+				} else if (upper.startsWith('EXAMPLE:')) {
+					currentSection = 'example'
+					sections.example = line.substring(8).trim()
+				} else if (upper.startsWith('TIPS:')) {
+					currentSection = 'tips'
+				} else if (upper.startsWith('QUESTIONS:')) {
+					currentSection = 'questions'
+					sections.questions = line.substring(10).trim()
+				} else if (line.trim() && currentSection) {
+					if (currentSection === 'tips') {
+						sections.tips.push(line.trim())
+					} else if (currentSection !== 'tips') {
+						sections[currentSection] += ' ' + line.trim()
+					}
+				}
+			})
+		} catch (error) {
+			console.error('Failed to parse AI response:', error)
+			sections.definition = aiResponse // Fallback to raw response
+		}
+		
+		return sections
+	}
+
+	// Fallback field help for when AI fails
+	const getFallbackFieldHelp = (fieldName) => {
+		const fieldLower = fieldName.toLowerCase()
+		
+		if (fieldLower.includes('description') || fieldLower.includes('summary')) {
+			return {
+				definition: 'Provide a clear, compelling description of your project or organization',
+				purpose: 'Help reviewers understand what you do and why it matters',
+				format: 'Use clear, concise language with specific examples',
+				example: 'Focus on impact, beneficiaries, and unique approach',
+				tips: ['Be specific about outcomes', 'Quantify impact when possible', 'Avoid jargon'],
+				questions: ''
+			}
+		}
+		
+		if (fieldLower.includes('budget') || fieldLower.includes('amount')) {
+			return {
+				definition: 'Specify the funding amount requested for this item',
+				purpose: 'Demonstrate fiscal responsibility and project planning',
+				format: 'Use exact dollar amounts, rounded to nearest dollar',
+				example: 'Include detailed breakdowns for large amounts',
+				tips: ['Justify all costs', 'Research market rates', 'Include indirect costs'],
+				questions: ''
+			}
+		}
+		
+		return {
+			definition: `Complete the ${fieldName.replace(/_/g, ' ')} field with accurate information`,
+			purpose: 'Provide required information for application processing',
+			format: 'Follow any specific formatting requirements shown',
+			example: 'Be thorough and accurate in your response',
+			tips: ['Double-check accuracy', 'Be comprehensive', 'Follow guidelines'],
+			questions: ''
+		}
+	}
+
+	// Main comprehensive field help function
+	const getComprehensiveFieldHelp = async (fieldName, fieldValue, formContext) => {
+		try {
+			// Get current context
+			const context = await buildFieldContext(fieldName, formContext)
+			
+			// Check for information gaps
+			const gaps = identifyInformationGaps(fieldName, context)
+			
+			// If we have critical gaps, ask for info first
+			if (gaps.length > 0) {
+				return {
+					type: 'information_needed',
+					message: generateInformationGatheringQuestions(gaps, fieldName),
+					gaps: gaps,
+					fieldName: fieldName
+				}
+			}
+			
+			// Otherwise, provide comprehensive field help
+			const fieldHelp = await analyzeFieldWithAI(fieldName, fieldValue, context)
+			
+			return {
+				type: 'field_help',
+				...fieldHelp,
+				smartDefaults: generateSmartDefaults(fieldName, context),
+				fieldName: fieldName
+			}
+			
+		} catch (error) {
+			console.error('Field help generation failed:', error)
+			return {
+				type: 'field_help',
+				...getFallbackFieldHelp(fieldName),
+				smartDefaults: [],
+				fieldName: fieldName
+			}
+		}
+	}
+
+	// Extract field name from user query
+	const extractFieldName = (query) => {
+		const lower = query.toLowerCase()
+		
+		// Common field patterns
+		if (lower.includes('project description') || lower.includes('project summary')) return 'project_description'
+		if (lower.includes('project title') || lower.includes('project name')) return 'project_title'
+		if (lower.includes('budget') || lower.includes('amount')) return 'budget_amount'
+		if (lower.includes('organization name')) return 'organization_name'
+		if (lower.includes('timeline') || lower.includes('schedule')) return 'project_timeline'
+		if (lower.includes('personnel') || lower.includes('staff')) return 'personnel'
+		if (lower.includes('objectives') || lower.includes('goals')) return 'project_objectives'
+		
+		// Extract from quoted field names
+		const quoted = query.match(/"([^"]+)"/g)
+		if (quoted && quoted.length > 0) {
+			return quoted[0].replace(/"/g, '').replace(/\s+/g, '_').toLowerCase()
+		}
+		
+		// Fallback to generic field
+		return 'field_input'
+	}
+
+	// Build comprehensive field help response
+	const buildFieldHelpResponse = async (fieldQuery, context) => {
+		const fieldName = extractFieldName(fieldQuery)
+		const fieldHelp = await getComprehensiveFieldHelp(fieldName, null, context)
+		
+		if (fieldHelp.type === 'information_needed') {
+			return fieldHelp.message
+		}
+		
+		// Build comprehensive response
+		let response = `**${fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}**\n\n`
+		
+		if (fieldHelp.definition) {
+			response += `${fieldHelp.definition}\n\n`
+		}
+		
+		if (fieldHelp.purpose) {
+			response += `**Purpose**: ${fieldHelp.purpose}\n\n`
+		}
+		
+		if (fieldHelp.smartDefaults?.length > 0) {
+			response += `**Suggested for your situation**:\n`
+			fieldHelp.smartDefaults.forEach(suggestion => {
+				response += `• ${suggestion.value} (${suggestion.source})`
+				if (suggestion.explanation) {
+					response += ` - ${suggestion.explanation}`
+				}
+				response += `\n`
+			})
+			response += `\n`
+		}
+		
+		if (fieldHelp.format) {
+			response += `**Format**: ${fieldHelp.format}\n\n`
+		}
+		
+		if (fieldHelp.example) {
+			response += `**Example**: ${fieldHelp.example}\n\n`
+		}
+		
+		if (fieldHelp.tips?.length > 0) {
+			response += `**Tips**:\n`
+			fieldHelp.tips.forEach(tip => {
+				if (tip.trim()) {
+					response += `• ${tip.trim()}\n`
+				}
+			})
+			response += `\n`
+		}
+		
+		if (fieldHelp.questions) {
+			response += `**Additional Questions**: ${fieldHelp.questions}\n\n`
+		}
+		
+		response += `Would you like me to help you fill this field out, or do you have other questions about it?`
+		
+		return response
+	}
+
+	// ========== END DYNAMIC FIELD DEFINITION SYSTEM ==========
 
 	const handleUserInput = async (input) => {
 		if (!input.trim()) return
@@ -642,6 +1076,40 @@ export default function WaliOSAssistant({
 		if (isFundingRequest) {
 			setIsSearchingAPIs(true)
 			setLastAPISearch(new Date())
+		}
+		
+		// Check for field-specific help requests
+		const inputLower = input.toLowerCase()
+		const fieldHelpPattern = /help\s+with|explain\s+(this|the|a)?\s*(field)?|what\s+is\s+(this|the|a)?\s*(field)?|fill\s+out|complete\s+(this|the|a)?\s*(field)?|field\s+help|form\s+help|how\s+to\s+(fill|complete)|what\s+goes\s+(in|here)|what\s+should\s+i\s+put|how\s+do\s+i\s+(fill|complete)|explain.*field|help.*field/i
+		
+		if (fieldHelpPattern.test(input)) {
+			try {
+				const fieldResponse = await buildFieldHelpResponse(input, {
+					userProfile: userProfile || userProfileState,
+					currentProject: (allProjects || allProjectsState)?.[0],
+					allProjects: allProjects || allProjectsState,
+					formType: 'grant_application'
+				})
+				
+				// Add field help response to conversation
+				setConversation(prev => [...prev, { 
+					type: 'assistant', 
+					content: fieldResponse,
+					id: Date.now() + 1,
+					isFieldHelp: true,
+					timestamp: new Date().toISOString()
+				}])
+				
+				setIsThinking(false)
+				setAssistantState('ready')
+				setIsSearchingAPIs(false)
+				
+				console.log('Field help provided for:', input)
+				return
+			} catch (error) {
+				console.error('Field help failed, falling back to regular response:', error)
+				// Continue to normal processing if field help fails
+			}
 		}
 		
 		// Add user message to conversation
