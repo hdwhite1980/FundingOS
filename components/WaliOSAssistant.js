@@ -80,6 +80,7 @@ export default function WaliOSAssistant({
 	const [eyesBlink, setEyesBlink] = useState(false)
 	const [isAnimating, setIsAnimating] = useState(false)
 	const [fieldContext, setFieldContext] = useState(null)
+	const [lastHelpedFieldContext, setLastHelpedFieldContext] = useState(null)
 	const [isSearchingAPIs, setIsSearchingAPIs] = useState(false)
 	const [lastAPISearch, setLastAPISearch] = useState(null)
 	
@@ -96,6 +97,13 @@ export default function WaliOSAssistant({
 			setFieldContext(triggerContext.context)
 		}
 	}, [triggerContext])
+	
+	// Clear helped field context when assistant closes or field context changes significantly
+	useEffect(() => {
+		if (!isOpen) {
+			setLastHelpedFieldContext(null)
+		}
+	}, [isOpen])
 	
 	// State for customer data that can be updated
 	const [userProfileState, setUserProfile] = useState(userProfile)
@@ -176,6 +184,18 @@ export default function WaliOSAssistant({
 	const startFieldHelp = useCallback(() => {
 		if (!fieldContext) return
 		
+		// Check if we've already provided help for this specific field context
+		const contextKey = `${fieldContext.fieldName}_${fieldContext.opportunityId || 'default'}`
+		const lastHelpedKey = `${lastHelpedFieldContext?.fieldName}_${lastHelpedFieldContext?.opportunityId || 'default'}`
+		
+		if (contextKey === lastHelpedKey) {
+			console.log('🔄 Field help already shown for:', fieldContext.fieldName)
+			return // Don't repeat the same field help
+		}
+		
+		// Mark this field context as helped
+		setLastHelpedFieldContext(fieldContext)
+		
 		setIsThinking(true)
 		setAssistantState('thinking')
 		setTimeout(() => {
@@ -210,7 +230,7 @@ export default function WaliOSAssistant({
 				}, 1800)
 			})
 		}, 800)
-	}, [fieldContext, setIsThinking, setAssistantState, showMessage, setShowInput])
+	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput])
 
 	const startGenericGreeting = useCallback(() => {
 		setIsThinking(true); setAssistantState('thinking')
