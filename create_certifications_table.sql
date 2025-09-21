@@ -134,19 +134,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Insert some example certification types for reference
+-- Example certification types for reference
+-- To insert sample data, uncomment and run the following after creating your first user:
+/*
 INSERT INTO public.certifications (user_id, certification_name, certification_type, issuing_organization, description, status, created_by)
 VALUES 
-    -- These are examples - they won't insert unless you have matching user_ids
-    -- You can run this after creating your first user
-    /*
     (auth.uid(), 'Project Management Professional (PMP)', 'professional', 'Project Management Institute', 'Professional project management certification', 'active', auth.uid()),
     (auth.uid(), 'Certified Public Accountant (CPA)', 'professional', 'State Board of Accountancy', 'Professional accounting certification', 'active', auth.uid()),
     (auth.uid(), 'ISO 9001 Quality Management', 'quality', 'ISO International Organization for Standardization', 'Quality management system certification', 'active', auth.uid()),
     (auth.uid(), 'OSHA Safety Training', 'safety', 'Occupational Safety and Health Administration', 'Workplace safety training certification', 'active', auth.uid()),
     (auth.uid(), 'AWS Certified Solutions Architect', 'technical', 'Amazon Web Services', 'Cloud architecture certification', 'active', auth.uid())
-    */
 ON CONFLICT DO NOTHING;
+*/
 
 -- Create a view for active certifications with expiration warnings
 CREATE OR REPLACE VIEW active_certifications_with_status AS
