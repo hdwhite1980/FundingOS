@@ -137,6 +137,41 @@ export default function WaliOSAssistant({
 		return () => clearInterval(blinkInterval)
 	}, [])
 
+	// Define showMessage FIRST as it's used by other functions
+	const showMessage = useCallback((message, onComplete) => {
+		setIsThinking(false) 
+		setAssistantState('talking')
+		setIsAnimating(true)
+		
+		// Reset message state immediately and ensure it's really empty
+		setCurrentMessage('')
+		
+		setTimeout(() => {
+			const fullMessage = message.toString() // Ensure it's a string
+			
+			// Use a more direct approach - build the message directly instead of relying on prev state
+			let currentIndex = 0
+			const typeWriter = () => {
+				if (currentIndex < fullMessage.length) { 
+					const nextChar = fullMessage.charAt(currentIndex)
+					currentIndex++
+					
+					// Set the message directly from the source instead of using prev state
+					const newMessage = fullMessage.substring(0, currentIndex)
+					
+					setCurrentMessage(newMessage)
+					setTimeout(typeWriter, 28) 
+				} else { 
+					setIsAnimating(false)
+					setAssistantState('idle')
+					if (onComplete) onComplete()
+				}
+			}
+			
+			typeWriter()
+		}, 50) // Small delay to ensure state is reset
+	}, [setIsThinking, setAssistantState, setIsAnimating, setCurrentMessage])
+
 	// Define callback functions BEFORE they are used in useEffect dependencies
 	const startFieldHelp = useCallback(() => {
 		if (!fieldContext) return
@@ -329,40 +364,6 @@ export default function WaliOSAssistant({
 				return null // Don't show generic messages
 		}
 	}, [triggerContext])
-
-	const showMessage = useCallback((message, onComplete) => {
-		setIsThinking(false) 
-		setAssistantState('talking')
-		setIsAnimating(true)
-		
-		// Reset message state immediately and ensure it's really empty
-		setCurrentMessage('')
-		
-		setTimeout(() => {
-			const fullMessage = message.toString() // Ensure it's a string
-			
-			// Use a more direct approach - build the message directly instead of relying on prev state
-			let currentIndex = 0
-			const typeWriter = () => {
-				if (currentIndex < fullMessage.length) { 
-					const nextChar = fullMessage.charAt(currentIndex)
-					currentIndex++
-					
-					// Set the message directly from the source instead of using prev state
-					const newMessage = fullMessage.substring(0, currentIndex)
-					
-					setCurrentMessage(newMessage)
-					setTimeout(typeWriter, 28) 
-				} else { 
-					setIsAnimating(false)
-					setAssistantState('idle')
-					if (onComplete) onComplete()
-				}
-			}
-			
-			typeWriter()
-		}, 50) // Small delay to ensure state is reset
-	}, [setIsThinking, setAssistantState, setIsAnimating, setCurrentMessage])
 
 	const handleUserInput = async (input) => {
 		if (!input.trim()) return
