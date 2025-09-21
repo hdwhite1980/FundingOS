@@ -582,6 +582,44 @@ const ErrorPrevention = ({ fieldName, value, allFormData }) => {
   )
 }
 
+// Helper function to find relevant past content for current field
+const findRelevantPastContent = (currentField, userApplicationHistory = []) => {
+  if (!currentField || !userApplicationHistory || userApplicationHistory.length === 0) {
+    return []
+  }
+
+  const fieldName = currentField.name?.toLowerCase() || currentField.toLowerCase()
+  
+  return userApplicationHistory
+    .filter(app => app.fields && app.status !== 'rejected')
+    .map(app => {
+      // Find matching fields by name similarity
+      const matchingFields = Object.entries(app.fields || {}).filter(([key, value]) => {
+        const keyLower = key.toLowerCase()
+        return keyLower.includes(fieldName) || 
+               fieldName.includes(keyLower) ||
+               // Common field mappings
+               (fieldName.includes('description') && keyLower.includes('description')) ||
+               (fieldName.includes('objective') && keyLower.includes('objective')) ||
+               (fieldName.includes('goal') && keyLower.includes('goal')) ||
+               (fieldName.includes('summary') && keyLower.includes('summary')) ||
+               (fieldName.includes('statement') && keyLower.includes('statement'))
+      })
+      
+      return matchingFields.map(([key, value]) => ({
+        applicationName: app.name || app.opportunityTitle || 'Previous Application',
+        successRate: app.status === 'awarded' ? 100 : app.status === 'submitted' ? 75 : 50,
+        text: value && typeof value === 'string' ? value : String(value || ''),
+        fieldName: key,
+        applicationId: app.id
+      }))
+    })
+    .flat()
+    .filter(content => content.text && content.text.length > 20) // Filter out very short content
+    .sort((a, b) => b.successRate - a.successRate) // Sort by success rate
+    .slice(0, 5) // Limit to top 5 most relevant
+}
+
 // Content Library for reusing past application content
 const ContentLibrary = ({ userApplicationHistory, currentField, onApplyContent }) => {
   const relevantContent = findRelevantPastContent(currentField, userApplicationHistory)
