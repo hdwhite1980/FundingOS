@@ -977,85 +977,101 @@ QUESTIONS: [What you need to know to help better, if anything]`
 	}
 
 	// Extract field name from user query
-	const extractFieldName = (query) => {
-		const lower = query.toLowerCase()
-		
-		// Common field patterns
-		if (lower.includes('project description') || lower.includes('project summary')) return 'project_description'
-		if (lower.includes('project title') || lower.includes('project name')) return 'project_title'
-		if (lower.includes('budget') || lower.includes('amount')) return 'budget_amount'
-		if (lower.includes('organization name')) return 'organization_name'
-		if (lower.includes('timeline') || lower.includes('schedule')) return 'project_timeline'
-		if (lower.includes('personnel') || lower.includes('staff')) return 'personnel'
-		if (lower.includes('objectives') || lower.includes('goals')) return 'project_objectives'
-		
-		// Extract from quoted field names
-		const quoted = query.match(/"([^"]+)"/g)
-		if (quoted && quoted.length > 0) {
-			return quoted[0].replace(/"/g, '').replace(/\s+/g, '_').toLowerCase()
-		}
-		
-		// Fallback to generic field
-		return 'field_input'
-	}
-
-	// Build comprehensive field help response
-	const buildFieldHelpResponse = async (fieldQuery, context) => {
-		const fieldName = extractFieldName(fieldQuery)
-		const fieldHelp = await getComprehensiveFieldHelp(fieldName, null, context)
-		
-		if (fieldHelp.type === 'information_needed') {
-			return fieldHelp.message
-		}
-		
-		// Build comprehensive response
-		let response = `**${fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}**\n\n`
-		
-		if (fieldHelp.definition) {
-			response += `${fieldHelp.definition}\n\n`
-		}
-		
-		if (fieldHelp.purpose) {
-			response += `**Purpose**: ${fieldHelp.purpose}\n\n`
-		}
-		
-		if (fieldHelp.smartDefaults?.length > 0) {
-			response += `**Suggested for your situation**:\n`
-			fieldHelp.smartDefaults.forEach(suggestion => {
-				response += `• ${suggestion.value} (${suggestion.source})`
-				if (suggestion.explanation) {
-					response += ` - ${suggestion.explanation}`
+	// Use AI-powered extraction then analyzer, with local fallbacks
+	const getDynamicFieldHelp = async (userQuery, formData = {}, userProfileContext = {}, currentProjectContext = {}) => {
+		try {
+			// Build basic context for the APIs
+			const availableFields = Object.keys(formData || {})
+			// Ask AI to extract the field name
+			let extractedField = null
+			try {
+				const resp = await fetch('/api/ai/field-extract', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ userQuery, availableFields })
+				})
+				if (resp.ok) {
+					const j = await resp.json()
+					extractedField = j.field || null
+					if (extractedField === 'UNKNOWN') extractedField = null
 				}
+			} catch (e) {
+				console.warn('Field-extract API failed, falling back to heuristic', e.message)
+			}
+			
+			// Fallback extraction heuristics
+			if (!extractedField) {
+				extractedField = heuristicExtractFieldName(userQuery, availableFields)
+			}
+			
+			// Build analyzer request context
+			const formContext = {
+				formType: inferFormType ? inferFormType(formData) : 'grant_application',
+				availableFields,
+				completedFields: Object.keys(formData || {}).filter(k => formData[k])
+			}
+			const userContext = {
+				organizationType: userProfileContext?.organization_type,
+				projectType: currentProjectContext?.project_type,
+				organizationName: userProfileContext?.organization_name,
+				hasEIN: !!(userProfileContext?.ein || userProfileContext?.tax_id),
+				budget: currentProjectContext?.budget
+			}
+			
+			// Call analyzer
+			let analysis = null
+			try {
+				const resp = await fetch('/api/ai/field-analyzer', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ fieldName: extractedField, formContext, userContext })
+				})
+				if (resp.ok) {
+					const j = await resp.json()
+					if (j.success && j.analysis) analysis = j.analysis
+					else if (j.analysis) analysis = j.analysis
+				}
+			} catch (e) {
+				console.warn('Field analyzer API failed, falling back to local heuristics', e.message)
+			}
+			
+			// If no analysis, use local fallback
+			if (!analysis) {
+				analysis = generateFallbackDefinition(extractedField || 'field_input', formContext, userContext)
+			}
+			
+			// Build output text
+			let response = `**${(extractedField || 'Field').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}**\n\n`
+			response += `${analysis.definition || ''}\n\n`
+			if (analysis.purpose) response += `**Purpose**: ${analysis.purpose}\n\n`
+			if (analysis.expectedFormat) response += `**Expected Format**: ${analysis.expectedFormat}\n\n`
+			if (analysis.commonExamples && analysis.commonExamples.length) {
+				response += `**Examples**:\n`
+				analysis.commonExamples.forEach(e => { response += `• ${e}\n` })
 				response += `\n`
-			})
-			response += `\n`
+			}
+			if (analysis.tips && analysis.tips.length) {
+				response += `**Tips**:\n`
+				analysis.tips.forEach(t => { response += `• ${t}\n` })
+				response += `\n`
+			}
+			if (analysis.contextSpecificGuidance) response += `**Context Guidance**: ${analysis.contextSpecificGuidance}\n\n`
+			
+			// Add smart defaults if available
+			const smartDefaults = generateSmartDefaults(extractedField || 'field_input', { userProfile: userProfileContext, currentProject: currentProjectContext })
+			if (smartDefaults.length > 0) {
+				response += `**Suggested for your situation**:\n`
+				smartDefaults.forEach(s => { response += `• ${s.value} (${s.source})\n` })
+				response += `\n`
+			}
+			
+			response += `Would you like me to help you fill this field out, or do you have other questions about it?`
+			
+			return response
+		} catch (error) {
+			console.error('getDynamicFieldHelp failed:', error)
+			return `I can help explain that field. Can you clarify which specific field you're asking about? I see these fields: ${Object.keys(formData || {}).slice(0,5).join(', ')}`
 		}
-		
-		if (fieldHelp.format) {
-			response += `**Format**: ${fieldHelp.format}\n\n`
-		}
-		
-		if (fieldHelp.example) {
-			response += `**Example**: ${fieldHelp.example}\n\n`
-		}
-		
-		if (fieldHelp.tips?.length > 0) {
-			response += `**Tips**:\n`
-			fieldHelp.tips.forEach(tip => {
-				if (tip.trim()) {
-					response += `• ${tip.trim()}\n`
-				}
-			})
-			response += `\n`
-		}
-		
-		if (fieldHelp.questions) {
-			response += `**Additional Questions**: ${fieldHelp.questions}\n\n`
-		}
-		
-		response += `Would you like me to help you fill this field out, or do you have other questions about it?`
-		
-		return response
 	}
 
 	// ========== END DYNAMIC FIELD DEFINITION SYSTEM ==========
