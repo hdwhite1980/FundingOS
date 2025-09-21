@@ -111,18 +111,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // LLM ENHANCEMENT PATH: Base response + LLM enhancement for non-funding strategy intents
-    console.log('🔄 Using LLM enhancement for intent:', intent)
+    // LLM ENHANCEMENT PATH: Direct LLM response for non-funding strategy intents
+    console.log('🔄 Using LLM for intent:', intent)
     
-    // Generate base response first
-    let baseAnswer
-    try {
-      baseAnswer = await generateAssistantResponse(intent, context, message, userId)
-    } catch (error) {
-      console.error('Base response generation failed:', error)
-      baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
-    }
-
     const systemPrompt = `You are the WALI-OS Funding Assistant, an expert in grant strategy and funding discovery. You help users with comprehensive funding strategies, grant applications, and organizational data.
 
 IMPORTANT: The user has real data in the system. Use the specific information provided rather than giving generic responses.
@@ -174,12 +165,12 @@ Key principles:
 
 Intent Classification: ${intent}
 
-Initial Response Generated: "${baseAnswer}"
-
 Conversation Context: ${convoSummary?.summary || 'No previous conversation'}
 
 Real User Data:
-${JSON.stringify(contextSummary, null, 2)}`
+${JSON.stringify(contextSummary, null, 2)}
+
+Please provide a response using the specific data shown above. Reference actual project names, amounts, deadlines, and organization details when available.`
 
     let finalResponse = "I'm having trouble generating a response right now."
     let llmError: string | null = null
@@ -198,12 +189,23 @@ ${JSON.stringify(contextSummary, null, 2)}`
       } else {
         llmError = 'No valid response from AI provider'
         console.warn('LLM returned empty/invalid response')
-        finalResponse = baseAnswer // Use the base response as fallback
+        // Fallback to base generation if LLM fails
+        try {
+          finalResponse = await generateAssistantResponse(intent, context, message, userId)
+        } catch (fallbackError) {
+          finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
+        }
       }
     } catch (err: any) {
       console.error('LLM generation failed:', err?.message)
       llmError = err?.message || 'AI provider error'
-      finalResponse = baseAnswer + `\n\n*Note: AI enhancement temporarily unavailable.*`
+      // Fallback to base generation if LLM fails
+      try {
+        finalResponse = await generateAssistantResponse(intent, context, message, userId)
+        finalResponse += `\n\n*Note: AI enhancement temporarily unavailable.*`
+      } catch (fallbackError) {
+        finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
+      }
     }
 
     await logConversationTurn(activeSessionId, userId, 'assistant', finalResponse)
