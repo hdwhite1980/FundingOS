@@ -371,15 +371,15 @@ export default function WaliOSAssistant({
 			// Add assistant response to conversation
 			setConversation(prev => [...prev, { type: 'assistant', content: assistantMessage, id: Date.now() + 1 }])
 			
-			// Show the response with typewriter effect
-			showMessage(assistantMessage, () => {
-				setTimeout(() => {
-					showMessage('Anything else you\'d like help with?', () => {
-						setShowInput(true)
-						setAssistantState('listening')
-					})
-				}, 1600)
-			})
+			// Reset thinking state and show follow-up prompt
+			setIsThinking(false)
+			setAssistantState('idle')
+			setTimeout(() => {
+				showMessage('Anything else you\'d like help with?', () => {
+					setShowInput(true)
+					setAssistantState('listening')
+				})
+			}, 800)
 			
 		} catch (error) {
 			console.error('Assistant API failed:', error)
@@ -388,14 +388,15 @@ export default function WaliOSAssistant({
 			
 			setConversation(prev => [...prev, { type: 'assistant', content: errorMessage, id: Date.now() + 1 }])
 			
-			showMessage(errorMessage, () => {
-				setTimeout(() => {
-					showMessage('Please try again in a moment.', () => {
-						setShowInput(true)
-						setAssistantState('listening')
-					})
-				}, 1000)
-			})
+			// Reset thinking state and show follow-up prompt
+			setIsThinking(false)
+			setAssistantState('idle')
+			setTimeout(() => {
+				showMessage('Please try again in a moment.', () => {
+					setShowInput(true)
+					setAssistantState('listening')
+				})
+			}, 800)
 		} finally {
 			// Reset API search indicator after a delay
 			if (isFundingRequest) {
