@@ -457,15 +457,39 @@ export default function WaliOSAssistant({
 	if (!isVisible) return null
 
 	return (
-		<div 
-			className={`fixed z-50 ${expanded ? 'inset-0 p-4 md:p-6 flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}
-			data-wali-assistant="true"
-			style={expanded ? {} : 
-				position.x === 0 && position.y === 0 
-					? { bottom: '24px', right: '24px' } // Default position
-					: { left: `${position.x}px`, top: `${position.y}px` } // Custom position
-			}
-		>
+		<>
+			<style jsx>{`
+				.custom-scrollbar::-webkit-scrollbar {
+					width: 6px;
+				}
+				.custom-scrollbar::-webkit-scrollbar-track {
+					background: #f1f1f1;
+					border-radius: 3px;
+				}
+				.custom-scrollbar::-webkit-scrollbar-thumb {
+					background: #c1c1c1;
+					border-radius: 3px;
+				}
+				.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+					background: #a8a8a8;
+				}
+				.resize {
+					resize: both;
+					overflow: auto;
+				}
+				.resize::-webkit-resizer {
+					background: linear-gradient(-45deg, transparent 0px, transparent 2px, #ddd 2px, #ddd 4px, transparent 4px);
+				}
+			`}</style>
+			<div 
+				className={`fixed z-50 ${expanded ? 'inset-0 p-4 md:p-6 flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}
+				data-wali-assistant="true"
+				style={expanded ? {} : 
+					position.x === 0 && position.y === 0 
+						? { bottom: '24px', right: '24px' } // Default position
+						: { left: `${position.x}px`, top: `${position.y}px` } // Custom position
+				}
+			>
 			<AnimatePresence>
 				{isOpen && (
 					<>
@@ -474,7 +498,7 @@ export default function WaliOSAssistant({
 							initial={{ opacity: 0, scale: 0.95, y: 20 }}
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 20 }}
-							className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : ''} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col p-4 max-w-sm min-w-64 ${isDragging && !expanded ? 'shadow-2xl ring-2 ring-emerald-500/50' : ''}`}
+							className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : 'w-80 max-w-[90vw]'} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col p-4 min-h-[300px] ${isDragging && !expanded ? 'shadow-2xl ring-2 ring-emerald-500/50' : ''} ${expanded ? 'resize-none' : 'resize overflow-hidden min-w-64 max-w-[500px]'}`}
 							style={!expanded ? { 
 								cursor: isDragging ? 'grabbing' : 'default',
 								transition: isDragging ? 'none' : 'all 0.2s ease'
@@ -514,15 +538,15 @@ export default function WaliOSAssistant({
 									</button>
 								</div>
 							</div>
-							<div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-3 mt-2 custom-scrollbar">
+							<div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden pr-2 space-y-3 mt-2 custom-scrollbar">
 								{conversation.map(msg => (
 									<div key={msg.id} className={`text-sm leading-relaxed ${msg.type==='user' ? 'text-gray-900' : 'text-gray-800'}`}>
-										<span className={`inline-block px-3 py-2 rounded-lg shadow-sm ${msg.type==='user' ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>{msg.content}</span>
+										<span className={`inline-block px-3 py-2 rounded-lg shadow-sm whitespace-pre-wrap break-words max-w-full ${msg.type==='user' ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>{msg.content}</span>
 									</div>
 								))}
 								{(currentMessage || isThinking) && (
 									<div className="text-sm text-gray-800">
-										<span className="inline-block px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 shadow-sm">
+										<span className="inline-block px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 shadow-sm whitespace-pre-wrap break-words max-w-full">
 											{isThinking ? (
 												<span className="flex items-center gap-2">
 													{isSearchingAPIs ? (
@@ -612,5 +636,6 @@ export default function WaliOSAssistant({
 				</motion.button>
 			)}
 		</div>
+		</>
 	)
 }
