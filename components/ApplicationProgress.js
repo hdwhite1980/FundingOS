@@ -93,13 +93,19 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
 
   const loadOpportunities = async () => {
     try {
-      // Try to fetch opportunities from the API
-      const response = await fetch('/api/project-opportunities')
+      if (!user?.id) {
+        console.warn('No user ID available for opportunities')
+        setOpportunities([])
+        return
+      }
+      
+      // Try to fetch opportunities from the API with userId
+      const response = await fetch(`/api/project-opportunities?userId=${user.id}`)
       if (response.ok) {
         const data = await response.json()
         setOpportunities(data.opportunities || [])
       } else {
-        // If API doesn't exist or fails, set empty array
+        console.error('API response error:', response.status, await response.text())
         setOpportunities([])
       }
     } catch (error) {
