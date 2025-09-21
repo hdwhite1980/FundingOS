@@ -37,7 +37,6 @@ import documentAnalysisService from '../lib/documentAnalysisService'
 import documentGenerationService from '../lib/documentGenerationService'
 import { useAIAssistant } from '../hooks/useAIAssistant'
 import WaliOSAssistant from './WaliOSAssistant'
-import assistantManager from '../utils/assistantManager'
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
@@ -85,6 +84,15 @@ export default function EnhancedApplicationTracker({
   const [currentFieldForAI, setCurrentFieldForAI] = useState(null)
   const [assistantContext, setAssistantContext] = useState(null)
   const [formCacheId, setFormCacheId] = useState(null)
+
+  // Debug assistant state changes
+  useEffect(() => {
+    console.log('🔄 Assistant state changed:', {
+      showWaliOSAssistant,
+      currentFieldForAI,
+      assistantContext: assistantContext ? { fieldName: assistantContext.fieldName } : null
+    })
+  }, [showWaliOSAssistant, currentFieldForAI, assistantContext])
 
   // Save state when it changes
   useEffect(() => {
@@ -970,6 +978,7 @@ export default function EnhancedApplicationTracker({
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => {
+                              console.log('🔧 WALI-OS Help button clicked for field:', field)
                               setCurrentFieldForAI(field)
                               const fieldContext = {
                                 fieldName: field,
@@ -979,12 +988,9 @@ export default function EnhancedApplicationTracker({
                               }
                               setAssistantContext(fieldContext)
                               
-                              // Try to use existing assistant instance
-                              const existingAssistant = assistantManager.openAssistant({ fieldContext })
-                              if (!existingAssistant) {
-                                // No assistant exists, create one
-                                setShowWaliOSAssistant(true)
-                              }
+                              // Always open the WALI-OS assistant
+                              console.log('🚀 Opening WALI-OS Assistant...')
+                              setShowWaliOSAssistant(true)
                             }}
                             className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
                             title="Get WALI-OS help with this field"

@@ -17,6 +17,14 @@ export default function WaliOSAssistant({
 	onFormUpdate,
 	onSuggestionApply
 }) {
+	// Debug logging
+	console.log('🟢 WaliOSAssistant mounted with props:', {
+		isVisible,
+		triggerContext,
+		userProfile: userProfile ? 'Present' : 'Missing',
+		allProjects: allProjects?.length || 0,
+		opportunities: opportunities?.length || 0
+	})
 	// Register with global assistant manager
 	const assistantInstanceRef = useRef({
 		show: (context) => {
@@ -62,7 +70,7 @@ export default function WaliOSAssistant({
 		}
 	}, [])
 	
-	const [isOpen, setIsOpen] = useState(false)
+	const [isOpen, setIsOpen] = useState(isVisible) // Initialize with isVisible prop
 	const [expanded, setExpanded] = useState(false)
 	const [currentMessage, setCurrentMessage] = useState('')
 	const [isThinking, setIsThinking] = useState(false)
@@ -77,6 +85,20 @@ export default function WaliOSAssistant({
 	const [fieldContext, setFieldContext] = useState(null)
 	const [isSearchingAPIs, setIsSearchingAPIs] = useState(false)
 	const [lastAPISearch, setLastAPISearch] = useState(null)
+	
+	// Sync isVisible prop with internal isOpen state
+	useEffect(() => {
+		console.log('📱 Syncing isVisible prop:', isVisible, '-> isOpen:', isVisible)
+		setIsOpen(isVisible)
+	}, [isVisible])
+	
+	// Handle triggerContext changes
+	useEffect(() => {
+		if (triggerContext?.context) {
+			console.log('🎯 Setting field context from triggerContext:', triggerContext.context)
+			setFieldContext(triggerContext.context)
+		}
+	}, [triggerContext])
 	
 	// State for customer data that can be updated
 	const [userProfileState, setUserProfile] = useState(userProfile)
@@ -119,20 +141,24 @@ export default function WaliOSAssistant({
 	}, [])
 
 	useEffect(() => {
-		if (isVisible && !isOpen) {
+		// When assistant becomes visible/open, start appropriate conversation
+		if (isOpen) {
+			console.log('🚀 Assistant is now open, starting conversation...')
 			setTimeout(() => {
-				setIsOpen(true)
 				if (fieldContext) {
 					// Start with field-specific help
+					console.log('🎯 Starting field help for:', fieldContext.fieldName)
 					setTimeout(() => startFieldHelp(), 500)
 				} else if (isProactiveMode) {
+					console.log('🔄 Starting proactive conversation')
 					setTimeout(() => startProactiveConversation(), 500)
 				} else {
+					console.log('👋 Starting generic greeting')
 					setTimeout(() => startGenericGreeting(), 500)
 				}
 			}, 500)
 		}
-	}, [isVisible, isProactiveMode, fieldContext])
+	}, [isOpen, fieldContext, isProactiveMode])
 
 	useEffect(() => {
 		// When field context changes and assistant is already open
