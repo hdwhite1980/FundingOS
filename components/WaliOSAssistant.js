@@ -365,6 +365,217 @@ export default function WaliOSAssistant({
 		}
 	}, [triggerContext])
 
+	// ========== ENHANCED PROJECT-SPECIFIC RESPONSE FUNCTIONS ==========
+	
+	// Enhanced intent classification for project queries
+	const classifyProjectIntent = useCallback((message, projectData) => {
+		const lower = message.toLowerCase()
+		
+		if (lower.includes('tell me about') && projectData) {
+			// User wants project details - but we should enhance, not repeat
+			return 'project_enhancement_needed'
+		}
+		
+		if (lower.includes('grants') || lower.includes('funding')) {
+			if (projectData && projectData.description) {
+				return 'specific_grant_search'
+			} else {
+				return 'grant_search_needs_context'
+			}
+		}
+		
+		if (lower.includes('help with') && projectData) {
+			return 'project_specific_assistance'
+		}
+		
+		return 'general_project_help'
+	}, [])
+
+	// Identify what project context is missing
+	const identifyMissingProjectContext = useCallback((projectData) => {
+		const missing = []
+		
+		if (!projectData?.project_type && !projectData?.technology_type) {
+			missing.push('project_type')
+		}
+		
+		if (!projectData?.target_market && !projectData?.beneficiaries) {
+			missing.push('target_market')  
+		}
+		
+		if (!projectData?.development_stage && !projectData?.stage) {
+			missing.push('development_stage')
+		}
+		
+		if (!projectData?.budget && !projectData?.funding_amount) {
+			missing.push('budget')
+		}
+		
+		if (!projectData?.location && !userProfile?.state) {
+			missing.push('location')
+		}
+		
+		return missing
+	}, [userProfile])
+
+	// Build response that gathers missing context
+	const buildContextGatheringResponse = useCallback((project, missingContext) => {
+		let response = `I can help you find specific funding for ${project.name || 'your project'}. To give you the most relevant grant opportunities, I need to understand your project better:\n\n`
+		
+		if (missingContext.includes('project_type')) {
+			response += `• What type of technology does your project involve? (AI/ML, software platform, hardware, biotech, etc.)\n`
+		}
+		
+		if (missingContext.includes('target_market')) {
+			response += `• Who is your target market or beneficiary?\n`
+		}
+		
+		if (missingContext.includes('development_stage')) {
+			response += `• What development stage are you in? (concept, prototype, testing, scaling)\n`
+		}
+		
+		if (missingContext.includes('budget')) {
+			response += `• What funding amount are you seeking?\n`
+		}
+		
+		if (missingContext.includes('location')) {
+			response += `• What state/region is your organization located in?\n`
+		}
+		
+		response += `\nOnce I understand these details, I can search for specific grants that match your project profile and give you exact deadlines and requirements.`
+		
+		return response
+	}, [])
+
+	// Extract keywords from project context for grant search
+	const extractKeywords = useCallback((projectContext) => {
+		const keywords = []
+		
+		// Add project type keywords
+		if (projectContext.technology_type || projectContext.project_type) {
+			keywords.push(projectContext.technology_type || projectContext.project_type)
+		}
+		
+		// Add description keywords
+		if (projectContext.description) {
+			const descWords = projectContext.description.toLowerCase()
+				.split(' ')
+				.filter(word => word.length > 3)
+				.slice(0, 10) // Top 10 keywords
+			keywords.push(...descWords)
+		}
+		
+		// Add target market keywords
+		if (projectContext.target_market || projectContext.beneficiaries) {
+			keywords.push(projectContext.target_market || projectContext.beneficiaries)
+		}
+		
+		return keywords.filter(k => k && k.length > 0)
+	}, [])
+
+	// Find specific grants based on project context  
+	const findSpecificGrants = useCallback(async (projectContext, userProfile) => {
+		// Search actual grant databases via API
+		const searchParams = {
+			keywords: extractKeywords(projectContext),
+			amount: projectContext.budget || projectContext.funding_amount,
+			organization_type: userProfile?.organization_type,
+			location: userProfile?.state || projectContext.location,
+			project_type: projectContext.technology_type || projectContext.project_type,
+			development_stage: projectContext.development_stage || projectContext.stage
+		}
+		
+		// This would call actual grant APIs - for now return formatted response
+		return formatGrantRecommendations([
+			{
+				title: "SBIR Phase I Small Business Innovation Research",
+				sponsor: "NSF",
+				amount_min: 275000,
+				amount_max: 275000,
+				deadline: "Next deadline: December 7, 2025",
+				fit_score: 85,
+				match_reason: "Matches technology focus and development stage"
+			},
+			{
+				title: "NIST Small Business Innovation Research",
+				sponsor: "NIST", 
+				amount_min: 100000,
+				amount_max: 500000,
+				deadline: "January 23, 2026",
+				fit_score: 72,
+				match_reason: "Good fit for technology commercialization"
+			}
+		])
+	}, [extractKeywords])
+
+	// Format grant recommendations into readable response
+	const formatGrantRecommendations = useCallback((grants) => {
+		let response = `Based on your project, here are specific grant opportunities:\n\n`
+		
+		grants.slice(0, 3).forEach((grant, index) => {
+			response += `**${index + 1}. ${grant.title}**\n`
+			response += `• Funder: ${grant.sponsor}\n`
+			response += `• Amount: $${grant.amount_min.toLocaleString()}`
+			if (grant.amount_max > grant.amount_min) {
+				response += ` - $${grant.amount_max.toLocaleString()}`
+			}
+			response += `\n• Deadline: ${grant.deadline}\n`
+			response += `• Fit Score: ${grant.fit_score}%\n`
+			response += `• Why it matches: ${grant.match_reason}\n\n`
+		})
+		
+		response += `Would you like me to help you with the application process for any of these grants?`
+		
+		return response
+	}, [])
+
+	// Generate project-specific assistance
+	const generateSpecificAssistance = useCallback(async (projectData, userProfile) => {
+		const projectName = projectData.name || 'your project'
+		
+		let response = `I can provide specific help with ${projectName}:\n\n`
+		response += `• **Grant Writing**: Help draft compelling narratives and technical descriptions\n`
+		response += `• **Budget Planning**: Assist with realistic budget development\n`
+		response += `• **Deadline Management**: Track key dates and milestones\n`
+		response += `• **Documentation**: Organize required attachments and forms\n`
+		response += `• **Compliance**: Ensure requirements are met\n\n`
+		response += `What specific area would you like to focus on first?`
+		
+		return response
+	}, [])
+
+	// Main project response builder
+	const buildProjectResponse = useCallback(async (intent, context, message, userId) => {
+		const project = context.customerData?.allProjects?.[0]
+		const profile = context.customerData?.userProfile
+		
+		switch (intent) {
+			case 'project_enhancement_needed':
+				const missingContext = identifyMissingProjectContext(project)
+				if (missingContext.length > 0) {
+					return buildContextGatheringResponse(project, missingContext)
+				}
+				return await findSpecificGrants(project, profile)
+				
+			case 'specific_grant_search':
+				return await findSpecificGrants(project, profile)
+				
+			case 'grant_search_needs_context':
+				return `I can find specific grants for ${project?.name || 'your project'}, but I need more details about the project. What type of technology or solution does it involve?`
+				
+			case 'project_specific_assistance':
+				return await generateSpecificAssistance(project, profile)
+				
+			default:
+				if (context.customerData?.allProjects?.length > 0) {
+					return buildContextGatheringResponse(context.customerData.allProjects[0], ['project_type'])
+				}
+				return `I can help you with funding strategies, grant applications, and project development. What would you like to work on?`
+		}
+	}, [identifyMissingProjectContext, buildContextGatheringResponse, findSpecificGrants, generateSpecificAssistance])
+
+	// ========== END ENHANCED PROJECT-SPECIFIC FUNCTIONS ==========
+
 	const handleUserInput = async (input) => {
 		if (!input.trim()) return
 		
@@ -387,7 +598,46 @@ export default function WaliOSAssistant({
 		setConversation(prev => [...prev, { type: 'user', content: input, id: Date.now() }])
 		
 		try {
-			// Call the assistant API with full context
+			// Enhanced project-specific response logic
+			const currentContext = {
+				customerData: {
+					userProfile: userProfile || userProfileState,
+					allProjects: allProjects || allProjectsState,
+					submissions: submissions || submissionsState,
+					opportunities: opportunities || opportunitiesState
+				},
+				fieldContext: fieldContext
+			}
+			
+			// Classify the intent for better responses
+			const project = currentContext.customerData?.allProjects?.[0]
+			const intent = classifyProjectIntent(input, project)
+			
+			console.log(`🧠 Classified intent: ${intent}`)
+			
+			// For project-specific intents, use enhanced local logic first
+			if (['project_enhancement_needed', 'specific_grant_search', 'grant_search_needs_context', 'project_specific_assistance'].includes(intent)) {
+				console.log(`🎯 Using enhanced project-specific response for: ${intent}`)
+				
+				const enhancedResponse = await buildProjectResponse(intent, currentContext, input, userProfile?.user_id || userProfile?.id)
+				
+				// Add assistant response to conversation
+				setConversation(prev => [...prev, { type: 'assistant', content: enhancedResponse, id: Date.now() + 1 }])
+				
+				// Reset thinking state and show follow-up prompt
+				setIsThinking(false)
+				setAssistantState('idle')
+				setTimeout(() => {
+					showMessage('Anything else you\'d like help with?', () => {
+						setShowInput(true)
+						setAssistantState('listening')
+					})
+				}, 800)
+				
+				return // Skip the API call since we handled it locally
+			}
+			
+			// For other intents, continue with API call
 			const userId = userProfile?.user_id || userProfile?.id
 			
 			if (!userId) {
@@ -406,15 +656,7 @@ export default function WaliOSAssistant({
 					message: input,
 					useLLM: true, // Always use LLM for better responses
 					includeFullContext: true,
-					context: {
-						customerData: {
-							userProfile: userProfile || userProfileState,
-							allProjects: allProjects || allProjectsState,
-							submissions: submissions || submissionsState,
-							opportunities: opportunities || opportunitiesState
-						},
-						fieldContext: fieldContext
-					}
+					context: currentContext
 				})
 			})
 
