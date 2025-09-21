@@ -177,6 +177,18 @@ export default function WaliOSAssistant({
 		}, 800)
 	}, [fieldContext, setIsThinking, setAssistantState, showMessage, setShowInput])
 
+	const startGenericGreeting = useCallback(() => {
+		setIsThinking(true); setAssistantState('thinking')
+		setTimeout(() => {
+			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
+			showMessage(greeting, () => {
+				setTimeout(() => {
+					showMessage('What would you like to work on today?', () => { setShowInput(true); setAssistantState('listening') })
+				}, 1600)
+			})
+		}, 1200)
+	}, [userProfile, showMessage, setIsThinking, setAssistantState, setShowInput])
+
 	const startProactiveConversation = useCallback(() => {
 		setIsThinking(true); 
 		setAssistantState('thinking')
@@ -222,18 +234,6 @@ export default function WaliOSAssistant({
 			})
 		}, 800)
 	}, [triggerContext, showMessage, setIsThinking, setAssistantState, setShowInput, startGenericGreeting])
-
-	const startGenericGreeting = useCallback(() => {
-		setIsThinking(true); setAssistantState('thinking')
-		setTimeout(() => {
-			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
-			showMessage(greeting, () => {
-				setTimeout(() => {
-					showMessage('What would you like to work on today?', () => { setShowInput(true); setAssistantState('listening') })
-				}, 1600)
-			})
-		}, 1200)
-	}, [userProfile, showMessage, setIsThinking, setAssistantState, setShowInput])
 
 	useEffect(() => {
 		// When assistant becomes visible/open, start appropriate conversation
