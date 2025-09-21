@@ -88,7 +88,13 @@ export default function WaliOSAssistant({
 	useEffect(() => {
 		console.log('📱 Syncing isVisible prop:', isVisible, '-> isOpen:', isVisible)
 		setIsOpen(isVisible)
-	}, [isVisible])
+		
+		// If assistant is becoming visible and has no conversation, prepare for initial greeting
+		if (isVisible && conversation.length === 0 && !isThinking && !currentMessage) {
+			console.log('🎬 Assistant becoming visible with no content, preparing greeting...')
+			// Don't start conversation here - let the main useEffect handle it
+		}
+	}, [isVisible, conversation.length, isThinking, currentMessage])
 	
 	// Handle triggerContext changes
 	useEffect(() => {
@@ -294,21 +300,41 @@ export default function WaliOSAssistant({
 		// When assistant becomes visible/open, start appropriate conversation
 		if (isOpen) {
 			console.log('🚀 Assistant is now open, starting conversation...')
-			setTimeout(() => {
-				if (fieldContext) {
-					// Start with field-specific help
-					console.log('🎯 Starting field help for:', fieldContext.fieldName)
-					setTimeout(() => startFieldHelp(), 500)
-				} else if (isProactiveMode) {
-					console.log('🔄 Starting proactive conversation')
-					setTimeout(() => startProactiveConversation(), 500)
-				} else {
-					console.log('👋 Starting generic greeting')
-					setTimeout(() => startGenericGreeting(), 500)
-				}
-			}, 500)
+			console.log('   fieldContext:', fieldContext)
+			console.log('   isProactiveMode:', isProactiveMode)
+			console.log('   userProfile:', userProfile?.full_name)
+			console.log('   current conversation length:', conversation.length)
+			console.log('   currentMessage:', currentMessage)
+			console.log('   isThinking:', isThinking)
+			
+			// Only start conversation if we don't already have one in progress
+			if (conversation.length === 0 && !isThinking && !currentMessage) {
+				console.log('🎬 No existing conversation, starting new one...')
+				setTimeout(() => {
+					if (fieldContext) {
+						// Start with field-specific help
+						console.log('🎯 Starting field help for:', fieldContext.fieldName)
+						startFieldHelp()
+					} else if (isProactiveMode) {
+						console.log('🔄 Starting proactive conversation')
+						startProactiveConversation()
+					} else {
+						console.log('👋 Starting generic greeting')
+						startGenericGreeting()
+					}
+				}, 300) // Reduced delay for faster response
+			} else {
+				console.log('🔄 Conversation already exists or in progress, skipping new start')
+			}
+		} else {
+			// When assistant closes, clear the conversation to ensure fresh start next time
+			console.log('📴 Assistant closed, clearing conversation')
+			setConversation([])
+			setCurrentMessage('')
+			setShowInput(false)
+			setAssistantState('idle')
 		}
-	}, [isOpen, fieldContext, isProactiveMode, startFieldHelp, startProactiveConversation, startGenericGreeting])
+	}, [isOpen, fieldContext, isProactiveMode, conversation.length, isThinking, currentMessage, startFieldHelp, startProactiveConversation, startGenericGreeting])
 
 	useEffect(() => {
 		// When field context changes and assistant is already open
