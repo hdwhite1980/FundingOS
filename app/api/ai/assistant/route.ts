@@ -62,23 +62,23 @@ export async function POST(request: NextRequest) {
     const intent = classifyAssistantIntent(message)
     console.log(`Classified intent: ${intent}`)
 
-    // Generate structured base answer using REAL DATA and API integration
-    let baseAnswer
-    try {
-      baseAnswer = await generateAssistantResponse(intent, context, message, userId)
-      console.log(`Generated response length: ${baseAnswer?.length || 0} chars`)
-    } catch (error) {
-      console.error('Response generation failed:', error)
-      baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
-    }
-
-    // Persist user message + base intent (session already ensured)
+    // Persist user message early
     await logConversationTurn(activeSessionId, userId, 'user', message)
 
-    // For funding strategy advice, always use LLM for better responses
+    // For funding strategy advice, always use LLM - skip base generation to avoid duplication
     const shouldUseLLM = useLLM || intent === 'funding_strategy_advice'
 
     if (!shouldUseLLM) {
+      // Generate structured base answer using REAL DATA
+      let baseAnswer
+      try {
+        baseAnswer = await generateAssistantResponse(intent, context, message, userId)
+        console.log(`Generated response length: ${baseAnswer?.length || 0} chars`)
+      } catch (error) {
+        console.error('Response generation failed:', error)
+        baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
+      }
+
       await logConversationTurn(activeSessionId, userId, 'assistant', baseAnswer)
       
       console.log(`Fast response returned (${baseAnswer.length} chars)`)
@@ -125,8 +125,10 @@ Key principles:
 
     // Build enhanced context for LLM - special handling for funding strategy
     let contextSummary
+    let userPrompt: string
     
     if (intent === 'funding_strategy_advice') {
+      // For funding strategy, generate response directly with LLM using comprehensive context
       contextSummary = {
         request_type: 'funding_strategy',
         organization: {
@@ -162,7 +164,31 @@ Key principles:
           total_campaign_raised: context.funding_summary?.total_campaign_raised || 0
         }
       }
+
+      userPrompt = `The user is asking for funding strategy advice: "${message}"
+
+This is their organization and project data:
+${JSON.stringify(contextSummary, null, 2)}
+
+Please provide a comprehensive funding strategy response that:
+1. Analyzes their current projects and funding needs
+2. Provides specific grant recommendations based on their profile
+3. Suggests concrete next steps
+4. References their actual data (project names, amounts, EIN, etc.)
+5. Gives actionable advice they can implement immediately
+
+Do not generate generic advice - use their specific project data and organizational profile.`
+
     } else {
+      // For other intents, first generate base answer then enhance with LLM
+      let baseAnswer
+      try {
+        baseAnswer = await generateAssistantResponse(intent, context, message, userId)
+      } catch (error) {
+        console.error('Response generation failed:', error)
+        baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
+      }
+
       contextSummary = {
         organization: {
           name: context.profile?.organization_name || 'Not specified',
@@ -191,16 +217,10 @@ Key principles:
             amount: a.amount_requested,
             deadline: a.deadline
           })) || []
-        },
-        campaigns: {
-          count: context.campaigns?.length || 0,
-          total_raised: context.funding_summary?.total_campaign_raised || 0,
-          active: context.campaigns?.filter(c => c.status === 'active').length || 0
         }
       }
-    }
 
-    const userPrompt = `User Query: "${message}"
+      userPrompt = `User Query: "${message}"
 
 Intent Classification: ${intent}
 
@@ -211,15 +231,14 @@ Conversation Context: ${convoSummary?.summary || 'No previous conversation'}
 Real User Data:
 ${JSON.stringify(contextSummary, null, 2)}
 
-Please review the initial response and enhance it with the specific data shown above. If the initial response used generic language, replace it with specific information from the user's actual data. Be direct and helpful.
+Please review the initial response and enhance it with the specific data shown above. If the initial response used generic language, replace it with specific information from the user's actual data. Be direct and helpful.`
+    }
 
-${intent === 'funding_strategy_advice' ? 'This is a funding strategy request - provide comprehensive, actionable advice based on their actual projects and profile.' : ''}`
-
-    let refined = baseAnswer
+    let finalResponse = "I'm having trouble generating a response right now."
     let llmError: string | null = null
     
     try {
-      console.log('Calling LLM for refinement...')
+      console.log('Calling LLM for response generation...')
       
       const llmResp: any = await aiProviderService.generateCompletion('conversation', [
         { role: 'system', content: systemPrompt },
@@ -227,34 +246,47 @@ ${intent === 'funding_strategy_advice' ? 'This is a funding strategy request - p
       ], { maxTokens: intent === 'funding_strategy_advice' ? 1200 : 800, temperature: 0.3 })
       
       if (llmResp && typeof llmResp.content === 'string' && llmResp.content.trim()) {
-        refined = llmResp.content.trim()
-        console.log(`LLM refined response (${refined.length} chars)`)
+        finalResponse = llmResp.content.trim()
+        console.log(`LLM generated response (${finalResponse.length} chars)`)
       } else {
         llmError = 'No valid response from AI provider'
         console.warn('LLM returned empty/invalid response')
+        
+        // Fallback to base response for non-funding strategy intents
+        if (intent !== 'funding_strategy_advice') {
+          try {
+            finalResponse = await generateAssistantResponse(intent, context, message, userId)
+          } catch (fallbackError) {
+            finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
+          }
+        }
       }
     } catch (err: any) {
-      console.error('LLM refinement failed:', err?.message)
+      console.error('LLM generation failed:', err?.message)
       llmError = err?.message || 'AI provider error'
       
-      // For funding strategy, provide a note about the AI issue
-      if (intent === 'funding_strategy_advice') {
-        refined = `${baseAnswer}\n\n*Note: AI enhancement temporarily unavailable - showing data-based response.*`
+      // Fallback to base response for non-funding strategy intents
+      if (intent !== 'funding_strategy_advice') {
+        try {
+          finalResponse = await generateAssistantResponse(intent, context, message, userId)
+          finalResponse += `\n\n*Note: AI enhancement temporarily unavailable.*`
+        } catch (fallbackError) {
+          finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
+        }
       } else {
-        refined = baseAnswer
+        finalResponse = "I'm having trouble generating funding strategy recommendations right now. Please try again in a moment."
       }
     }
 
-    await logConversationTurn(activeSessionId, userId, 'assistant', refined)
+    await logConversationTurn(activeSessionId, userId, 'assistant', finalResponse)
     
-    console.log(`Enhanced response returned (${refined.length} chars)`)
+    console.log(`Enhanced response returned (${finalResponse.length} chars)`)
     
     return NextResponse.json({
       data: {
         mode,
         intent,
-        message: refined,
-        base: baseAnswer,
+        message: finalResponse,
         usedLLM: true,
         llmError,
         contextMeta: context.meta,
