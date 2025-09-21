@@ -1,8 +1,8 @@
-// WaliOSAssistant.js - Enhanced with better data handling
+// WaliOSAssistant.js - Enhanced with API integration support
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageCircle, X, Sparkles, Send, GripHorizontal } from 'lucide-react'
+import { MessageCircle, X, Sparkles, Send, GripHorizontal, Search, Database } from 'lucide-react'
 import assistantManager from '../utils/assistantManager'
 
 export default function WaliOSAssistant({ 
@@ -75,6 +75,8 @@ export default function WaliOSAssistant({
 	const [eyesBlink, setEyesBlink] = useState(false)
 	const [isAnimating, setIsAnimating] = useState(false)
 	const [fieldContext, setFieldContext] = useState(null)
+	const [isSearchingAPIs, setIsSearchingAPIs] = useState(false)
+	const [lastAPISearch, setLastAPISearch] = useState(null)
 	
 	// State for customer data that can be updated
 	const [userProfileState, setUserProfile] = useState(userProfile)
@@ -148,7 +150,7 @@ export default function WaliOSAssistant({
 		setAssistantState('thinking')
 		setTimeout(() => {
 			const fieldName = fieldContext.fieldName?.replace(/_/g, ' ') || 'this field'
-			const message = `🎯 I can help you with the "${fieldName}" field! Let me provide some guidance.`
+			const message = `I can help you with the "${fieldName}" field! Let me provide some guidance.`
 			showMessage(message, () => {
 				setTimeout(() => {
 					const helpMessage = generateFieldHelpMessage(fieldContext)
@@ -170,17 +172,17 @@ export default function WaliOSAssistant({
 		const fieldDisplayName = context.fieldName?.replace(/_/g, ' ') || 'this field'
 		
 		if (fieldName.includes('abstract') || fieldName.includes('summary')) {
-			return `📝 For the ${fieldDisplayName}, provide a concise overview of your project's goals, methods, and expected outcomes. Keep it clear and compelling - this is often the first thing reviewers read.`
+			return `For the ${fieldDisplayName}, provide a concise overview of your project's goals, methods, and expected outcomes. Keep it clear and compelling - this is often the first thing reviewers read.`
 		} else if (fieldName.includes('description') || fieldName.includes('narrative')) {
-			return `📖 For the ${fieldDisplayName}, provide detailed information about your project. Include background, methodology, timeline, and expected impact. Be specific and thorough.`
+			return `For the ${fieldDisplayName}, provide detailed information about your project. Include background, methodology, timeline, and expected impact. Be specific and thorough.`
 		} else if (fieldName.includes('budget') || fieldName.includes('cost')) {
-			return `💰 For the ${fieldDisplayName}, provide detailed financial information. Include direct and indirect costs, and justify all expenses. Make sure numbers align with your project scope.`
+			return `For the ${fieldDisplayName}, provide detailed financial information. Include direct and indirect costs, and justify all expenses. Make sure numbers align with your project scope.`
 		} else if (fieldName.includes('timeline') || fieldName.includes('schedule')) {
-			return `📅 For the ${fieldDisplayName}, provide a realistic timeline with key milestones. Break down major phases and deliverables with specific dates.`
+			return `For the ${fieldDisplayName}, provide a realistic timeline with key milestones. Break down major phases and deliverables with specific dates.`
 		} else if (fieldName.includes('personnel') || fieldName.includes('staff') || fieldName.includes('team')) {
-			return `👥 For the ${fieldDisplayName}, describe your team's qualifications and roles. Highlight relevant experience and how each member contributes to project success.`
+			return `For the ${fieldDisplayName}, describe your team's qualifications and roles. Highlight relevant experience and how each member contributes to project success.`
 		} else {
-			return `💡 For the ${fieldDisplayName}, I can help you create content based on your project details and similar successful applications. Let me know what specific guidance you need.`
+			return `For the ${fieldDisplayName}, I can help you create content based on your project details and similar successful applications. Let me know what specific guidance you need.`
 		}
 	}
 
@@ -188,11 +190,9 @@ export default function WaliOSAssistant({
 		setIsThinking(true); setAssistantState('thinking')
 		setTimeout(() => {
 			const message = generateProactiveMessage()
-			console.log('Generated proactive message:', JSON.stringify(message)) // Debug log
 			showMessage(message, () => {
 				setTimeout(() => {
 					const followUp = 'Would you like help with this now?'
-					console.log('Generated follow-up message:', JSON.stringify(followUp)) // Debug log
 					showMessage(followUp, () => { setShowInput(true); setAssistantState('listening') })
 				}, 1800)
 			})
@@ -202,7 +202,7 @@ export default function WaliOSAssistant({
 	const startGenericGreeting = () => {
 		setIsThinking(true); setAssistantState('thinking')
 		setTimeout(() => {
-			const greeting = `👋 Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
+			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
 			showMessage(greeting, () => {
 				setTimeout(() => {
 					showMessage('What would you like to work on today?', () => { setShowInput(true); setAssistantState('listening') })
@@ -220,23 +220,22 @@ export default function WaliOSAssistant({
 				const isSubmission = context?.submission
 				
 				if (isProject) {
-					return `⏰ Your project "${context.project.name}" has an application deadline in ${context?.daysLeft} days. Want help preparing?`
+					return `Your project "${context.project.name}" has an application deadline in ${context?.daysLeft} days. Want help preparing?`
 				} else if (isSubmission) {
-					return `⏰ You have a submission deadline in ${context?.daysLeft} days. Want focused help preparing?`
+					return `You have a submission deadline in ${context?.daysLeft} days. Want focused help preparing?`
 				} else {
-					return `⏰ You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
+					return `You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
 				}
 			}
-			case 'incomplete_application': return `📝 One application is ${context?.completionPercentage}% complete. I can help you finish it quickly.`
-			case 'compliance_issue': return `⚠️ Some compliance items need attention for ${context?.projectName}. Shall we review them?`
-			case 'new_opportunity': return `🎯 I found ${context?.matchCount} new high-fit opportunities for your portfolio.`
-			case 'grant_writing_assistance': return `✍️ I can strengthen your grant narratives and impact statements. Interested?`
-			default: return '💡 I have strategic recommendations to optimize your funding pipeline.'
+			case 'incomplete_application': return `One application is ${context?.completionPercentage}% complete. I can help you finish it quickly.`
+			case 'compliance_issue': return `Some compliance items need attention for ${context?.projectName}. Shall we review them?`
+			case 'new_opportunity': return `I found ${context?.matchCount} new high-fit opportunities for your portfolio.`
+			case 'grant_writing_assistance': return `I can strengthen your grant narratives and impact statements. Interested?`
+			default: return 'I have strategic recommendations to optimize your funding pipeline.'
 		}
 	}
 
 	const showMessage = (message, onComplete) => {
-		console.log('WaliOS showMessage called with:', JSON.stringify(message)) // Debug log
 		setIsThinking(false) 
 		setAssistantState('talking')
 		setIsAnimating(true)
@@ -246,7 +245,6 @@ export default function WaliOSAssistant({
 		
 		setTimeout(() => {
 			const fullMessage = message.toString() // Ensure it's a string
-			console.log('WaliOS fullMessage:', JSON.stringify(fullMessage)) // Debug log
 			
 			// Use a more direct approach - build the message directly instead of relying on prev state
 			let currentIndex = 0
@@ -257,12 +255,10 @@ export default function WaliOSAssistant({
 					
 					// Set the message directly from the source instead of using prev state
 					const newMessage = fullMessage.substring(0, currentIndex)
-					console.log(`Character ${currentIndex-1}: "${nextChar}" -> Message: "${newMessage}"`) // Debug log
 					
 					setCurrentMessage(newMessage)
 					setTimeout(typeWriter, 28) 
 				} else { 
-					console.log('Typewriter complete, final message:', fullMessage) // Debug log
 					setIsAnimating(false)
 					setAssistantState('idle')
 					if (onComplete) onComplete()
@@ -276,12 +272,20 @@ export default function WaliOSAssistant({
 	const handleUserInput = async (input) => {
 		if (!input.trim()) return
 		
-		console.log(`🎤 User input: "${input}"`)
+		console.log(`User input: "${input}"`)
 		
 		setInputValue('')
 		setShowInput(false)
 		setAssistantState('thinking')
 		setIsThinking(true)
+		
+		// Check if this is a funding strategy request to show API search indicator
+		const isFundingRequest = input.toLowerCase().match(/\b(funding\s+ideas|grant\s+ideas|funding\s+options|what\s+grants|funding\s+strategies|find\s+grants|search\s+grants)\b/)
+		
+		if (isFundingRequest) {
+			setIsSearchingAPIs(true)
+			setLastAPISearch(new Date())
+		}
 		
 		// Add user message to conversation
 		setConversation(prev => [...prev, { type: 'user', content: input, id: Date.now() }])
@@ -294,7 +298,7 @@ export default function WaliOSAssistant({
 				throw new Error('No user ID available')
 			}
 			
-			console.log(`📡 Calling assistant API for user ${userId}`)
+			console.log(`Calling assistant API for user ${userId}`)
 			
 			const response = await fetch('/api/ai/assistant', {
 				method: 'POST',
@@ -326,8 +330,13 @@ export default function WaliOSAssistant({
 			const json = await response.json()
 			const assistantMessage = json.data?.message || json.message || 'I apologize, but I had trouble processing your request.'
 			
-			console.log(`🤖 Assistant response: "${assistantMessage.substring(0, 100)}..."`)
-			console.log(`📊 Debug info:`, json.data?.debugInfo)
+			console.log(`Assistant response: "${assistantMessage.substring(0, 100)}..."`)
+			console.log(`Debug info:`, json.data?.debugInfo)
+			
+			// Show API integration indicator if this was a funding strategy request
+			if (json.data?.apiIntegration === 'active') {
+				console.log('API integration was active for this request')
+			}
 			
 			// Add assistant response to conversation
 			setConversation(prev => [...prev, { type: 'assistant', content: assistantMessage, id: Date.now() + 1 }])
@@ -343,7 +352,7 @@ export default function WaliOSAssistant({
 			})
 			
 		} catch (error) {
-			console.error('❌ Assistant API failed:', error)
+			console.error('Assistant API failed:', error)
 			
 			const errorMessage = `I'm having trouble connecting to the assistant service. Error: ${error.message}`
 			
@@ -357,6 +366,13 @@ export default function WaliOSAssistant({
 					})
 				}, 1000)
 			})
+		} finally {
+			// Reset API search indicator after a delay
+			if (isFundingRequest) {
+				setTimeout(() => {
+					setIsSearchingAPIs(false)
+				}, 2000)
+			}
 		}
 	}
 
@@ -446,8 +462,19 @@ export default function WaliOSAssistant({
 									{isDragging && !expanded && (
 										<span className="text-emerald-500 text-xs">Moving...</span>
 									)}
+									{isSearchingAPIs && (
+										<div className="flex items-center gap-1 text-blue-500">
+											<Search className="w-3 h-3 animate-pulse" />
+											<span className="text-xs">Searching APIs...</span>
+										</div>
+									)}
 								</div>
 								<div className="flex items-center gap-1">
+									{lastAPISearch && (
+										<div className="text-xs text-green-500 flex items-center gap-1" title="Recent API search">
+											<Database className="w-3 h-3" />
+										</div>
+									)}
 									<button onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600 p-1" title={expanded ? 'Collapse' : 'Expand'}>
 										{expanded ? <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 11h6v6H7v-4H3v-2zm14-2h-6V3h2v4h4v2z"/></svg> : <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3h2v6H3V7h4V3zm6 14h-2v-6h6v2h-4v4z"/></svg>}
 									</button>
@@ -467,12 +494,26 @@ export default function WaliOSAssistant({
 										<span className="inline-block px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 shadow-sm">
 											{isThinking ? (
 												<span className="flex items-center gap-2">
-													<span className="flex space-x-1">
-														<span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.2s]"></span>
-														<span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.1s]"></span>
-														<span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-													</span>
-													Thinking...
+													{isSearchingAPIs ? (
+														<>
+															<Search className="w-3 h-3 text-blue-500 animate-pulse" />
+															<span className="flex space-x-1">
+																<span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.2s]"></span>
+																<span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.1s]"></span>
+																<span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+															</span>
+															Searching grant databases...
+														</>
+													) : (
+														<>
+															<span className="flex space-x-1">
+																<span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.2s]"></span>
+																<span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.1s]"></span>
+																<span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+															</span>
+															Thinking...
+														</>
+													)}
 												</span>
 											) : (
 												<>
@@ -519,6 +560,9 @@ export default function WaliOSAssistant({
 								)}
 								{assistantState === 'listening' && (
 									<motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }} className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+								)}
+								{isSearchingAPIs && (
+									<motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 0.8, repeat: Infinity }} className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 rounded-full" />
 								)}
 							</div>
 							<AnimatePresence>
