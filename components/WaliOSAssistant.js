@@ -137,6 +137,104 @@ export default function WaliOSAssistant({
 		return () => clearInterval(blinkInterval)
 	}, [])
 
+	// Define callback functions BEFORE they are used in useEffect dependencies
+	const startFieldHelp = useCallback(() => {
+		if (!fieldContext) return
+		
+		setIsThinking(true)
+		setAssistantState('thinking')
+		setTimeout(() => {
+			const fieldName = fieldContext.fieldName?.replace(/_/g, ' ') || 'this field'
+			const message = `I can help you with the "${fieldName}" field! Let me provide some guidance.`
+			showMessage(message, () => {
+				setTimeout(() => {
+					// Inline field help message generation to avoid dependency issues
+					const fieldDisplayName = fieldName
+					let helpMessage = ''
+					
+					if (fieldName.includes('description') || fieldName.includes('summary')) {
+						helpMessage = `For the ${fieldDisplayName}, focus on your unique approach and measurable outcomes. Be specific about who benefits and how.`
+					} else if (fieldName.includes('budget') || fieldName.includes('amount') || fieldName.includes('cost')) {
+						helpMessage = `For the ${fieldDisplayName}, break down costs clearly and justify each expense. Show how it relates to project activities.`
+					} else if (fieldName.includes('timeline') || fieldName.includes('schedule')) {
+						helpMessage = `For the ${fieldDisplayName}, provide a realistic timeline with key milestones. Break down major phases and deliverables with specific dates.`
+					} else if (fieldName.includes('personnel') || fieldName.includes('staff') || fieldName.includes('team')) {
+						helpMessage = `For the ${fieldDisplayName}, describe your team's qualifications and roles. Highlight relevant experience and how each member contributes to project success.`
+					} else {
+						helpMessage = `For the ${fieldDisplayName}, I can help you create content based on your project details and similar successful applications. Let me know what specific guidance you need.`
+					}
+					
+					showMessage(helpMessage, () => {
+						setTimeout(() => {
+							showMessage('Would you like me to generate content for this field, or do you have specific questions?', () => {
+								setShowInput(true)
+								setAssistantState('listening')
+							})
+						}, 1500)
+					})
+				}, 1800)
+			})
+		}, 800)
+	}, [fieldContext, setIsThinking, setAssistantState, showMessage, setShowInput])
+
+	const startProactiveConversation = useCallback(() => {
+		setIsThinking(true); 
+		setAssistantState('thinking')
+		setTimeout(() => {
+			// Generate proactive message inline to avoid circular dependency
+			const { trigger, context } = triggerContext
+			let message = null
+			
+			// Only generate messages if we have real data to support them
+			switch (trigger) {
+				case 'deadline_approaching': {
+					const isProject = context?.project
+					const isSubmission = context?.submission
+					
+					if (isProject) {
+						message = `Your project "${context.project.name}" has an application deadline in ${context?.daysLeft} days. Want help preparing?`
+					} else if (isSubmission) {
+						message = `You have a submission deadline in ${context?.daysLeft} days. Want focused help preparing?`
+					} else {
+						message = `You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
+					}
+					break
+				}
+				case 'incomplete_application': 
+					// Only show if we have actual completion data
+					if (context?.completionPercentage && context.completionPercentage < 100) {
+						message = `One application is ${context.completionPercentage}% complete. I can help you finish it quickly.`
+					}
+					break
+			}
+			
+			// If no valid proactive message, fall back to generic greeting
+			if (!message) {
+				startGenericGreeting()
+				return
+			}
+			
+			showMessage(message, () => {
+				setTimeout(() => {
+					const followUp = 'Would you like help with this now?'
+					showMessage(followUp, () => { setShowInput(true); setAssistantState('listening') })
+				}, 1800)
+			})
+		}, 800)
+	}, [triggerContext, showMessage, setIsThinking, setAssistantState, setShowInput, startGenericGreeting])
+
+	const startGenericGreeting = useCallback(() => {
+		setIsThinking(true); setAssistantState('thinking')
+		setTimeout(() => {
+			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
+			showMessage(greeting, () => {
+				setTimeout(() => {
+					showMessage('What would you like to work on today?', () => { setShowInput(true); setAssistantState('listening') })
+				}, 1600)
+			})
+		}, 1200)
+	}, [userProfile, showMessage, setIsThinking, setAssistantState, setShowInput])
+
 	useEffect(() => {
 		// When assistant becomes visible/open, start appropriate conversation
 		if (isOpen) {
@@ -166,30 +264,6 @@ export default function WaliOSAssistant({
 
 	useEffect(() => { if (showInput && inputRef.current) inputRef.current.focus() }, [showInput])
 
-	const startFieldHelp = useCallback(() => {
-		if (!fieldContext) return
-		
-		setIsThinking(true)
-		setAssistantState('thinking')
-		setTimeout(() => {
-			const fieldName = fieldContext.fieldName?.replace(/_/g, ' ') || 'this field'
-			const message = `I can help you with the "${fieldName}" field! Let me provide some guidance.`
-			showMessage(message, () => {
-				setTimeout(() => {
-					const helpMessage = generateFieldHelpMessage(fieldContext)
-					showMessage(helpMessage, () => {
-						setTimeout(() => {
-							showMessage('Would you like me to generate content for this field, or do you have specific questions?', () => {
-								setShowInput(true)
-								setAssistantState('listening')
-							})
-						}, 1500)
-					})
-				}, 1200)
-			})
-		}, 500)
-	}, [fieldContext])
-
 	const generateFieldHelpMessage = (context) => {
 		const fieldName = context.fieldName?.toLowerCase() || ''
 		const fieldDisplayName = context.fieldName?.replace(/_/g, ' ') || 'this field'
@@ -208,38 +282,6 @@ export default function WaliOSAssistant({
 			return `For the ${fieldDisplayName}, I can help you create content based on your project details and similar successful applications. Let me know what specific guidance you need.`
 		}
 	}
-
-	const startProactiveConversation = useCallback(() => {
-		setIsThinking(true); setAssistantState('thinking')
-		setTimeout(() => {
-			const message = generateProactiveMessage()
-			
-			// If no valid proactive message, fall back to generic greeting
-			if (!message) {
-				startGenericGreeting()
-				return
-			}
-			
-			showMessage(message, () => {
-				setTimeout(() => {
-					const followUp = 'Would you like help with this now?'
-					showMessage(followUp, () => { setShowInput(true); setAssistantState('listening') })
-				}, 1800)
-			})
-		}, 800)
-	}, [generateProactiveMessage, showMessage, setIsThinking, setAssistantState, setShowInput])
-
-	const startGenericGreeting = useCallback(() => {
-		setIsThinking(true); setAssistantState('thinking')
-		setTimeout(() => {
-			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
-			showMessage(greeting, () => {
-				setTimeout(() => {
-					showMessage('What would you like to work on today?', () => { setShowInput(true); setAssistantState('listening') })
-				}, 1600)
-			})
-		}, 800)
-	}, [userProfile?.full_name, showMessage, setIsThinking, setAssistantState, setShowInput])
 
 	const generateProactiveMessage = useCallback(() => {
 		const { trigger, context } = triggerContext
