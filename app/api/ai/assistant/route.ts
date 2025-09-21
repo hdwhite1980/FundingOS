@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // LLM ENHANCEMENT PATH: Base response + LLM enhancement for other intents
+    // LLM ENHANCEMENT PATH: Base response + LLM enhancement for non-funding strategy intents
     console.log('🔄 Using LLM enhancement for intent:', intent)
     
     // Generate base response first
@@ -134,107 +134,43 @@ Key principles:
 - Focus on funding strategy and grant applications
 - Use formatting for visual clarity but avoid excessive emojis`
 
-    // Build enhanced context for LLM - special handling for funding strategy
-    let contextSummary
-    let userPrompt
-    
-    if (intent === 'funding_strategy_advice') {
-      // For funding strategy, generate response directly with LLM using comprehensive context
-      contextSummary = {
-        request_type: 'funding_strategy_advice',
-        organization: {
-          name: context.profile?.organization_name || 'Not specified',
-          type: context.profile?.organization_type || 'Not specified',
-          ein: context.profile?.ein || context.profile?.tax_id || 'Not on file',
-          location: `${context.profile?.city || ''} ${context.profile?.state || ''}`.trim() || 'Not specified',
-          certifications: {
-            minority_owned: context.profile?.minority_owned || false,
-            woman_owned: context.profile?.woman_owned || false,
-            veteran_owned: context.profile?.veteran_owned || false,
-            small_business: context.profile?.small_business || false
-          }
-        },
-        projects: {
-          count: context.projects?.length || 0,
-          total_funding_needed: context.projects?.reduce((sum, p) => {
-            const amount = p.funding_request_amount || p.funding_needed || p.total_project_budget || 0
-            return sum + parseFloat(amount || 0)
-          }, 0) || 0,
-          active_projects: context.projects?.filter(p => ['active', 'in_progress', 'draft'].includes(p.status)).map(p => ({
-            name: p.name,
-            type: p.project_type,
-            industry: p.industry,
-            funding_needed: p.funding_request_amount || p.funding_needed || p.total_project_budget,
-            description: p.description?.substring(0, 200)
-          })) || []
-        },
-        funding_history: {
-          applications_count: context.applications?.length || 0,
-          total_requested: context.funding_summary?.total_requested || 0,
-          campaigns_count: context.campaigns?.length || 0,
-          total_campaign_raised: context.funding_summary?.total_campaign_raised || 0
-        }
+    // Build enhanced context for LLM - only for non-funding strategy intents
+    const contextSummary = {
+      organization: {
+        name: context.profile?.organization_name || 'Not specified',
+        type: context.profile?.organization_type || 'Not specified',
+        ein: context.profile?.ein || context.profile?.tax_id || 'Not on file',
+        location: context.profile?.city || 'Not specified'
+      },
+      projects: {
+        count: context.projects?.length || 0,
+        recent: context.projects?.slice(0, 3).map(p => ({
+          name: p.name || p.title,
+          status: p.status,
+          budget: p.total_project_budget || p.funding_needed
+        })) || []
+      },
+      applications: {
+        count: context.applications?.length || 0,
+        total_requested: context.funding_summary?.total_requested || 0,
+        by_status: context.applications?.reduce((acc, app) => {
+          acc[app.status] = (acc[app.status] || 0) + 1
+          return acc
+        }, {}) || {},
+        recent: context.applications?.slice(0, 3).map(a => ({
+          title: a.title,
+          status: a.status,
+          amount: a.amount_requested,
+          deadline: a.deadline
+        })) || []
+      },
+      campaigns: {
+        count: context.campaigns?.length || 0,
+        total_raised: context.funding_summary?.total_campaign_raised || 0,
       }
-      
-      userPrompt = `The user is asking for funding strategy advice: "${message}"
+    }
 
-This is their organization and project data:
-${JSON.stringify(contextSummary, null, 2)}
-
-Please provide a comprehensive funding strategy response that:
-1. Analyzes their current projects and funding needs
-2. Provides specific grant recommendations based on their profile
-3. Suggests concrete next steps
-4. References their actual data (project names, amounts, EIN, etc.)
-5. Gives actionable advice they can implement immediately
-
-Do not generate generic advice - use their specific project data and organizational profile.`
-    } else {
-      // For other intents, first generate base answer then enhance with LLM
-      let baseAnswer
-      try {
-        baseAnswer = await generateAssistantResponse(intent, context, message, userId)
-      } catch (error) {
-        console.error('Response generation failed:', error)
-        baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
-      }
-
-      contextSummary = {
-        organization: {
-          name: context.profile?.organization_name || 'Not specified',
-          type: context.profile?.organization_type || 'Not specified',
-          ein: context.profile?.ein || context.profile?.tax_id || 'Not on file',
-          location: context.profile?.city || 'Not specified'
-        },
-        projects: {
-          count: context.projects?.length || 0,
-          recent: context.projects?.slice(0, 3).map(p => ({
-            name: p.name || p.title,
-            status: p.status,
-            budget: p.total_project_budget || p.funding_needed
-          })) || []
-        },
-        applications: {
-          count: context.applications?.length || 0,
-          total_requested: context.funding_summary?.total_requested || 0,
-          by_status: context.applications?.reduce((acc, app) => {
-            acc[app.status] = (acc[app.status] || 0) + 1
-            return acc
-          }, {}) || {},
-          recent: context.applications?.slice(0, 3).map(a => ({
-            title: a.title,
-            status: a.status,
-            amount: a.amount_requested,
-            deadline: a.deadline
-          })) || []
-        },
-        campaigns: {
-          count: context.campaigns?.length || 0,
-          total_raised: context.funding_summary?.total_campaign_raised || 0,
-        }
-      }
-
-      userPrompt = `User Query: "${message}"
+    const userPrompt = `User Query: "${message}"
 
 Intent Classification: ${intent}
 
@@ -243,9 +179,7 @@ Initial Response Generated: "${baseAnswer}"
 Conversation Context: ${convoSummary?.summary || 'No previous conversation'}
 
 Real User Data:
-${JSON.stringify(contextSummary, null, 2)}
-
-Please review the initial response and enhance it with the specific data shown above. If the initial response used generic language, replace it with specific information from the user's actual data. Be direct and helpful.`
+${JSON.stringify(contextSummary, null, 2)}`
 
     let finalResponse = "I'm having trouble generating a response right now."
     let llmError: string | null = null
@@ -256,7 +190,7 @@ Please review the initial response and enhance it with the specific data shown a
       const llmResp: any = await aiProviderService.generateCompletion('conversation', [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
-      ], { maxTokens: intent === 'funding_strategy_advice' ? 1200 : 800, temperature: 0.3 })
+      ], { maxTokens: 800, temperature: 0.3 })
       
       if (llmResp && typeof llmResp.content === 'string' && llmResp.content.trim()) {
         finalResponse = llmResp.content.trim()
@@ -264,31 +198,12 @@ Please review the initial response and enhance it with the specific data shown a
       } else {
         llmError = 'No valid response from AI provider'
         console.warn('LLM returned empty/invalid response')
-        
-        // Fallback to base response for non-funding strategy intents
-        if (intent !== 'funding_strategy') {
-          try {
-            finalResponse = await generateAssistantResponse(intent, context, message, userId)
-          } catch (fallbackError) {
-            finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
-          }
-        }
+        finalResponse = baseAnswer // Use the base response as fallback
       }
     } catch (err: any) {
       console.error('LLM generation failed:', err?.message)
       llmError = err?.message || 'AI provider error'
-      
-      // Fallback to base response for non-funding strategy intents
-      if (intent !== 'funding_strategy_advice') {
-        try {
-          finalResponse = await generateAssistantResponse(intent, context, message, userId)
-          finalResponse += `\n\n*Note: AI enhancement temporarily unavailable.*`
-        } catch (fallbackError) {
-          finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
-        }
-      } else {
-        finalResponse = "I'm having trouble generating funding strategy recommendations right now. Please try again in a moment."
-      }
+      finalResponse = baseAnswer + `\n\n*Note: AI enhancement temporarily unavailable.*`
     }
 
     await logConversationTurn(activeSessionId, userId, 'assistant', finalResponse)
@@ -306,18 +221,17 @@ Please review the initial response and enhance it with the specific data shown a
         sessionId: activeSessionId,
         cachedContext: cached,
         convoSummary,
-        apiIntegration: intent === 'funding_strategy_advice' ? 'active' : 'passive',
+        apiIntegration: 'passive',
         debugInfo: {
           projectsCount: context.projects?.length || 0,
           applicationsCount: context.applications?.length || 0,
           campaignsCount: context.campaigns?.length || 0,
           hasEIN: !!(context.profile?.ein || context.profile?.tax_id),
           orgName: context.profile?.organization_name || 'Unknown',
-          fundingStrategy: intent === 'funding_strategy_advice'
+          fundingStrategy: false
         }
       }
     })
-    }
 
   } catch (error: any) {
     console.error('Request failed:', error)
