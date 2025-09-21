@@ -896,7 +896,7 @@ export default function EnhancedApplicationTracker({
 
   // Enhanced completion step rendering
   const renderCompletionStep = () => (
-    <div className="space-y-6 max-h-full overflow-y-auto">
+    <div className="space-y-6">
       <div className="text-center">
         <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
           <CheckCircle className="w-6 h-6 text-emerald-600" />
@@ -960,7 +960,7 @@ export default function EnhancedApplicationTracker({
                 <span className="text-sm text-slate-500">{Object.keys(filledForm).length} fields detected</span>
               </div>
               <div className="relative">
-                <div className="max-h-[500px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50 scroll-smooth" id="form-fields-container">
+                <div className="max-h-[400px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50" id="form-fields-container">
                   {Object.entries(filledForm).map(([field, value]) => (
                     <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
@@ -1034,20 +1034,34 @@ export default function EnhancedApplicationTracker({
                     </div>
                   )}
                 </div>
-                {/* Scroll to bottom indicator */}
+                {/* Scroll indicator for many fields */}
                 {Object.keys(filledForm).length > 5 && (
-                  <button
-                    onClick={() => {
-                      const container = document.getElementById('form-fields-container')
-                      if (container) {
-                        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
-                      }
-                    }}
-                    className="absolute bottom-2 right-2 bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
-                    title="Scroll to bottom"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
+                  <div className="absolute bottom-2 right-2 flex flex-col gap-1">
+                    <button
+                      onClick={() => {
+                        const container = document.getElementById('form-fields-container')
+                        if (container) {
+                          container.scrollTo({ top: 0, behavior: 'smooth' })
+                        }
+                      }}
+                      className="bg-blue-600 text-white p-1 rounded shadow-lg hover:bg-blue-700 transition-colors text-xs"
+                      title="Scroll to top"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => {
+                        const container = document.getElementById('form-fields-container')
+                        if (container) {
+                          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+                        }
+                      }}
+                      className="bg-blue-600 text-white p-1 rounded shadow-lg hover:bg-blue-700 transition-colors text-xs"
+                      title="Scroll to bottom"
+                    >
+                      ↓
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -1082,7 +1096,7 @@ export default function EnhancedApplicationTracker({
         </div>
       )}
 
-      <div className="flex space-x-4">
+      <div className="flex space-x-4 pt-4 border-t border-slate-200 bg-white sticky bottom-0">
         <button
           onClick={() => setStep('analyze')}
           className="py-3 px-4 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
@@ -1100,18 +1114,6 @@ export default function EnhancedApplicationTracker({
             <Download className="w-5 h-5" />
           )}
           <span>{processing ? 'Generating...' : 'Download Application'}</span>
-        </button>
-        <button 
-          onClick={() => {
-            const element = document.getElementById('form-fields-container')
-            if (element) {
-              element.scrollTop = element.scrollHeight
-            }
-          }}
-          className="py-3 px-4 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center space-x-2"
-        >
-          <ArrowDown className="w-5 h-5" />
-          <span>Scroll Down</span>
         </button>
         <button
           onClick={() => setStep('review')}
@@ -1569,76 +1571,74 @@ export default function EnhancedApplicationTracker({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
       >
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-6 border-b border-slate-200">
-            <h2 className="text-xl font-bold text-slate-900">Enhanced AI Application Tracker</h2>
-            <div className="flex items-center space-x-2">
-              {(step !== 'upload' || uploadedFiles.length > 0) && (
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors flex items-center space-x-1"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save & Close</span>
-                </button>
-              )}
-              <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Step indicators */}
-          <div className="flex items-center justify-center px-6 py-4 bg-slate-50">
-            {['upload', 'analyze', 'missing_info', 'complete', 'review'].map((stepName, index) => (
-              <div key={stepName} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step === stepName
-                    ? 'bg-emerald-600 text-white'
-                    : index < ['upload', 'analyze', 'missing_info', 'complete', 'review'].indexOf(step)
-                    ? 'bg-emerald-100 text-emerald-600'
-                    : 'bg-slate-100 text-slate-400'
-                }`}>
-                  {index + 1}
-                </div>
-                {index < 4 && (
-                  <div className={`w-12 h-0.5 mx-2 ${
-                    index < ['upload', 'analyze', 'missing_info', 'complete', 'review'].indexOf(step)
-                      ? 'bg-emerald-600'
-                      : 'bg-slate-200'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0">
+          <h2 className="text-xl font-bold text-slate-900">Enhanced AI Application Tracker</h2>
+          <div className="flex items-center space-x-2">
+            {(step !== 'upload' || uploadedFiles.length > 0) && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors flex items-center space-x-1"
               >
-                {step === 'upload' && renderUploadStep()}
-                {step === 'analyze' && renderAnalysisStep()}
-                {step === 'missing_info' && (
-                  <MissingInfoCollector
-                    analysisResult={aiAnalysisResult}
-                    onInfoCollected={handleInfoCollected}
-                    onCancel={handleInfoCancelled}
-                    userProfile={userProfile}
-                    projectData={projects.find(p => p.id === selectedProject)}
-                  />
-                )}
-                {step === 'complete' && renderCompletionStep()}
-                {step === 'review' && renderReviewStep()}
-              </motion.div>
-            </AnimatePresence>
+                <Save className="w-4 h-4" />
+                <span>Save & Close</span>
+              </button>
+            )}
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
           </div>
+        </div>
+
+        {/* Step indicators */}
+        <div className="flex items-center justify-center px-6 py-4 bg-slate-50 flex-shrink-0">
+          {['upload', 'analyze', 'missing_info', 'complete', 'review'].map((stepName, index) => (
+            <div key={stepName} className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                step === stepName
+                  ? 'bg-emerald-600 text-white'
+                  : index < ['upload', 'analyze', 'missing_info', 'complete', 'review'].indexOf(step)
+                  ? 'bg-emerald-100 text-emerald-600'
+                  : 'bg-slate-100 text-slate-400'
+              }`}>
+                {index + 1}
+              </div>
+              {index < 4 && (
+                <div className={`w-12 h-0.5 mx-2 ${
+                  index < ['upload', 'analyze', 'missing_info', 'complete', 'review'].indexOf(step)
+                    ? 'bg-emerald-600'
+                    : 'bg-slate-200'
+                }`} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {step === 'upload' && renderUploadStep()}
+              {step === 'analyze' && renderAnalysisStep()}
+              {step === 'missing_info' && (
+                <MissingInfoCollector
+                  analysisResult={aiAnalysisResult}
+                  onInfoCollected={handleInfoCollected}
+                  onCancel={handleInfoCancelled}
+                  userProfile={userProfile}
+                  projectData={projects.find(p => p.id === selectedProject)}
+                />
+              )}
+              {step === 'complete' && renderCompletionStep()}
+              {step === 'review' && renderReviewStep()}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </motion.div>
 
