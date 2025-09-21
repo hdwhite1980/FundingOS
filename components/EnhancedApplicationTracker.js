@@ -5,7 +5,7 @@
  * Integrates with enhanced document analysis for better form field extraction
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Upload, 
@@ -29,7 +29,12 @@ import {
   BookOpen,
   Target,
   Users,
-  ChevronDown
+  ChevronDown,
+  Check,
+  Loader,
+  AlertTriangle,
+  Star,
+  Eye
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import smartFormCompletionService from '../lib/smartFormCompletionService'
@@ -206,6 +211,178 @@ const generateSpecificQuestion = (fieldName, context) => {
   return question
 }
 
+// Enhanced Features: Real-Time Validation, Auto-Save, and Smart Suggestions
+
+// Utility function for debouncing
+const debounce = (func, wait) => {
+  let timeout
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
+// Format time ago utility
+const formatTimeAgo = (date) => {
+  const seconds = Math.floor((new Date() - date) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return 'earlier today'
+}
+
+// Real-time field validation
+const validateFieldInRealTime = (fieldName, value, context) => {
+  const warnings = []
+  const suggestions = []
+  
+  // Character limits with smart warnings
+  if (context.wordLimit && value.length > context.wordLimit * 0.9) {
+    warnings.push(`Approaching ${context.wordLimit} character limit`)
+  }
+  
+  // Content quality checks
+  if (fieldName.includes('narrative') && value.length > 100) {
+    if (!value.match(/\d+/)) {
+      suggestions.push("Consider adding specific numbers or metrics")
+    }
+    if (!value.includes('will') && !value.includes('plan')) {
+      suggestions.push("Consider adding future-oriented language about your plans")
+    }
+  }
+  
+  // Required field completeness
+  if (context.isRequired && !value.trim()) {
+    warnings.push("This field is required for submission")
+  }
+  
+  return { warnings, suggestions }
+}
+
+// Intelligent field suggestions based on other completed fields
+const generateContextualSuggestions = (fieldName, allFormData, projectData, userProfile) => {
+  const suggestions = []
+  
+  // Cross-reference existing data
+  if (fieldName.includes('contact_person') && allFormData.organization_name && userProfile?.full_name) {
+    suggestions.push({
+      label: "Use your name as primary contact",
+      value: userProfile.full_name,
+      reason: "Most common for single-person organizations"
+    })
+  }
+  
+  // Smart budget calculations
+  if (fieldName.includes('indirect_cost') && allFormData.direct_costs) {
+    const directCosts = parseFloat(allFormData.direct_costs) || 0
+    if (directCosts > 0) {
+      suggestions.push({
+        label: "Standard 10% indirect rate",
+        value: (directCosts * 0.1).toFixed(0),
+        reason: "Typical for small organizations"
+      })
+    }
+  }
+  
+  // Project duration suggestions
+  if (fieldName.includes('duration') && projectData?.funding_needed) {
+    const funding = parseFloat(projectData.funding_needed) || 0
+    if (funding < 25000) {
+      suggestions.push({
+        label: "6 months",
+        value: "6",
+        reason: "Typical for smaller grants"
+      })
+    } else if (funding < 100000) {
+      suggestions.push({
+        label: "12 months", 
+        value: "12",
+        reason: "Standard for medium grants"
+      })
+    }
+  }
+  
+  return suggestions
+}
+
+// Detect potential errors before they become issues
+const detectPotentialErrors = (fieldName, value, allFormData) => {
+  const errors = []
+  
+  // Budget consistency checks
+  if (fieldName.includes('budget') && allFormData.project_duration && value) {
+    const monthlyBudget = parseFloat(value) / parseInt(allFormData.project_duration)
+    if (monthlyBudget > 50000) {
+      errors.push({
+        message: "Monthly budget seems high for project duration",
+        suggestion: "Review budget breakdown",
+        severity: 'warning'
+      })
+    }
+  }
+  
+  // Date logic checks
+  if (fieldName.includes('start_date') && allFormData.end_date && value) {
+    if (new Date(value) >= new Date(allFormData.end_date)) {
+      errors.push({
+        message: "Start date should be before end date",
+        fix: () => suggestDateFix(value, allFormData.end_date),
+        severity: 'error'
+      })
+    }
+  }
+  
+  // EIN format check
+  if ((fieldName.includes('ein') || fieldName.includes('tax_id')) && value) {
+    if (!/^\d{2}-\d{7}$/.test(value)) {
+      errors.push({
+        message: "EIN should be in format XX-XXXXXXX",
+        suggestion: "Use 9 digits with hyphen",
+        severity: 'error'
+      })
+    }
+  }
+  
+  return errors
+}
+
+// Progress gamification calculations
+const calculateAchievements = (completionPercentage, fieldsCompleted) => {
+  const achievements = []
+  
+  if (fieldsCompleted >= 1) {
+    achievements.push({ id: 'first-field', name: 'Getting Started' })
+  }
+  if (completionPercentage >= 25) {
+    achievements.push({ id: 'quarter', name: 'Quarter Way' })
+  }
+  if (completionPercentage >= 50) {
+    achievements.push({ id: 'halfway', name: 'Halfway Hero' })
+  }
+  if (completionPercentage >= 75) {
+    achievements.push({ id: 'almost-there', name: 'Almost There' })
+  }
+  if (completionPercentage >= 90) {
+    achievements.push({ id: 'final-stretch', name: 'Final Stretch' })
+  }
+  
+  return achievements
+}
+
+const getNextMilestone = (completionPercentage) => {
+  if (completionPercentage < 25) return "Complete 25% to unlock 'Quarter Way' badge"
+  if (completionPercentage < 50) return "Reach 50% to become a 'Halfway Hero'"
+  if (completionPercentage < 75) return "Get to 75% for 'Almost There' status"
+  if (completionPercentage < 90) return "Push to 90% for 'Final Stretch' achievement"
+  return "You're almost done! Complete the application!"
+}
+
 export default function EnhancedApplicationTracker({ 
   projects, 
   userProfile, 
@@ -249,6 +426,17 @@ export default function EnhancedApplicationTracker({
   const [currentFieldForAI, setCurrentFieldForAI] = useState(null)
   const [assistantContext, setAssistantContext] = useState(null)
   const [formCacheId, setFormCacheId] = useState(null)
+
+  // Enhanced Features State
+  const [fieldValidations, setFieldValidations] = useState({}) // Real-time validation results
+  const [saveStatus, setSaveStatus] = useState('idle') // 'idle', 'saving', 'success', 'error'
+  const [lastSaved, setLastSaved] = useState(null)
+  const [unsavedChanges, setUnsavedChanges] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewMode, setPreviewMode] = useState('funder') // 'funder' or 'print'
+  const [contextualSuggestions, setContextualSuggestions] = useState({})
+  const [applicationDeadline, setApplicationDeadline] = useState(null)
+  const [completionPercentage, setCompletionPercentage] = useState(0)
 
   // Debug assistant state changes
   useEffect(() => {
@@ -332,6 +520,62 @@ export default function EnhancedApplicationTracker({
       completionSuggestions: generateCompletionSuggestions(fieldName, fieldType, currentProject, userProfile)
     }
   }
+
+  // Smart Auto-Save Functionality
+  const saveFormProgress = useCallback(async (formData) => {
+    try {
+      setSaveStatus('saving')
+      // Here you would save to your backend/database
+      // For now, we'll simulate the save operation
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log('💾 Auto-saved form data:', Object.keys(formData).length, 'fields')
+      setSaveStatus('success')
+      setLastSaved(new Date())
+      setUnsavedChanges(false)
+      return true
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+      setSaveStatus('error')
+      return false
+    }
+  }, [])
+
+  const debouncedAutoSave = useCallback(
+    debounce((formData) => {
+      if (Object.keys(formData).length > 0) {
+        saveFormProgress(formData)
+      }
+    }, 2000),
+    [saveFormProgress]
+  )
+
+  // Calculate completion percentage
+  const calculateCompletionPercentage = useCallback(() => {
+    const totalFields = enhancedFormStructure ? 
+      Object.keys(enhancedFormStructure.dataFields || {}).length + 
+      Object.keys(enhancedFormStructure.narrativeFields || {}).length : 
+      Object.keys(filledForm).length || 1
+    
+    const completedFields = Object.values(filledForm).filter(value => 
+      value && value.toString().trim().length > 0
+    ).length
+    
+    return Math.round((completedFields / Math.max(totalFields, 1)) * 100)
+  }, [filledForm, enhancedFormStructure])
+
+  // Update completion percentage when form changes
+  useEffect(() => {
+    const percentage = calculateCompletionPercentage()
+    setCompletionPercentage(percentage)
+  }, [filledForm, calculateCompletionPercentage])
+
+  // Auto-save when form data changes
+  useEffect(() => {
+    if (Object.keys(filledForm).length > 0) {
+      setUnsavedChanges(true)
+      debouncedAutoSave(filledForm)
+    }
+  }, [filledForm, debouncedAutoSave])
 
   // Enhanced file upload and analysis with better error handling and structure parsing
   const handleFileUpload = async (files) => {
@@ -1182,75 +1426,148 @@ export default function EnhancedApplicationTracker({
           
           {Object.keys(filledForm).length > 0 && (
             <div className="space-y-4">
+              {/* Progress Gamification */}
+              <ProgressGamification 
+                completionPercentage={completionPercentage}
+                fieldsCompleted={Object.values(filledForm).filter(value => value && value.toString().trim().length > 0).length}
+                totalFields={Object.keys(filledForm).length}
+              />
+              
+              {/* Deadline Context */}
+              <DeadlineContext 
+                deadline={applicationDeadline} 
+                completionPercentage={completionPercentage} 
+              />
+              
               <div className="flex justify-between items-center">
                 <h4 className="font-medium text-slate-900">Edit Application Fields:</h4>
                 <span className="text-sm text-slate-500">{Object.keys(filledForm).length} fields detected</span>
               </div>
               <div className="relative">
                 <div className="max-h-[400px] overflow-y-auto space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50" id="form-fields-container">
-                  {Object.entries(filledForm).map(([field, value]) => (
-                    <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-slate-700 capitalize">
-                          {field.replace(/_/g, ' ')}:
-                        </label>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => {
-                              console.log('🔧 Enhanced WALI-OS Help clicked for field:', field)
-                              
-                              const enhancedContext = createEnhancedFieldContext(field, value)
-                              setCurrentFieldForAI(field)
-                              setAssistantContext({
-                                ...enhancedContext,
-                                specificQuestion: generateSpecificQuestion(field, enhancedContext),
-                                actionableHelp: true
-                              })
-                              
-                              console.log('🎯 Enhanced context created:', enhancedContext)
-                              setShowWaliOSAssistant(true)
-                            }}
-                            className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
-                            title="Get WALI-OS help with this field"
-                          >
-                            <Brain className="w-3 h-3" />
-                            WALI-OS Help
-                          </button>
+                  {Object.entries(filledForm).map(([field, value]) => {
+                    const fieldContext = createEnhancedFieldContext(field, value)
+                    const validation = validateFieldInRealTime(field, value || '', fieldContext)
+                    const suggestions = generateContextualSuggestions(field, filledForm, projects.find(p => p.id === selectedProject), userProfile)
+                    
+                    return (
+                      <div key={field} className="bg-white rounded-md p-3 border border-slate-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-sm font-medium text-slate-700 capitalize">
+                            {field.replace(/_/g, ' ')}:
+                            {fieldContext.isRequired && <span className="text-red-500 ml-1">*</span>}
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                console.log('🔧 Enhanced WALI-OS Help clicked for field:', field)
+                                
+                                const enhancedContext = createEnhancedFieldContext(field, value)
+                                setCurrentFieldForAI(field)
+                                setAssistantContext({
+                                  ...enhancedContext,
+                                  specificQuestion: generateSpecificQuestion(field, enhancedContext),
+                                  actionableHelp: true
+                                })
+                                
+                                console.log('🎯 Enhanced context created:', enhancedContext)
+                                setShowWaliOSAssistant(true)
+                              }}
+                              className="text-xs px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded flex items-center gap-1 transition-colors"
+                              title="Get WALI-OS help with this field"
+                            >
+                              <Brain className="w-3 h-3" />
+                              WALI-OS Help
+                            </button>
+                          </div>
                         </div>
+                        
+                        {/* Contextual suggestions */}
+                        {suggestions.length > 0 && (
+                          <div className="mb-2 p-2 bg-blue-50 rounded border border-blue-200">
+                            <div className="text-xs font-medium text-blue-900 mb-1">Smart suggestions:</div>
+                            {suggestions.map((suggestion, idx) => (
+                              <div key={idx} className="text-xs mb-1 last:mb-0">
+                                <button
+                                  onClick={() => setFilledForm(prev => ({ ...prev, [field]: suggestion.value }))}
+                                  className="text-blue-600 hover:text-blue-800 underline mr-1"
+                                >
+                                  {suggestion.label}
+                                </button>
+                                <span className="text-slate-600">- {suggestion.reason}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {field.toLowerCase().includes('description') || 
+                         field.toLowerCase().includes('narrative') ||
+                         field.toLowerCase().includes('summary') ||
+                         field.toLowerCase().includes('statement') ||
+                         field.toLowerCase().includes('objective') ||
+                         field.toLowerCase().includes('plan') ||
+                         field.toLowerCase().includes('approach') ||
+                         (typeof value === 'string' && value.length > 100) ? (
+                          <div>
+                            <textarea
+                              value={value || ''}
+                              onChange={(e) => {
+                                setFilledForm(prev => ({ ...prev, [field]: e.target.value }))
+                                setUnsavedChanges(true)
+                              }}
+                              onFocus={() => setCurrentFieldForAI(field)}
+                              onBlur={() => setCurrentFieldForAI(null)}
+                              className="w-full p-3 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                              rows={4}
+                              placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
+                            />
+                            {fieldContext.wordLimit && (
+                              <div className="text-xs text-slate-500 mt-1">
+                                {(value || '').length}/{fieldContext.wordLimit} characters
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <input
+                            type={field.toLowerCase().includes('amount') || field.toLowerCase().includes('budget') || field.toLowerCase().includes('funding') ? 'number' : 
+                                  field.toLowerCase().includes('date') || field.toLowerCase().includes('deadline') ? 'date' : 
+                                  field.toLowerCase().includes('email') ? 'email' : 
+                                  field.toLowerCase().includes('phone') ? 'tel' : 'text'}
+                            value={value || ''}
+                            onChange={(e) => {
+                              setFilledForm(prev => ({ ...prev, [field]: e.target.value }))
+                              setUnsavedChanges(true)
+                            }}
+                            onFocus={() => setCurrentFieldForAI(field)}
+                            onBlur={() => setCurrentFieldForAI(null)}
+                            className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
+                          />
+                        )}
+                        
+                        {/* Real-time validation */}
+                        {(validation.warnings.length > 0 || validation.suggestions.length > 0) && (
+                          <div className="mt-2">
+                            {validation.warnings.map((warning, idx) => (
+                              <div key={idx} className="text-xs text-amber-700 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                {warning}
+                              </div>
+                            ))}
+                            {validation.suggestions.map((suggestion, idx) => (
+                              <div key={idx} className="text-xs text-blue-700 flex items-center gap-1">
+                                <Lightbulb className="w-3 h-3" />
+                                {suggestion}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Error prevention */}
+                        <ErrorPrevention fieldName={field} value={value} allFormData={filledForm} />
                       </div>
-                      {field.toLowerCase().includes('description') || 
-                       field.toLowerCase().includes('narrative') ||
-                       field.toLowerCase().includes('summary') ||
-                       field.toLowerCase().includes('statement') ||
-                       field.toLowerCase().includes('objective') ||
-                       field.toLowerCase().includes('plan') ||
-                       field.toLowerCase().includes('approach') ||
-                       (typeof value === 'string' && value.length > 100) ? (
-                        <textarea
-                          value={value || ''}
-                          onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
-                          onFocus={() => setCurrentFieldForAI(field)}
-                          onBlur={() => setCurrentFieldForAI(null)}
-                          className="w-full p-3 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-                          rows={4}
-                          placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
-                        />
-                      ) : (
-                        <input
-                          type={field.toLowerCase().includes('amount') || field.toLowerCase().includes('budget') || field.toLowerCase().includes('funding') ? 'number' : 
-                                field.toLowerCase().includes('date') || field.toLowerCase().includes('deadline') ? 'date' : 
-                                field.toLowerCase().includes('email') ? 'email' : 
-                                field.toLowerCase().includes('phone') ? 'tel' : 'text'}
-                          value={value || ''}
-                          onChange={(e) => setFilledForm(prev => ({ ...prev, [field]: e.target.value }))}
-                          onFocus={() => setCurrentFieldForAI(field)}
-                          onBlur={() => setCurrentFieldForAI(null)}
-                          className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
-                        />
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                   {Object.keys(filledForm).length === 0 && (
                     <div className="text-center py-8 text-slate-500">
                       <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
@@ -1288,6 +1605,9 @@ export default function EnhancedApplicationTracker({
                   </div>
                 )}
               </div>
+              
+              {/* Application Preview */}
+              <ApplicationPreview formData={filledForm} formStructure={enhancedFormStructure} />
             </div>
           )}
         </div>
@@ -1789,6 +2109,151 @@ export default function EnhancedApplicationTracker({
     return '0'
   }
 
+  // Enhanced Component Definitions
+  const SaveIndicator = ({ status, lastSaved }) => (
+    <div className="text-xs text-slate-500 flex items-center gap-1">
+      {status === 'saving' && <Loader className="w-3 h-3 animate-spin" />}
+      {status === 'success' && <Check className="w-3 h-3 text-green-500" />}
+      {status === 'error' && <AlertTriangle className="w-3 h-3 text-red-500" />}
+      {lastSaved && `Saved ${formatTimeAgo(lastSaved)}`}
+    </div>
+  )
+
+  const ErrorPrevention = ({ fieldName, value, allFormData }) => {
+    const errors = detectPotentialErrors(fieldName, value, allFormData)
+    
+    if (errors.length === 0) return null
+    
+    return (
+      <div className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded">
+        <div className="text-sm font-medium text-amber-800">Potential Issues:</div>
+        {errors.map((error, idx) => (
+          <div key={idx} className="text-xs text-amber-700 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            {error.message}
+            {error.fix && (
+              <button 
+                onClick={() => error.fix()}
+                className="text-blue-600 hover:text-blue-800 underline ml-1"
+              >
+                Fix this
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const ProgressGamification = ({ completionPercentage, fieldsCompleted, totalFields }) => {
+    const achievements = calculateAchievements(completionPercentage, fieldsCompleted)
+    
+    return (
+      <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="font-medium">Application Progress</div>
+          <div className="text-sm text-slate-600">{fieldsCompleted}/{totalFields} fields</div>
+        </div>
+        
+        <div className="w-full bg-slate-200 rounded-full h-2 mb-3">
+          <div 
+            className="bg-gradient-to-r from-emerald-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${completionPercentage}%` }}
+          />
+        </div>
+        
+        {achievements.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {achievements.map(achievement => (
+              <div key={achievement.id} className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                <Star className="w-3 h-3" />
+                {achievement.name}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="text-xs text-slate-600 mt-2">
+          Next: {getNextMilestone(completionPercentage)}
+        </div>
+      </div>
+    )
+  }
+
+  const ApplicationPreview = ({ formData, formStructure }) => {
+    if (!showPreview) return null
+    
+    return (
+      <div className="border-l-4 border-blue-500 bg-blue-50 p-4 mt-4">
+        <div className="flex justify-between items-center mb-3">
+          <h4 className="font-medium">Preview: How Funders Will See This</h4>
+          <div className="flex items-center gap-2">
+            <select 
+              value={previewMode} 
+              onChange={(e) => setPreviewMode(e.target.value)}
+              className="text-sm border rounded px-2 py-1"
+            >
+              <option value="funder">Funder's View</option>
+              <option value="print">Print Version</option>
+            </select>
+            <button 
+              onClick={() => setShowPreview(false)}
+              className="text-slate-500 hover:text-slate-700"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded border max-h-64 overflow-y-auto p-3">
+          {Object.entries(formData).map(([field, value]) => (
+            <div key={field} className="mb-2 border-b pb-2">
+              <div className="text-xs font-medium text-slate-600">
+                {formStructure?.dataFields?.[field]?.label || field.replace(/_/g, ' ')}
+              </div>
+              <div className="text-sm">
+                {value || <span className="text-red-400 italic">Missing</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const DeadlineContext = ({ deadline, completionPercentage }) => {
+    if (!deadline) return null
+    
+    const daysLeft = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
+    const estimatedTimeLeft = Math.ceil((100 - completionPercentage) * 0.5)
+    
+    if (daysLeft < 0) return null
+    
+    return (
+      <div className={`p-3 rounded-lg mb-4 ${
+        daysLeft <= 3 ? 'bg-red-50 border border-red-200' :
+        daysLeft <= 7 ? 'bg-amber-50 border border-amber-200' :
+        'bg-blue-50 border border-blue-200'
+      }`}>
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="font-medium">
+              {daysLeft} days until deadline
+            </div>
+            <div className="text-sm text-slate-600">
+              Estimated {estimatedTimeLeft} hours remaining
+            </div>
+          </div>
+          {daysLeft <= 7 && (
+            <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm">
+              Schedule Work Time
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <motion.div
@@ -1798,8 +2263,19 @@ export default function EnhancedApplicationTracker({
         className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
       >
         <div className="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0">
-          <h2 className="text-xl font-bold text-slate-900">Enhanced AI Application Tracker</h2>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Enhanced AI Application Tracker</h2>
+            <SaveIndicator status={saveStatus} lastSaved={lastSaved} />
+          </div>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className="px-3 py-1 text-xs bg-slate-100 text-slate-700 hover:bg-slate-200 rounded flex items-center space-x-1"
+              title="Preview application"
+            >
+              <Eye className="w-3 h-3" />
+              Preview
+            </button>
             {(step !== 'upload' || uploadedFiles.length > 0) && (
               <button
                 onClick={onClose}
