@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/sam-gov-sync",
       "schedule": "0 12,14,16,17,19,20,22,23,1 * * *"
+    },
+    {
+      "path": "/api/ufa/run",
+      "schedule": "0 */6 * * *"
     }
   ],
   "functions": {
@@ -35,6 +39,9 @@
     },
     "pages/api/ai/agent/cron/start-agents.js": {
       "maxDuration": 60
+    },
+    "pages/api/ufa/run.js": {
+      "maxDuration": 120
     }
   },
   "env": {
