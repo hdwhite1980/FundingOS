@@ -1257,7 +1257,24 @@ QUESTIONS: [What you need to know to help better, if anything]`
 			}
 
 			const json = await response.json()
-			const assistantMessage = json.data?.message || json.message || 'I apologize, but I had trouble processing your request.'
+			
+			// Handle both new integrated response format and legacy format
+			let assistantMessage
+			let metadata = null
+			
+			if (json.success !== undefined) {
+				// New integrated format from generateAssistantResponse
+				assistantMessage = json.message || 'I apologize, but I had trouble processing your request.'
+				metadata = json.metadata
+				console.log('Using new integrated response format')
+				if (metadata) {
+					console.log('Response metadata:', metadata)
+				}
+			} else {
+				// Legacy format
+				assistantMessage = json.data?.message || json.message || 'I apologize, but I had trouble processing your request.'
+				console.log('Using legacy response format')
+			}
 			
 			console.log(`Assistant response: "${assistantMessage.substring(0, 100)}..."`)
 			console.log(`Debug info:`, json.data?.debugInfo)

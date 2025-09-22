@@ -76,25 +76,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (!shouldUseLLM) {
-      // NON-LLM PATH: Base response only
-      let baseAnswer
-      try {
-        baseAnswer = await generateAssistantResponse(intent, context, message, userId)
-        console.log(`Generated base response length: ${baseAnswer?.length || 0} chars`)
-      } catch (error) {
-        console.error('Response generation failed:', error)
-        baseAnswer = "I'm having trouble accessing your data right now. Please try again in a moment."
-      }
-
-      await logConversationTurn(activeSessionId, userId, 'assistant', baseAnswer)
+      // NON-LLM PATH: Use integrated generateAssistantResponse
+      console.log(`🎯 Processing intent '${intent}' with integrated response system`)
       
-      console.log(`✅ Fast response returned (${baseAnswer.length} chars)`)
+      const result = await generateAssistantResponse(intent, context, message, userId)
+      
+      const responseMessage = result.success ? result.response : "I'm having trouble accessing your information right now. Please try again in a moment."
+      
+      await logConversationTurn(activeSessionId, userId, 'assistant', responseMessage || 'Error generating response')
+      
+      console.log(`✅ Fast response returned (${responseMessage?.length || 0} chars)`)
       
       return NextResponse.json({
+        success: result.success,
+        message: responseMessage,
+        metadata: result.metadata,
         data: {
           mode,
           intent,
-          message: baseAnswer,
+          message: responseMessage,
           usedLLM: false,
           contextMeta: context.meta,
           sessionId: activeSessionId,
