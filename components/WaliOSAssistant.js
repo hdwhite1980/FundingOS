@@ -1158,11 +1158,14 @@ QUESTIONS: [What you need to know to help better, if anything]`
 			setLastAPISearch(new Date())
 		}
 		
-		// Check for field-specific help requests
+		// Check for field-specific help requests (but exclude EIN/DUNS/etc. lookups)
 		const inputLower = input.toLowerCase()
 		const fieldHelpPattern = /help\s+with|explain\s+(this|the|a)?\s*(field)?|what\s+is\s+(this|the|a)?\s*(field)?|fill\s+out|complete\s+(this|the|a)?\s*(field)?|field\s+help|form\s+help|how\s+to\s+(fill|complete)|what\s+goes\s+(in|here)|what\s+should\s+i\s+put|how\s+do\s+i\s+(fill|complete)|explain.*field|help.*field/i
 		
-		if (fieldHelpPattern.test(input)) {
+		// Exclude specific data lookups from field help - these should go to API assistant
+		const isDataLookup = /\b(ein|tax\s*id|duns|cage|sam)\b|what.*my.*(ein|duns|cage|sam)|my\s+(ein|duns|cage|sam)|show.*my.*(ein|duns|cage|sam)|tell.*my.*(ein|duns|cage|sam)/i.test(inputLower)
+		
+		if (fieldHelpPattern.test(input) && !isDataLookup) {
 			try {
 				const fieldResponse = await getDynamicFieldHelp(input, {
 					// minimal formData - prefer full form data if available from props
