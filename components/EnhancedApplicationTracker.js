@@ -45,7 +45,6 @@ import WaliOSAssistant from './WaliOSAssistant'
 import MissingInfoCollector from './MissingInfoCollector'
 import AIAnalysisModal from './AIAnalysisModal'
 import AIDocumentAnalysisModal from './AIDocumentAnalysisModal'
-import assistantManager from '../utils/assistantManager'
 
 // Enhanced Field Context Helper Functions
 // Helper function to create field-specific context
@@ -770,56 +769,6 @@ export default function EnhancedApplicationTracker({
       assistantContext: assistantContext ? { fieldName: assistantContext.fieldName } : null
     })
   }, [showWaliOSAssistant, currentFieldForAI, assistantContext])
-
-  // Auto-trigger assistant when field is focused
-  useEffect(() => {
-    if (currentFieldForAI) {
-      console.log('🎯 Field focused, auto-triggering assistant:', currentFieldForAI)
-      
-      // Create enhanced field context
-      const fieldContext = createEnhancedFieldContext(currentFieldForAI, filledForm[currentFieldForAI])
-      
-      // Set field context in assistant manager
-      assistantManager.setFieldContext({
-        fieldName: currentFieldForAI,
-        fieldValue: filledForm[currentFieldForAI],
-        opportunityId: opportunity?.id,
-        formData: filledForm,
-        ...fieldContext
-      })
-      
-      // Auto-show assistant with context after a brief delay to avoid jarring transitions
-      setTimeout(() => {
-        setAssistantContext({
-          fieldName: currentFieldForAI,
-          fieldValue: filledForm[currentFieldForAI],
-          opportunity: opportunity,
-          ...fieldContext
-        })
-        setShowWaliOSAssistant(true)
-      }, 300) // 300ms delay for smooth UX
-    } else {
-      // Field unfocused - don't immediately hide assistant, let user decide
-      console.log('🎯 Field unfocused, clearing field context but keeping assistant open')
-      assistantManager.setFieldContext(null)
-    }
-  }, [currentFieldForAI, filledForm, opportunity])
-
-  // Enhanced focus handler for automatic assistant triggering
-  const handleFieldFocus = useCallback((fieldName) => {
-    console.log('🔍 Field focused:', fieldName)
-    setCurrentFieldForAI(fieldName)
-  }, [])
-
-  const handleFieldBlur = useCallback((fieldName) => {
-    console.log('🔍 Field blurred:', fieldName)
-    // Don't immediately clear - let the assistant stay open for user interaction
-    setTimeout(() => {
-      if (currentFieldForAI === fieldName) {
-        setCurrentFieldForAI(null)
-      }
-    }, 1000) // 1 second delay before clearing
-  }, [currentFieldForAI])
 
   // Save state when it changes
   useEffect(() => {
@@ -1837,7 +1786,7 @@ export default function EnhancedApplicationTracker({
                                 console.log('🔧 Enhanced WALI-OS Help clicked for field:', field)
                                 
                                 const enhancedContext = createEnhancedFieldContext(field, value)
-                                handleFieldFocus(field)
+                                setCurrentFieldForAI(field)
                                 setAssistantContext({
                                   ...enhancedContext,
                                   specificQuestion: generateSpecificQuestion(field, enhancedContext),
@@ -1889,8 +1838,8 @@ export default function EnhancedApplicationTracker({
                                 setFilledForm(prev => ({ ...prev, [field]: e.target.value }))
                                 setUnsavedChanges(true)
                               }}
-                              onFocus={() => handleFieldFocus(field)}
-                              onBlur={() => handleFieldBlur(field)}
+                              onFocus={() => setCurrentFieldForAI(field)}
+                              onBlur={() => setCurrentFieldForAI(null)}
                               className="w-full p-3 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                               rows={4}
                               placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
@@ -1912,8 +1861,8 @@ export default function EnhancedApplicationTracker({
                               setFilledForm(prev => ({ ...prev, [field]: e.target.value }))
                               setUnsavedChanges(true)
                             }}
-                            onFocus={() => handleFieldFocus(field)}
-                            onBlur={() => handleFieldBlur(field)}
+                            onFocus={() => setCurrentFieldForAI(field)}
+                            onBlur={() => setCurrentFieldForAI(null)}
                             className="w-full p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             placeholder={`Enter ${field.replace(/_/g, ' ').toLowerCase()}...`}
                           />
