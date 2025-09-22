@@ -2701,35 +2701,33 @@ export default function EnhancedApplicationTracker({
       )}
       
       {/* WALI-OS Assistant Integration */}
-      {showWaliOSAssistant && (
-        <WaliOSAssistant
-          isVisible={showWaliOSAssistant}
-          onClose={() => {
-            setShowWaliOSAssistant(false)
-            setCurrentFieldForAI(null)
-            setAssistantContext(null)
-          }}
-          userProfile={customerData?.userProfile || userProfile}
-          allProjects={customerData?.allProjects || projects || []}
-          opportunities={customerData?.opportunities || opportunities || []}
-          submissions={customerData?.submissions || submissions || []}
-          customerData={customerData}
-          isProactiveMode={false}
-          triggerContext={{
-            trigger: 'field_help',
-            context: assistantContext
-          }}
-          onFormUpdate={(fieldName, content) => {
-            if (fieldName && content) {
-              setFilledForm(prev => ({
-                ...prev,
-                [fieldName]: content
-              }))
-              toast.success(`Updated ${fieldName.replace(/_/g, ' ')}`)
-            }
-          }}
-        />
-      )}
+      <WaliOSAssistant
+        isVisible={showWaliOSAssistant}
+        onClose={() => {
+          setShowWaliOSAssistant(false)
+          setCurrentFieldForAI(null)
+          setAssistantContext(null)
+        }}
+        userProfile={customerData?.userProfile || userProfile}
+        allProjects={customerData?.allProjects || projects || []}
+        opportunities={customerData?.opportunities || opportunities || []}
+        submissions={customerData?.submissions || submissions || []}
+        customerData={customerData}
+        isProactiveMode={false}
+        triggerContext={{
+          trigger: 'field_help',
+          context: assistantContext
+        }}
+        onFormUpdate={(fieldName, content) => {
+          if (fieldName && content) {
+            setFilledForm(prev => ({
+              ...prev,
+              [fieldName]: content
+            }))
+            toast.success(`Updated ${fieldName.replace(/_/g, ' ')}`)
+          }
+        }}
+      />
     </div>
   )
 }

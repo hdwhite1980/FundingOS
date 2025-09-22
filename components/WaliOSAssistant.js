@@ -1298,8 +1298,9 @@ QUESTIONS: [What you need to know to help better, if anything]`
 	}, [isDragging, dragStart, position])
 
 	const handleClose = () => { setIsOpen(false); setTimeout(() => onClose && onClose(), 280) }
-	if (!isVisible) return null
 
+	// Always render the component so it's mounted and the assistant manager can keep the instance.
+	// Visibility is controlled with the `isVisible` prop and internal `isOpen` state.
 	return (
 		<>
 			<style jsx>{`
@@ -1331,6 +1332,12 @@ QUESTIONS: [What you need to know to help better, if anything]`
 					display: flex;
 					flex-direction: column;
 				}
+				.assistant-hidden {
+					opacity: 0.0;
+					pointer-events: none;
+					height: 0;
+					overflow: hidden;
+				}
 				.assistant-content {
 					flex: 1;
 					overflow-y: auto;
@@ -1338,7 +1345,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 				}
 			`}</style>
 			<div 
-				className={`fixed z-50 ${expanded ? 'inset-0 p-4 md:p-6 flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''}`}
+				className={`fixed z-50 ${expanded ? 'inset-0 p-4 md:p-6 flex items-end justify-end bg-black/20 backdrop-blur-sm' : ''} ${!isVisible ? 'assistant-hidden' : ''}`}
 				data-wali-assistant="true"
 				style={expanded ? {} : 
 					position.x === 0 && position.y === 0 
@@ -1354,6 +1361,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 							initial={{ opacity: 0, scale: 0.95, y: 20 }}
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							exit={{ opacity: 0, scale: 0.95, y: 20 }}
+							transition={{ duration: 0.18 }}
 							className={`${expanded ? 'relative w-full h-full md:w-[600px] md:h-[80vh]' : 'w-80 max-w-[90vw] max-h-[70vh]'} bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col p-4 min-h-[300px] ${isDragging && !expanded ? 'shadow-2xl ring-2 ring-emerald-500/50' : ''} ${expanded ? 'resize-none' : 'resize overflow-auto min-w-64 max-w-[500px] min-h-[200px]'}`}
 							style={!expanded ? { 
 								cursor: isDragging ? 'grabbing' : 'default',

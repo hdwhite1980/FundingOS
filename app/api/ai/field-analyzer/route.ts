@@ -22,11 +22,18 @@ export async function POST(request: NextRequest) {
     const cachedDefinition = await getCachedDefinition(cacheKey)
     
     if (cachedDefinition && !isStale(cachedDefinition)) {
-      console.log(`Using cached definition for: ${fieldName}`)
+      console.log(`Cache HIT for field definition: ${fieldName}`)
       
-      // Update usage count
-      await updateUsageCount(cacheKey)
-      
+      // Update usage count safely (fallback to client-side increment if RPC not available)
+      try {
+        await supabaseAdmin
+          .from('field_definitions_cache')
+          .update({ usage_count: (cachedDefinition.usage_count || 0) + 1, last_accessed: new Date().toISOString() })
+          .eq('field_name', cacheKey)
+      } catch (incErr) {
+        console.warn('Usage count increment failed, will rely on upsert later:', incErr?.message)
+      }
+
       return NextResponse.json({ 
         success: true, 
         analysis: cachedDefinition.definition,
