@@ -191,7 +191,8 @@ Please provide a response using the specific data shown above. Reference actual 
         console.warn('LLM returned empty/invalid response')
         // Fallback to base generation if LLM fails
         try {
-          finalResponse = await generateAssistantResponse(intent, context, message, userId)
+          const fallbackResult = await generateAssistantResponse(intent, context, message, userId)
+          finalResponse = fallbackResult.success ? fallbackResult.response || 'Error generating response' : 'Error generating response'
         } catch (fallbackError) {
           finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
         }
@@ -201,7 +202,8 @@ Please provide a response using the specific data shown above. Reference actual 
       llmError = err?.message || 'AI provider error'
       // Fallback to base generation if LLM fails
       try {
-        finalResponse = await generateAssistantResponse(intent, context, message, userId)
+        const fallbackResult = await generateAssistantResponse(intent, context, message, userId)
+        finalResponse = fallbackResult.success ? fallbackResult.response || 'Error generating response' : 'Error generating response'
         finalResponse += `\n\n*Note: AI enhancement temporarily unavailable.*`
       } catch (fallbackError) {
         finalResponse = "I'm having trouble accessing your data right now. Please try again in a moment."
