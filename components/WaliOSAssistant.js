@@ -719,9 +719,9 @@ export default function WaliOSAssistant({
 		}
 		
 		// EIN/Tax fields
-		if ((fieldLower.includes('ein') || fieldLower.includes('tax')) && context.userProfile?.ein) {
+		if ((fieldLower.includes('ein') || fieldLower.includes('tax')) && (context.userProfile?.ein || context.userProfile?.tax_id)) {
 			suggestions.push({
-				value: context.userProfile.ein,
+				value: context.userProfile.ein || context.userProfile.tax_id,
 				confidence: 0.98,
 				source: 'organization profile'
 			})
@@ -777,7 +777,7 @@ export default function WaliOSAssistant({
 				})
 			}
 			
-			if (!context.userProfile?.ein) {
+			if (!context.userProfile?.ein && !context.userProfile?.tax_id) {
 				gaps.push({
 					type: 'ein',
 					question: 'What is your organization\'s EIN or Tax ID?',
