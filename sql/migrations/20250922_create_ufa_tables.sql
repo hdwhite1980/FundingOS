@@ -59,3 +59,35 @@ CREATE INDEX IF NOT EXISTS idx_ufa_notifications_tenant_status ON ufa_notificati
 CREATE INDEX IF NOT EXISTS idx_ufa_goals_tenant ON ufa_goals(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_ufa_tasks_tenant_status ON ufa_tasks(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_ufa_events_tenant_type ON ufa_events(tenant_id, event_type);
+
+-- Helper function: upsert a metric and increment usage_count atomically
+CREATE OR REPLACE FUNCTION ufa_upsert_metric(p_tenant_id text, p_metric_key text, p_value text)
+RETURNS SETOF ufa_metrics
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  LOOP
+    -- try update
+    UPDATE ufa_metrics
+    SET value = p_value, usage_count = COALESCE(usage_count, 0) + 1, updated_at = now()
+    WHERE tenant_id = p_tenant_id AND metric_key = p_metric_key
+    RETURNING * INTO STRICT FOUND;
+
+    IF FOUND THEN
+      RETURN QUERY SELECT * FROM ufa_metrics WHERE tenant_id = p_tenant_id AND metric_key = p_metric_key;
+      RETURN;
+    END IF;
+
+    -- not found, try insert
+    BEGIN
+      INSERT INTO ufa_metrics (tenant_id, metric_key, value, usage_count, created_at, updated_at)
+      VALUES (p_tenant_id, p_metric_key, p_value, 1, now(), now())
+      RETURNING * INTO STRICT FOUND;
+      RETURN QUERY SELECT * FROM ufa_metrics WHERE tenant_id = p_tenant_id AND metric_key = p_metric_key;
+      RETURN;
+    EXCEPTION WHEN unique_violation THEN
+      -- concurrent insert, loop to try update again
+    END;
+  END LOOP;
+END;
+$$;

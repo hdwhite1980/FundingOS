@@ -20,14 +20,20 @@ async function runAnalysisForTenant(tenantId) {
   if (!supabase) return { ok: false, message: 'dry-run' }
 
   const now = new Date().toISOString()
-  const { data, error } = await supabase.from('ufa_metrics').upsert([
-    { tenant_id: tenantId, metric_key: 'last_run', value: now }
-  ], { onConflict: ['tenant_id', 'metric_key'] })
+  // Upsert metric and increment usage_count atomically
+  const { data, error } = await supabase.rpc('ufa_upsert_metric', {
+    p_tenant_id: tenantId,
+    p_metric_key: 'last_run',
+    p_value: now
+  }).catch(e => ({ error: e }))
 
   if (error) {
     console.error('UFA: metric upsert failed', error)
     return { ok: false, error }
   }
+
+  // Record an event for this analysis run
+  await supabase.from('ufa_events').insert([{ tenant_id: tenantId, event_type: 'analysis_run', payload: { run_at: now } }]).catch(e => console.error('UFA: event insert failed', e))
 
   return { ok: true, data }
 }
