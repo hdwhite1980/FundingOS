@@ -543,7 +543,29 @@ async function processNotificationQueue() {
 }
 
 async function getIntelligenceDashboardData(tenantId) {
-  if (!supabase) return { error: 'Database not configured' }
+  if (!supabase) {
+    console.warn('UFA: Supabase not configured. Returning default dashboard dataset.')
+    return {
+      aiStatus: {
+        state: 'idle',
+        confidence: 85,
+        processing: 'Setup required',
+        nextAnalysis: '—'
+      },
+      goals: [],
+      tasks: [],
+      metrics: [],
+      events: [],
+      notifications: [],
+      strategicOverview: {
+        totalOpportunities: 0,
+        highPriorityMatches: 0,
+        applicationsPending: 0,
+        successRate: 0,
+        portfolioValue: 0
+      }
+    }
+  }
 
   try {
     const [goals, tasks, metrics, events, notifications] = await Promise.all([
