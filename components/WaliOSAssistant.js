@@ -1137,6 +1137,95 @@ QUESTIONS: [What you need to know to help better, if anything]`
 
 	// ========== END DYNAMIC FIELD DEFINITION SYSTEM ==========
 
+	// Heuristic field name extraction fallback
+	const heuristicExtractFieldName = (userQuery, availableFields) => {
+		const query = userQuery.toLowerCase()
+		
+		// Common field patterns
+		const fieldPatterns = [
+			{ pattern: /\b(organization|org)\s+name\b/, field: 'organization_name' },
+			{ pattern: /\b(ein|tax\s*id|tax\s*identification)\b/, field: 'ein' },
+			{ pattern: /\b(duns|duns\s*number)\b/, field: 'duns' },
+			{ pattern: /\b(cage|cage\s*code)\b/, field: 'cage' },
+			{ pattern: /\b(sam|sam\s*registration)\b/, field: 'sam' },
+			{ pattern: /\b(description|desc)\b/, field: 'description' },
+			{ pattern: /\b(abstract|summary)\b/, field: 'abstract' },
+			{ pattern: /\b(budget|amount|funding)\b/, field: 'budget' },
+			{ pattern: /\b(timeline|schedule|period)\b/, field: 'timeline' },
+			{ pattern: /\b(personnel|staff|team)\b/, field: 'personnel' }
+		]
+		
+		for (const { pattern, field } of fieldPatterns) {
+			if (pattern.test(query) && availableFields.includes(field)) {
+				return field
+			}
+		}
+		
+		// Check for exact field name matches
+		for (const field of availableFields) {
+			if (query.includes(field.toLowerCase().replace(/_/g, ' '))) {
+				return field
+			}
+		}
+		
+		return null
+	}
+
+	// Infer form type from available fields
+	const inferFormType = (formData) => {
+		const fields = Object.keys(formData || {})
+		
+		if (fields.some(f => f.toLowerCase().includes('grant') || f.toLowerCase().includes('funding'))) {
+			return 'grant_application'
+		}
+		
+		if (fields.some(f => f.toLowerCase().includes('contract') || f.toLowerCase().includes('bid'))) {
+			return 'contract_bid'
+		}
+		
+		if (fields.some(f => f.toLowerCase().includes('registration') || f.toLowerCase().includes('profile'))) {
+			return 'registration'
+		}
+		
+		return 'grant_application' // default
+	}
+
+	// Fallback field definition generator
+	const generateFallbackDefinition = (fieldName, formContext, userContext) => {
+		const fieldLower = fieldName.toLowerCase()
+		
+		if (fieldLower.includes('description') || fieldLower.includes('summary')) {
+			return {
+				definition: 'Provide a clear, compelling description of your project or organization',
+				purpose: 'Help reviewers understand what you do and why it matters',
+				expectedFormat: 'Use clear, concise language with specific examples',
+				commonExamples: ['Focus on impact, beneficiaries, and unique approach'],
+				tips: ['Be specific about outcomes', 'Quantify impact when possible', 'Avoid jargon'],
+				contextSpecificGuidance: userContext?.projectType ? `Tailor this to your ${userContext.projectType} project type` : ''
+			}
+		}
+		
+		if (fieldLower.includes('budget') || fieldLower.includes('amount')) {
+			return {
+				definition: 'Specify the funding amount requested for this item',
+				purpose: 'Demonstrate fiscal responsibility and project planning',
+				expectedFormat: 'Use exact dollar amounts, rounded to nearest dollar',
+				commonExamples: ['$50,000 for equipment', '$25,000 for personnel'],
+				tips: ['Justify all costs', 'Research market rates', 'Include indirect costs'],
+				contextSpecificGuidance: userContext?.budget ? `Your project budget is $${userContext.budget.toLocaleString()}` : ''
+			}
+		}
+		
+		return {
+			definition: `Complete the ${fieldName.replace(/_/g, ' ')} field with accurate information`,
+			purpose: 'Provide required information for application processing',
+			expectedFormat: 'Follow any specific formatting requirements shown',
+			commonExamples: ['Be thorough and accurate in your response'],
+			tips: ['Double-check accuracy', 'Be comprehensive', 'Follow guidelines'],
+			contextSpecificGuidance: ''
+		}
+	}
+
 	const handleUserInput = async (input) => {
 		if (!input.trim()) return
 		
