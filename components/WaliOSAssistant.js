@@ -88,17 +88,27 @@ export default function WaliOSAssistant({
 	const [isSearchingAPIs, setIsSearchingAPIs] = useState(false)
 	const [lastAPISearch, setLastAPISearch] = useState(null)
 	
-	// Sync isVisible prop with internal isOpen state
+	// Track user-initiated opens to prevent isVisible from overriding
+	const userInitiatedOpen = useRef(false)
+	
+	// Sync isVisible prop with internal isOpen state (but don't override user-initiated opens)
 	useEffect(() => {
-		console.log('📱 Syncing isVisible prop:', isVisible, '-> isOpen:', isVisible)
-		setIsOpen(isVisible)
+		// Only sync when isVisible changes to true, or when component first mounts
+		// Don't force close when user manually opens via green button
+		if (isVisible && !isOpen) {
+			console.log('📱 Syncing isVisible prop: true -> opening assistant')
+			setIsOpen(true)
+		} else if (!isVisible && isOpen && !userInitiatedOpen.current) {
+			console.log('📱 Syncing isVisible prop: false -> closing assistant')
+			setIsOpen(false)
+		}
 		
 		// If assistant is becoming visible and has no conversation, prepare for initial greeting
 		if (isVisible && conversation.length === 0 && !isThinking && !currentMessage) {
 			console.log('🎬 Assistant becoming visible with no content, preparing greeting...')
 			// Don't start conversation here - let the main useEffect handle it
 		}
-	}, [isVisible, conversation.length, isThinking, currentMessage])
+	}, [isVisible, isOpen, conversation.length, isThinking, currentMessage])
 	
 	// Handle triggerContext changes
 	useEffect(() => {
@@ -1424,6 +1434,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 
 	const handleClose = () => {
 		console.log('🔴 Closing assistant')
+		userInitiatedOpen.current = false // Reset the flag
 		setIsOpen(false)
 
 		// Clear all conversation state
@@ -1636,6 +1647,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 						whileTap={{ scale: 0.9 }}
 						onClick={() => {
 							console.log('🟢 Opening assistant via green button')
+							userInitiatedOpen.current = true
 							setIsOpen(true)
 						}}
 						className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg flex items-center justify-center z-50"
