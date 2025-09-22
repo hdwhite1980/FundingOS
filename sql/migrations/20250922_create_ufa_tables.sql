@@ -91,3 +91,26 @@ BEGIN
   END LOOP;
 END;
 $$;
+
+-- Row Level Security policies for tenant isolation
+ALTER TABLE ufa_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ufa_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ufa_goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ufa_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ufa_events ENABLE ROW LEVEL SECURITY;
+
+-- Policy: users can only access their own tenant's data
+CREATE POLICY ufa_metrics_tenant_policy ON ufa_metrics
+  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id' OR tenant_id = auth.uid()::text);
+
+CREATE POLICY ufa_notifications_tenant_policy ON ufa_notifications
+  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id' OR tenant_id = auth.uid()::text);
+
+CREATE POLICY ufa_goals_tenant_policy ON ufa_goals
+  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id' OR tenant_id = auth.uid()::text);
+
+CREATE POLICY ufa_tasks_tenant_policy ON ufa_tasks
+  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id' OR tenant_id = auth.uid()::text);
+
+CREATE POLICY ufa_events_tenant_policy ON ufa_events
+  FOR ALL USING (tenant_id = auth.jwt() ->> 'tenant_id' OR tenant_id = auth.uid()::text);
