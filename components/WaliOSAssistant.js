@@ -348,7 +348,7 @@ export default function WaliOSAssistant({
 			console.log('   current conversation length:', conversation.length)
 			console.log('   currentMessage:', currentMessage)
 			console.log('   isThinking:', isThinking)
-			
+
 			// Only start conversation if we don't already have one in progress
 			if (conversation.length === 0 && !isThinking && !currentMessage) {
 				console.log('🎬 No existing conversation, starting new one...')
@@ -357,14 +357,11 @@ export default function WaliOSAssistant({
 						// Start with field-specific help
 						console.log('🎯 Starting field help for:', fieldContext.fieldName)
 						startFieldHelp()
-					} else if (isProactiveMode) {
-						console.log('🔄 Starting proactive conversation')
-						startProactiveConversation()
 					} else {
-						console.log('👋 Starting generic greeting')
+						// Always show welcome message and input if no field context
 						startGenericGreeting()
 					}
-				}, 300) // Reduced delay for faster response
+				}, 300)
 			} else {
 				console.log('🔄 Conversation already exists or in progress, skipping new start')
 			}
@@ -376,7 +373,7 @@ export default function WaliOSAssistant({
 			setShowInput(false)
 			setAssistantState('idle')
 		}
-	}, [isOpen, fieldContext, isProactiveMode, conversation.length, isThinking, currentMessage, startFieldHelp, startProactiveConversation, startGenericGreeting])
+	}, [isOpen, fieldContext, isProactiveMode, conversation.length, isThinking, currentMessage, startFieldHelp, startGenericGreeting])
 
 	useEffect(() => {
 		// When field context changes and assistant is already open
