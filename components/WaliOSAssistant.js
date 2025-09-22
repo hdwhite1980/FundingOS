@@ -83,6 +83,8 @@ export default function WaliOSAssistant({
 	const [lastHelpedFieldContext, setLastHelpedFieldContext] = useState(null)
 	const isFieldHelpRunning = useRef(false)
 	const lastAppendedMessageRef = useRef({ text: null, ts: 0 })
+    const typingMessageRef = useRef(null)
+    const typewriterTimerRef = useRef(null)
 	const [isSearchingAPIs, setIsSearchingAPIs] = useState(false)
 	const [lastAPISearch, setLastAPISearch] = useState(null)
 	
@@ -165,6 +167,20 @@ export default function WaliOSAssistant({
 		setTimeout(() => {
 			const fullMessage = (message || '').toString()
 
+			// If we're already typing this exact message, don't start a new typewriter
+			if (typingMessageRef.current && typingMessageRef.current.text === fullMessage) {
+				console.log('⏳ Typewriter already running for this message, skipping')
+				return
+			}
+
+			// Cancel any previous typewriter timer in case it didn't clear
+			if (typewriterTimerRef.current) {
+				clearTimeout(typewriterTimerRef.current)
+				typewriterTimerRef.current = null
+			}
+
+			typingMessageRef.current = { text: fullMessage }
+
 			// Typewriter effect
 			let currentIndex = 0
 			const typeWriter = () => {
@@ -172,7 +188,7 @@ export default function WaliOSAssistant({
 					currentIndex++
 					const newMessage = fullMessage.substring(0, currentIndex)
 					setCurrentMessage(newMessage)
-					setTimeout(typeWriter, 28)
+					typewriterTimerRef.current = setTimeout(typeWriter, 28)
 				} else {
 					// Finished typing: add into conversation history so we don't keep restarting
 					setIsAnimating(false)
@@ -187,6 +203,8 @@ export default function WaliOSAssistant({
 						console.log('⛔ Skipping duplicate assistant message append')
 					}
 					setCurrentMessage('') // Clear transient current message to avoid duplicate render
+					typingMessageRef.current = null
+					if (typewriterTimerRef.current) { clearTimeout(typewriterTimerRef.current); typewriterTimerRef.current = null }
 					if (onComplete) onComplete()
 				}
 			}
@@ -372,6 +390,13 @@ export default function WaliOSAssistant({
 			setCurrentMessage('')
 			setShowInput(false)
 			setAssistantState('idle')
+
+			// Clear any running typewriter timers when closing
+			if (typewriterTimerRef.current) {
+				clearTimeout(typewriterTimerRef.current)
+				typewriterTimerRef.current = null
+			}
+			typingMessageRef.current = null
 		}
 	}, [isOpen, fieldContext, isProactiveMode, conversation.length, isThinking, currentMessage, startFieldHelp, startGenericGreeting])
 
