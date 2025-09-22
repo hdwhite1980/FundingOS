@@ -14,7 +14,8 @@ import AngelInvestorOpportunities from './AngelInvestorOpportunities'
 import ApplicationProgress from './ApplicationProgress'
 import CreateProjectModal from './EnhancedCreateProjectModal'
 import AccountSettingsModal from './AccountSettingsModal'
-import UnifiedAIAgentInterface from './UnifiedAIAgentInterface'
+import dynamic from 'next/dynamic'
+const UnifiedFundingIntelligenceDashboard = dynamic(() => import('./UnifiedFundingIntelligenceDashboard'), { ssr: false })
 import ProactiveAssistantManager from './ProactiveAssistantManager'
 import { directUserServices } from '../lib/supabase'
 import { 
@@ -103,7 +104,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     { id: 'opportunities', label: 'Projects & Funding', icon: Target, description: 'Funding opportunities, applications & project matching' },
     { id: 'applications', label: 'Applications', icon: FileText, description: 'Active applications' },
     { id: 'donations', label: 'Donors & Investors', icon: Heart, description: 'Donor & investor management' },
-    { id: 'ai-agent', label: 'AI Assistant', icon: Brain, description: 'Intelligent analysis' }
+  { id: 'ai-agent', label: 'Intelligence', icon: Brain, description: 'Intelligent analysis' }
   ]
 
   // Load dashboard data when user and profile are available
@@ -1215,27 +1216,11 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         )}
 
         {activeTab === 'ai-agent' && (
-          <UnifiedAIAgentInterface 
-            user={user} 
-            userProfile={userProfile}
-            projects={projects}
-            opportunities={opportunities}
-            submissions={submissions}
-            complianceData={{
-              organizationCompliance: userProfile?.compliance_status || {},
-              projectCompliance: projects?.map(p => ({
-                projectId: p.id,
-                completionPercentage: p.completion_percentage || 0,
-                missingDocuments: p.missing_documents || [],
-                complianceStatus: p.compliance_status || 'pending'
-              })) || [],
-              upcomingDeadlines: opportunities?.filter(opp => 
-                opp.deadline_date && 
-                new Date(opp.deadline_date) > new Date() &&
-                new Date(opp.deadline_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-              ) || []
-            }}
-          />
+          <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+            <UnifiedFundingIntelligenceDashboard 
+              tenantId={userProfile?.tenant_id || user?.user_metadata?.tenant_id || user?.id || 'default-tenant'}
+            />
+          </div>
         )}
 
         {activeTab === 'applications' && (
