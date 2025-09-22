@@ -215,7 +215,11 @@ export default function WaliOSAssistant({
 
 	// Define callback functions BEFORE they are used in useEffect dependencies
 	const startFieldHelp = useCallback(async () => {
-		if (!fieldContext) return
+		if (!fieldContext || !fieldContext.fieldName) {
+			console.log('⚠️ No valid field context, falling back to generic greeting')
+			startGenericGreeting()
+			return
+		}
 
 		// Prevent re-entrancy
 		if (isFieldHelpRunning.current) {
@@ -232,7 +236,9 @@ export default function WaliOSAssistant({
 
 			if (contextKey === lastHelpedKey) {
 				console.log('🔄 Field help already shown for:', fieldContext.fieldName)
-				return // Don't repeat the same field help
+				// Instead of returning silently, show generic greeting
+				startGenericGreeting()
+				return
 			}
 
 			// Mark this field context as helped early to avoid race conditions
@@ -241,7 +247,7 @@ export default function WaliOSAssistant({
 			setIsThinking(true)
 			setAssistantState('thinking')
 
-			// Prefer the comprehensive AI-backed help
+			// Rest of your existing field help logic...
 			const aiResult = await getComprehensiveFieldHelp(fieldContext.fieldName, fieldContext.fieldValue, {
 				userProfile: userProfile || userProfileState,
 				currentProject: (allProjects || allProjectsState)?.[0],
@@ -249,14 +255,12 @@ export default function WaliOSAssistant({
 			})
 
 			if (aiResult && aiResult.type === 'information_needed') {
-				// Ask targeted questions
 				showMessage(aiResult.message, () => {
 					setShowInput(true)
 					setAssistantState('listening')
 					setIsThinking(false)
 				})
 			} else if (aiResult) {
-				// Build a user-friendly message from the AI result
 				const parts = []
 				if (aiResult.definition) parts.push(aiResult.definition)
 				if (aiResult.purpose) parts.push(`Purpose: ${aiResult.purpose}`)
@@ -276,27 +280,17 @@ export default function WaliOSAssistant({
 					}, 500)
 				})
 			} else {
-				// Fallback short guidance
-				showMessage(`I can help with the "${fieldContext.fieldName || ''}" field. Tell me what you'd like help with.`, () => {
-					setShowInput(true)
-					setAssistantState('listening')
-					setIsThinking(false)
-				})
+				// Fallback to generic greeting if field help fails
+				console.log('⚠️ Field help failed, falling back to generic greeting')
+				startGenericGreeting()
 			}
 		} catch (err) {
-			console.error('startFieldHelp AI path failed, falling back to local guidance:', err)
-			// Local fallback to avoid empty behavior
-			const fieldName = fieldContext.fieldName?.replace(/_/g, ' ') || 'this field'
-			const fallback = `For the ${fieldName}, provide clear, specific information tailored to your project and goals. Would you like me to draft a suggestion?`
-			showMessage(fallback, () => {
-				setShowInput(true)
-				setAssistantState('listening')
-				setIsThinking(false)
-			})
+			console.error('startFieldHelp failed, falling back to generic greeting:', err)
+			startGenericGreeting()
 		} finally {
 			isFieldHelpRunning.current = false
 		}
-	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput, userProfile, userProfileState, allProjects, allProjectsState])
+	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput, userProfile, userProfileState, allProjects, allProjectsState, startGenericGreeting])
 
 	const startGenericGreeting = useCallback(() => {
 		setIsThinking(true); setAssistantState('thinking')
@@ -364,41 +358,44 @@ export default function WaliOSAssistant({
 			console.log('   isProactiveMode:', isProactiveMode)
 			console.log('   userProfile:', userProfile?.full_name)
 			console.log('   current conversation length:', conversation.length)
-			console.log('   currentMessage:', currentMessage)
-			console.log('   isThinking:', isThinking)
 
 			// Only start conversation if we don't already have one in progress
 			if (conversation.length === 0 && !isThinking && !currentMessage) {
 				console.log('🎬 No existing conversation, starting new one...')
+				
 				setTimeout(() => {
-					if (fieldContext) {
-						// Start with field-specific help
+					if (fieldContext && fieldContext.fieldName) {
+						// Start with field-specific help only if we have a valid field name
 						console.log('🎯 Starting field help for:', fieldContext.fieldName)
 						startFieldHelp()
+					} else if (isProactiveMode && triggerContext?.trigger) {
+						// Start proactive conversation if we have trigger context
+						console.log('🎯 Starting proactive conversation for:', triggerContext.trigger)
+						startProactiveConversation()
 					} else {
-						// Always show welcome message and input if no field context
+						// Always fall back to generic greeting
+						console.log('🎯 Starting generic greeting')
 						startGenericGreeting()
 					}
 				}, 300)
-			} else {
-				console.log('🔄 Conversation already exists or in progress, skipping new start')
 			}
 		} else {
-			// When assistant closes, clear the conversation to ensure fresh start next time
+			// When assistant closes, clear everything for fresh start
 			console.log('📴 Assistant closed, clearing conversation')
 			setConversation([])
 			setCurrentMessage('')
 			setShowInput(false)
 			setAssistantState('idle')
-
-			// Clear any running typewriter timers when closing
+			setIsThinking(false)
+			
+			// Clear any running timers
 			if (typewriterTimerRef.current) {
 				clearTimeout(typewriterTimerRef.current)
 				typewriterTimerRef.current = null
 			}
 			typingMessageRef.current = null
 		}
-	}, [isOpen, fieldContext, isProactiveMode, conversation.length, isThinking, currentMessage, startFieldHelp, startGenericGreeting])
+	}, [isOpen, fieldContext?.fieldName, isProactiveMode, conversation.length, isThinking, currentMessage, startFieldHelp, startGenericGreeting, startProactiveConversation, triggerContext?.trigger])
 
 	useEffect(() => {
 		// When field context changes and assistant is already open
@@ -1380,7 +1377,31 @@ QUESTIONS: [What you need to know to help better, if anything]`
 		}
 	}, [isDragging, dragStart, position])
 
-	const handleClose = () => { setIsOpen(false); setTimeout(() => onClose && onClose(), 280) }
+	const handleClose = () => {
+		console.log('🔴 Closing assistant')
+		setIsOpen(false)
+		
+		// Clear all conversation state
+		setConversation([])
+		setCurrentMessage('')
+		setShowInput(false)
+		setAssistantState('idle')
+		setIsThinking(false)
+		setFieldContext(null)
+		setLastHelpedFieldContext(null)
+		
+		// Clear timers
+		if (typewriterTimerRef.current) {
+			clearTimeout(typewriterTimerRef.current)
+			typewriterTimerRef.current = null
+		}
+		typingMessageRef.current = null
+		
+		// Call onClose callback after a brief delay to allow animation
+		setTimeout(() => {
+			if (onClose) onClose()
+		}, 280)
+	}
 
 	// Always render the component so it's mounted and the assistant manager can keep the instance.
 	// Visibility is controlled with the `isVisible` prop and internal `isOpen` state.
@@ -1577,11 +1598,26 @@ QUESTIONS: [What you need to know to help better, if anything]`
 					</>
 				)}
 			</AnimatePresence>
-			{!isOpen && (
-				<motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsOpen(true)} className="w-14 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg flex items-center justify-center">
-					<MessageCircle className="w-6 h-6" />
-				</motion.button>
-			)}
+			{/* Green Trigger Button - always show when closed */}
+			<AnimatePresence>
+				{!isOpen && (
+					<motion.button
+						initial={{ scale: 0, rotate: -180 }}
+						animate={{ scale: 1, rotate: 0 }}
+						exit={{ scale: 0, rotate: 180 }}
+						whileHover={{ scale: 1.1 }}
+						whileTap={{ scale: 0.9 }}
+						onClick={() => {
+							console.log('🟢 Opening assistant via green button')
+							setIsOpen(true)
+						}}
+						className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+						title="Open WALI-OS Assistant"
+					>
+						<MessageCircle className="w-6 h-6" />
+					</motion.button>
+				)}
+			</AnimatePresence>
 		</div>
 		</>
 	)
