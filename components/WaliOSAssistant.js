@@ -1,4 +1,4 @@
-// WaliOSAssistant.js - Enhanced with API integration support
+// WaliOSAssistant.js - Fixed version with circular dependency resolved
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -213,7 +213,70 @@ export default function WaliOSAssistant({
 		}, 50)
 	}, [setIsThinking, setAssistantState, setIsAnimating, setCurrentMessage, setConversation])
 
-	// Define callback functions BEFORE they are used in useEffect dependencies
+	// Define startGenericGreeting FIRST to avoid circular dependency
+	const startGenericGreeting = useCallback(() => {
+		setIsThinking(true)
+		setAssistantState('thinking')
+		setTimeout(() => {
+			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
+			showMessage(greeting, () => {
+				setTimeout(() => {
+					showMessage('What would you like to work on today?', () => { 
+						setShowInput(true)
+						setAssistantState('listening') 
+					})
+				}, 1600)
+			})
+		}, 1200)
+	}, [userProfile, showMessage, setIsThinking, setAssistantState, setShowInput])
+
+	const startProactiveConversation = useCallback(() => {
+		setIsThinking(true)
+		setAssistantState('thinking')
+		setTimeout(() => {
+			// Generate proactive message inline to avoid circular dependency
+			const { trigger, context } = triggerContext
+			let message = null
+			
+			// Only generate messages if we have real data to support them
+			switch (trigger) {
+				case 'deadline_approaching': {
+					const isProject = context?.project
+					const isSubmission = context?.submission
+					
+					if (isProject) {
+						message = `Your project "${context.project.name}" has an application deadline in ${context?.daysLeft} days. Want help preparing?`
+					} else if (isSubmission) {
+						message = `You have a submission deadline in ${context?.daysLeft} days. Want focused help preparing?`
+					} else {
+						message = `You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
+					}
+					break
+				}
+				case 'incomplete_application': 
+					// Only show if we have actual completion data
+					if (context?.completionPercentage && context.completionPercentage < 100) {
+						message = `One application is ${context.completionPercentage}% complete. I can help you finish it quickly.`
+					}
+					break
+			}
+			
+			// If no valid proactive message, fall back to generic greeting
+			if (!message) {
+				startGenericGreeting()
+				return
+			}
+			
+			showMessage(message, () => {
+				setTimeout(() => {
+					const followUp = 'Would you like help with this now?'
+					showMessage(followUp, () => { setShowInput(true); setAssistantState('listening') })
+				}, 1800)
+			})
+		}, 800)
+	}, [triggerContext, showMessage, setIsThinking, setAssistantState, setShowInput, startGenericGreeting])
+
+	// Define callback functions AFTER startGenericGreeting is defined
 	const startFieldHelp = useCallback(async () => {
 		if (!fieldContext || !fieldContext.fieldName) {
 			console.log('⚠️ No valid field context, falling back to generic greeting')
@@ -292,64 +355,6 @@ export default function WaliOSAssistant({
 		}
 	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput, userProfile, userProfileState, allProjects, allProjectsState, startGenericGreeting])
 
-	const startGenericGreeting = useCallback(() => {
-		setIsThinking(true); setAssistantState('thinking')
-		setTimeout(() => {
-			const greeting = `Hi ${userProfile?.full_name?.split(' ')[0] || 'there'}! I'm the WALI-OS Assistant. I can help you find funding, complete applications, and track deadlines.`
-			showMessage(greeting, () => {
-				setTimeout(() => {
-					showMessage('What would you like to work on today?', () => { setShowInput(true); setAssistantState('listening') })
-				}, 1600)
-			})
-		}, 1200)
-	}, [userProfile, showMessage, setIsThinking, setAssistantState, setShowInput])
-
-	const startProactiveConversation = useCallback(() => {
-		setIsThinking(true); 
-		setAssistantState('thinking')
-		setTimeout(() => {
-			// Generate proactive message inline to avoid circular dependency
-			const { trigger, context } = triggerContext
-			let message = null
-			
-			// Only generate messages if we have real data to support them
-			switch (trigger) {
-				case 'deadline_approaching': {
-					const isProject = context?.project
-					const isSubmission = context?.submission
-					
-					if (isProject) {
-						message = `Your project "${context.project.name}" has an application deadline in ${context?.daysLeft} days. Want help preparing?`
-					} else if (isSubmission) {
-						message = `You have a submission deadline in ${context?.daysLeft} days. Want focused help preparing?`
-					} else {
-						message = `You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
-					}
-					break
-				}
-				case 'incomplete_application': 
-					// Only show if we have actual completion data
-					if (context?.completionPercentage && context.completionPercentage < 100) {
-						message = `One application is ${context.completionPercentage}% complete. I can help you finish it quickly.`
-					}
-					break
-			}
-			
-			// If no valid proactive message, fall back to generic greeting
-			if (!message) {
-				startGenericGreeting()
-				return
-			}
-			
-			showMessage(message, () => {
-				setTimeout(() => {
-					const followUp = 'Would you like help with this now?'
-					showMessage(followUp, () => { setShowInput(true); setAssistantState('listening') })
-				}, 1800)
-			})
-		}, 800)
-	}, [triggerContext, showMessage, setIsThinking, setAssistantState, setShowInput, startGenericGreeting])
-
 	useEffect(() => {
 		// When assistant becomes visible/open, start appropriate conversation
 		if (isOpen) {
@@ -425,55 +430,6 @@ export default function WaliOSAssistant({
 		}
 	}
 
-	const generateProactiveMessage = useCallback(() => {
-		const { trigger, context } = triggerContext
-		
-		// Only generate messages if we have real data to support them
-		switch (trigger) {
-			case 'deadline_approaching': {
-				const { context } = triggerContext
-				const isProject = context?.project
-				const isSubmission = context?.submission
-				
-				if (isProject) {
-					return `Your project "${context.project.name}" has an application deadline in ${context?.daysLeft} days. Want help preparing?`
-				} else if (isSubmission) {
-					return `You have a submission deadline in ${context?.daysLeft} days. Want focused help preparing?`
-				} else {
-					return `You have an application deadline in ${context?.daysLeft} days. Want focused help preparing?`
-				}
-			}
-			case 'incomplete_application': 
-				// Only show if we have actual completion data
-				if (context?.completionPercentage && context.completionPercentage < 100) {
-					return `One application is ${context.completionPercentage}% complete. I can help you finish it quickly.`
-				}
-				return null // Don't show message if no real data
-				
-			case 'compliance_issue': 
-				// Only show if we have actual compliance issues identified
-				if (context?.complianceIssues && context.complianceIssues.length > 0) {
-					return `Some compliance items need attention for ${context?.projectName}. Shall we review them?`
-				}
-				return null // Don't show message if no actual compliance issues
-				
-			case 'new_opportunity': 
-				// Only show if we have actual new opportunities
-				if (context?.matchCount && context.matchCount > 0) {
-					return `I found ${context.matchCount} new high-fit opportunities for your portfolio.`
-				}
-				return null
-				
-			case 'grant_writing_assistance': 
-				return `I can strengthen your grant narratives and impact statements. Interested?`
-				
-			default: 
-				return null // Don't show generic messages
-		}
-	}, [triggerContext])
-
-	// ========== ENHANCED PROJECT-SPECIFIC RESPONSE FUNCTIONS ==========
-	
 	// Enhanced intent classification for project queries (no memoization needed)
 	const classifyProjectIntent = (message, projectData) => {
 		const lower = message.toLowerCase()
@@ -1653,12 +1609,12 @@ QUESTIONS: [What you need to know to help better, if anything]`
 										onChange={(e) => setInputValue(e.target.value)}
 										onKeyDown={(e) => { if (e.key === 'Enter') handleUserInput(inputValue) }}
 										placeholder="Ask about funding, applications, deadlines..."
-										className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+										className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
 									/>
 									<button
 										onClick={() => handleUserInput(inputValue)}
 										disabled={!inputValue.trim()}
-										className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300"
+										className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
 									>
 										<Send className="w-4 h-4" />
 									</button>
