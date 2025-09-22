@@ -14,15 +14,26 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log(`UFA intelligence API: Processing request for tenantId=${tenantId}`)
     const dashboardData = await getIntelligenceDashboardData(tenantId)
     
     if (dashboardData.error) {
+      console.error(`UFA intelligence API: Service returned error:`, dashboardData.error)
       return res.status(500).json({ error: dashboardData.error })
     }
 
+    console.log(`UFA intelligence API: Returning data with ${Object.keys(dashboardData).length} keys`)
     return res.status(200).json(dashboardData)
   } catch (error) {
-    console.error('UFA intelligence API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+    console.error('UFA intelligence API: Unhandled error:', {
+      message: error.message,
+      stack: error.stack,
+      tenantId,
+      timestamp: new Date().toISOString()
+    })
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
   }
 }

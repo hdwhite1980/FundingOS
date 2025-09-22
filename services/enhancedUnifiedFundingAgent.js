@@ -568,7 +568,9 @@ async function getIntelligenceDashboardData(tenantId) {
   }
 
   try {
-    const [goals, tasks, metrics, events, notifications] = await Promise.all([
+    console.log(`UFA: Fetching dashboard data for tenant ${tenantId}`)
+    
+    const [goals, tasks, metrics, events, notifications] = await Promise.allSettled([
       supabase.from('ufa_goals').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(10),
       supabase.from('ufa_tasks').select('*').eq('tenant_id', tenantId).neq('status', 'completed').order('created_at', { ascending: false }).limit(10),
       supabase.from('ufa_metrics').select('*').eq('tenant_id', tenantId).order('updated_at', { ascending: false }).limit(20),
@@ -576,31 +578,59 @@ async function getIntelligenceDashboardData(tenantId) {
       supabase.from('ufa_notifications').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(10)
     ])
 
-    const lastAnalysis = events.data?.[0]
+    // Extract data or empty arrays if queries failed
+    const goalsData = goals.status === 'fulfilled' ? goals.value.data || [] : []
+    const tasksData = tasks.status === 'fulfilled' ? tasks.value.data || [] : []
+    const metricsData = metrics.status === 'fulfilled' ? metrics.value.data || [] : []
+    const eventsData = events.status === 'fulfilled' ? events.value.data || [] : []
+    const notificationsData = notifications.status === 'fulfilled' ? notifications.value.data || [] : []
+
+    // Log any query failures
+    if (goals.status === 'rejected') console.error('UFA: Goals query failed:', goals.reason)
+    if (tasks.status === 'rejected') console.error('UFA: Tasks query failed:', tasks.reason)
+    if (metrics.status === 'rejected') console.error('UFA: Metrics query failed:', metrics.reason)
+    if (events.status === 'rejected') console.error('UFA: Events query failed:', events.reason)
+    if (notifications.status === 'rejected') console.error('UFA: Notifications query failed:', notifications.reason)
+
+    const lastAnalysis = eventsData[0]
     const aiStatus = {
       state: lastAnalysis && new Date(lastAnalysis.created_at) > new Date(Date.now() - 5 * 60 * 1000) ? 'active' : 'idle',
-      confidence: parseFloat(metrics.data?.find(m => m.metric_key === 'ai_confidence')?.value || '85'),
+      confidence: parseFloat(metricsData.find(m => m.metric_key === 'ai_confidence')?.value || '85'),
       processing: 'National STEM Education Trends',
       nextAnalysis: '2 hours'
     }
 
-    return {
+    const result = {
       aiStatus,
-      goals: goals.data || [],
-      tasks: tasks.data || [],
-      metrics: metrics.data || [],
-      events: events.data || [],
-      notifications: notifications.data || [],
+      goals: goalsData,
+      tasks: tasksData,
+      metrics: metricsData,
+      events: eventsData,
+      notifications: notificationsData,
       strategicOverview: {
-        totalOpportunities: parseInt(metrics.data?.find(m => m.metric_key === 'opportunities_identified')?.value || '0'),
-        highPriorityMatches: parseInt(metrics.data?.find(m => m.metric_key === 'high_priority_matches')?.value || '0'),
+        totalOpportunities: parseInt(metricsData.find(m => m.metric_key === 'opportunities_identified')?.value || '0'),
+        highPriorityMatches: parseInt(metricsData.find(m => m.metric_key === 'high_priority_matches')?.value || '0'),
         applicationsPending: 8,
-        successRate: parseFloat(metrics.data?.find(m => m.metric_key === 'success_rate')?.value || '0'),
-        portfolioValue: parseInt(metrics.data?.find(m => m.metric_key === 'portfolio_value')?.value || '0')
+        successRate: parseFloat(metricsData.find(m => m.metric_key === 'success_rate')?.value || '0'),
+        portfolioValue: parseInt(metricsData.find(m => m.metric_key === 'portfolio_value')?.value || '0')
       }
     }
+
+    console.log(`UFA: Dashboard data fetched successfully for tenant ${tenantId}:`, {
+      goals: goalsData.length,
+      tasks: tasksData.length,
+      metrics: metricsData.length,
+      events: eventsData.length,
+      notifications: notificationsData.length
+    })
+
+    return result
   } catch (error) {
-    console.error('Error fetching dashboard data:', error)
+    console.error('UFA: Error fetching dashboard data:', {
+      tenantId,
+      error: error.message,
+      stack: error.stack
+    })
     return { error: error.message }
   }
 }
