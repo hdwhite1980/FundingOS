@@ -153,90 +153,112 @@ export default function WaliOSAssistant({
 
 	// Define showMessage FIRST as it's used by other functions
 	const showMessage = useCallback((message, onComplete) => {
-		setIsThinking(false) 
+		setIsThinking(false)
 		setAssistantState('talking')
 		setIsAnimating(true)
-		
+
 		// Reset message state immediately and ensure it's really empty
 		setCurrentMessage('')
-		
+
 		setTimeout(() => {
-			const fullMessage = message.toString() // Ensure it's a string
-			
-			// Use a more direct approach - build the message directly instead of relying on prev state
+			const fullMessage = (message || '').toString()
+
+			// Typewriter effect
 			let currentIndex = 0
 			const typeWriter = () => {
-				if (currentIndex < fullMessage.length) { 
-					const nextChar = fullMessage.charAt(currentIndex)
+				if (currentIndex < fullMessage.length) {
 					currentIndex++
-					
-					// Set the message directly from the source instead of using prev state
 					const newMessage = fullMessage.substring(0, currentIndex)
-					
 					setCurrentMessage(newMessage)
-					setTimeout(typeWriter, 28) 
-				} else { 
+					setTimeout(typeWriter, 28)
+				} else {
+					// Finished typing: add into conversation history so we don't keep restarting
 					setIsAnimating(false)
 					setAssistantState('idle')
+					setConversation(prev => [...prev, { type: 'assistant', content: fullMessage, id: Date.now() }])
+					setCurrentMessage('') // Clear transient current message to avoid duplicate render
 					if (onComplete) onComplete()
 				}
 			}
-			
+
 			typeWriter()
-		}, 50) // Small delay to ensure state is reset
-	}, [setIsThinking, setAssistantState, setIsAnimating, setCurrentMessage])
+		}, 50)
+	}, [setIsThinking, setAssistantState, setIsAnimating, setCurrentMessage, setConversation])
 
 	// Define callback functions BEFORE they are used in useEffect dependencies
-	const startFieldHelp = useCallback(() => {
+	const startFieldHelp = useCallback(async () => {
 		if (!fieldContext) return
-		
+
 		// Check if we've already provided help for this specific field context
 		const contextKey = `${fieldContext.fieldName}_${fieldContext.opportunityId || 'default'}`
 		const lastHelpedKey = `${lastHelpedFieldContext?.fieldName}_${lastHelpedFieldContext?.opportunityId || 'default'}`
-		
+
 		if (contextKey === lastHelpedKey) {
 			console.log('🔄 Field help already shown for:', fieldContext.fieldName)
 			return // Don't repeat the same field help
 		}
-		
-		// Mark this field context as helped
+
+		// Mark this field context as helped early to avoid race conditions
 		setLastHelpedFieldContext(fieldContext)
-		
+
 		setIsThinking(true)
 		setAssistantState('thinking')
-		setTimeout(() => {
-			const fieldName = fieldContext.fieldName?.replace(/_/g, ' ') || 'this field'
-			const message = `I can help you with the "${fieldName}" field! Let me provide some guidance.`
-			showMessage(message, () => {
-				setTimeout(() => {
-					// Inline field help message generation to avoid dependency issues
-					const fieldDisplayName = fieldName
-					let helpMessage = ''
-					
-					if (fieldName.includes('description') || fieldName.includes('summary')) {
-						helpMessage = `For the ${fieldDisplayName}, focus on your unique approach and measurable outcomes. Be specific about who benefits and how.`
-					} else if (fieldName.includes('budget') || fieldName.includes('amount') || fieldName.includes('cost')) {
-						helpMessage = `For the ${fieldDisplayName}, break down costs clearly and justify each expense. Show how it relates to project activities.`
-					} else if (fieldName.includes('timeline') || fieldName.includes('schedule')) {
-						helpMessage = `For the ${fieldDisplayName}, provide a realistic timeline with key milestones. Break down major phases and deliverables with specific dates.`
-					} else if (fieldName.includes('personnel') || fieldName.includes('staff') || fieldName.includes('team')) {
-						helpMessage = `For the ${fieldDisplayName}, describe your team's qualifications and roles. Highlight relevant experience and how each member contributes to project success.`
-					} else {
-						helpMessage = `For the ${fieldDisplayName}, I can help you create content based on your project details and similar successful applications. Let me know what specific guidance you need.`
-					}
-					
-					showMessage(helpMessage, () => {
-						setTimeout(() => {
-							showMessage('Would you like me to generate content for this field, or do you have specific questions?', () => {
-								setShowInput(true)
-								setAssistantState('listening')
-							})
-						}, 1500)
-					})
-				}, 1800)
+
+		try {
+			// Prefer the comprehensive AI-backed help
+			const aiResult = await getComprehensiveFieldHelp(fieldContext.fieldName, fieldContext.fieldValue, {
+				userProfile: userProfile || userProfileState,
+				currentProject: (allProjects || allProjectsState)?.[0],
+				allProjects: allProjects || allProjectsState
 			})
-		}, 800)
-	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput])
+
+			if (aiResult && aiResult.type === 'information_needed') {
+				// Ask targeted questions
+				showMessage(aiResult.message, () => {
+					setShowInput(true)
+					setAssistantState('listening')
+					setIsThinking(false)
+				})
+			} else if (aiResult) {
+				// Build a user-friendly message from the AI result
+				const parts = []
+				if (aiResult.definition) parts.push(aiResult.definition)
+				if (aiResult.purpose) parts.push(`Purpose: ${aiResult.purpose}`)
+				if (aiResult.format) parts.push(`Format: ${aiResult.format}`)
+				if (aiResult.example) parts.push(`Example: ${aiResult.example}`)
+				if (aiResult.tips && aiResult.tips.length) parts.push(`Tips: ${aiResult.tips.join(' | ')}`)
+
+				const assembled = parts.join('\n\n') || `Here's some help for ${fieldContext.fieldName.replace(/_/g, ' ')}`
+
+				showMessage(assembled, () => {
+					setTimeout(() => {
+						showMessage('Would you like me to generate content for this field, or do you have specific questions?', () => {
+							setShowInput(true)
+							setAssistantState('listening')
+							setIsThinking(false)
+						})
+					}, 500)
+				})
+			} else {
+				// Fallback short guidance
+				showMessage(`I can help with the "${(fieldContext.fieldName || '').replace(/_/g, ' ')}" field. Tell me what you'd like help with.`, () => {
+					setShowInput(true)
+					setAssistantState('listening')
+					setIsThinking(false)
+				})
+			}
+		} catch (err) {
+			console.error('startFieldHelp AI path failed, falling back to local guidance:', err)
+			// Local fallback to avoid empty behavior
+			const fieldName = fieldContext.fieldName?.replace(/_/g, ' ') || 'this field'
+			const fallback = `For the ${fieldName}, provide clear, specific information tailored to your project and goals. Would you like me to draft a suggestion?`
+			showMessage(fallback, () => {
+				setShowInput(true)
+				setAssistantState('listening')
+				setIsThinking(false)
+			})
+		}
+	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput, userProfile, userProfileState, allProjects, allProjectsState])
 
 	const startGenericGreeting = useCallback(() => {
 		setIsThinking(true); setAssistantState('thinking')
@@ -1100,26 +1122,20 @@ QUESTIONS: [What you need to know to help better, if anything]`
 		
 		if (fieldHelpPattern.test(input)) {
 			try {
-				const fieldResponse = await buildFieldHelpResponse(input, {
-					userProfile: userProfile || userProfileState,
-					currentProject: (allProjects || allProjectsState)?.[0],
-					allProjects: allProjects || allProjectsState,
-					formType: 'grant_application'
-				})
-				
-				// Add field help response to conversation
-				setConversation(prev => [...prev, { 
-					type: 'assistant', 
-					content: fieldResponse,
-					id: Date.now() + 1,
-					isFieldHelp: true,
-					timestamp: new Date().toISOString()
-				}])
-				
+				const fieldResponse = await getDynamicFieldHelp(input, {
+					// minimal formData - prefer full form data if available from props
+					...(allProjectsState?.[0]?.formData ? { ...allProjectsState[0].formData } : {})
+				}, userProfile || userProfileState, (allProjects || allProjectsState)?.[0])
+
+				// Present and append via showMessage to centralize behavior
 				setIsThinking(false)
 				setAssistantState('ready')
 				setIsSearchingAPIs(false)
-				
+				showMessage(fieldResponse, () => {
+					setIsThinking(false)
+					setAssistantState('ready')
+				})
+
 				console.log('Field help provided for:', input)
 				return
 			} catch (error) {
@@ -1155,18 +1171,17 @@ QUESTIONS: [What you need to know to help better, if anything]`
 				
 				const enhancedResponse = await buildProjectResponse(intent, currentContext, input, userProfile?.user_id || userProfile?.id)
 				
-				// Add assistant response to conversation
-				setConversation(prev => [...prev, { type: 'assistant', content: enhancedResponse, id: Date.now() + 1 }])
-				
-				// Reset thinking state and show follow-up prompt
+				// Use showMessage to present and append the response
 				setIsThinking(false)
 				setAssistantState('idle')
-				setTimeout(() => {
-					showMessage('Anything else you\'d like help with?', () => {
-						setShowInput(true)
-						setAssistantState('listening')
-					})
-				}, 800)
+				showMessage(enhancedResponse, () => {
+					setTimeout(() => {
+						showMessage('Anything else you\'d like help with?', () => {
+							setShowInput(true)
+							setAssistantState('listening')
+						})
+					}, 800)
+				})
 				
 				return // Skip the API call since we handled it locally
 			}
@@ -1210,35 +1225,34 @@ QUESTIONS: [What you need to know to help better, if anything]`
 				console.log('API integration was active for this request')
 			}
 			
-			// Add assistant response to conversation
-			setConversation(prev => [...prev, { type: 'assistant', content: assistantMessage, id: Date.now() + 1 }])
-			
-			// Reset thinking state and show follow-up prompt
+			// Use showMessage to present and append the response
 			setIsThinking(false)
 			setAssistantState('idle')
-			setTimeout(() => {
-				showMessage('Anything else you\'d like help with?', () => {
-					setShowInput(true)
-					setAssistantState('listening')
-				})
-			}, 800)
+			showMessage(assistantMessage, () => {
+				setTimeout(() => {
+					showMessage('Anything else you\'d like help with?', () => {
+						setShowInput(true)
+						setAssistantState('listening')
+					})
+				}, 800)
+			})
 			
 		} catch (error) {
 			console.error('Assistant API failed:', error)
 			
 			const errorMessage = `I'm having trouble connecting to the assistant service. Error: ${error.message}`
 			
-			setConversation(prev => [...prev, { type: 'assistant', content: errorMessage, id: Date.now() + 1 }])
-			
-			// Reset thinking state and show follow-up prompt
+			// Use showMessage for error messaging
 			setIsThinking(false)
 			setAssistantState('idle')
-			setTimeout(() => {
-				showMessage('Please try again in a moment.', () => {
-					setShowInput(true)
-					setAssistantState('listening')
-				})
-			}, 800)
+			showMessage(errorMessage, () => {
+				setTimeout(() => {
+					showMessage('Please try again in a moment.', () => {
+						setShowInput(true)
+						setAssistantState('listening')
+					})
+				}, 800)
+			})
 		} finally {
 			// Reset API search indicator after a delay
 			if (isFundingRequest) {
