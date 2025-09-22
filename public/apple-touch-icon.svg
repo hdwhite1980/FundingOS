@@ -1,0 +1,29 @@
+<!-- Apple touch icon optimized version -->
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded rectangle background for iOS -->
+  <rect x="0" y="0" width="180" height="180" rx="40" ry="40" fill="white"/>
+  
+  <!-- Main circle -->
+  <circle cx="90" cy="90" r="70" fill="white" stroke="black" stroke-width="4"/>
+  
+  <!-- Shield outline -->
+  <path d="M45 45 L90 35 L135 45 L135 70 C135 90 112.5 105 90 115 C67.5 105 45 90 45 70 Z" 
+        fill="white" stroke="black" stroke-width="3"/>
+  
+  <!-- Center person -->
+  <circle cx="90" cy="55" r="8" fill="black"/>
+  <path d="M82 63 L90 95 L98 63 C98 58 94 53 90 53 C86 53 82 58 82 63 Z" fill="black"/>
+  
+  <!-- Left person -->
+  <circle cx="70" cy="65" r="6" fill="black"/>
+  <path d="M64 71 L70 95 L76 71 C76 66 73 61 70 61 C67 61 64 66 64 71 Z" fill="black"/>
+  
+  <!-- Right person -->
+  <circle cx="110" cy="65" r="6" fill="black"/>
+  <path d="M104 71 L110 95 L116 71 C116 66 113 61 110 61 C107 61 104 66 104 71 Z" fill="black"/>
+  
+  <!-- WALI-OS Text (smaller for app icon) -->
+  <text x="90" y="155" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="black">
+    WALI-OS
+  </text>
+</svg>

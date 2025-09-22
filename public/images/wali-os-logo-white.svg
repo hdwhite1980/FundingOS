@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer circle with subtle gradient -->
+  <defs>
+    <radialGradient id="whiteGradient" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8f8f8;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Main outer circle -->
+  <circle cx="250" cy="250" r="180" fill="url(#whiteGradient)" stroke="white" stroke-width="2"/>
+  
+  <!-- Shield outline -->
+  <path d="M175 175 L250 150 L325 175 L325 220 C325 270 287.5 315 250 340 C212.5 315 175 270 175 220 Z" 
+        fill="white" stroke="white" stroke-width="2"/>
+  
+  <!-- Center person (head) -->
+  <circle cx="250" cy="190" r="18" fill="white"/>
+  
+  <!-- Left person (head) -->
+  <circle cx="200" cy="220" r="15" fill="white"/>
+  
+  <!-- Right person (head) -->
+  <circle cx="300" cy="220" r="15" fill="white"/>
+  
+  <!-- Center person (body) -->
+  <path d="M235 210 L250 280 L265 210 C265 205 260 200 250 200 C240 200 235 205 235 210 Z" fill="white"/>
+  
+  <!-- Left person (body) -->
+  <path d="M185 240 L200 300 L215 240 C215 235 210 230 200 230 C190 230 185 235 185 240 Z" fill="white"/>
+  
+  <!-- Right person (body) -->
+  <path d="M285 240 L300 300 L315 240 C315 235 310 230 300 230 C290 230 285 235 285 240 Z" fill="white"/>
+  
+  <!-- WALI-OS Text -->
+  <text x="250" y="420" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="white">
+    WALI-OS
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="250" y="450" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white" letter-spacing="2">
+    WEALTH • AUTHORITY • LEGACY • INNOVATION
+  </text>
+</svg>

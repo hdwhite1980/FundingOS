@@ -15,6 +15,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'WALI-OS · Powered by AHTS',
   description: 'WALI-OS · Powered by AHTS',
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/apple-touch-icon.svg',
+  },
 }
 
 interface RootLayoutProps {
