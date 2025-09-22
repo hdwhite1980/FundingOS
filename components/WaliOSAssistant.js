@@ -1165,6 +1165,12 @@ QUESTIONS: [What you need to know to help better, if anything]`
 		// Exclude specific data lookups from field help - these should go to API assistant
 		const isDataLookup = /\b(ein|tax\s*id|duns|cage|sam)\b|what.*my.*(ein|duns|cage|sam)|my\s+(ein|duns|cage|sam)|show.*my.*(ein|duns|cage|sam)|tell.*my.*(ein|duns|cage|sam)/i.test(inputLower)
 		
+		// Debug logging for EIN issue
+		console.log(`🔍 Input analysis: "${input}"`)
+		console.log(`  Field Help Pattern Match: ${fieldHelpPattern.test(input)}`)
+		console.log(`  Data Lookup Detected: ${isDataLookup}`)
+		console.log(`  Will use field help: ${fieldHelpPattern.test(input) && !isDataLookup}`)
+		
 		if (fieldHelpPattern.test(input) && !isDataLookup) {
 			try {
 				const fieldResponse = await getDynamicFieldHelp(input, {
@@ -1239,6 +1245,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 			}
 			
 			console.log(`Calling assistant API for user ${userId}`)
+			console.log(`🚀 Making API call to /api/ai/assistant with message: "${input}"`)
 			
 			const response = await fetch('/api/ai/assistant', {
 				method: 'POST',
