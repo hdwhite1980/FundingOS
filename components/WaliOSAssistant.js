@@ -81,6 +81,8 @@ export default function WaliOSAssistant({
 	const [isAnimating, setIsAnimating] = useState(false)
 	const [fieldContext, setFieldContext] = useState(null)
 	const [lastHelpedFieldContext, setLastHelpedFieldContext] = useState(null)
+	const isFieldHelpRunning = useRef(false)
+	const lastAppendedMessageRef = useRef({ text: null, ts: 0 })
 	const [isSearchingAPIs, setIsSearchingAPIs] = useState(false)
 	const [lastAPISearch, setLastAPISearch] = useState(null)
 	
@@ -175,7 +177,15 @@ export default function WaliOSAssistant({
 					// Finished typing: add into conversation history so we don't keep restarting
 					setIsAnimating(false)
 					setAssistantState('idle')
-					setConversation(prev => [...prev, { type: 'assistant', content: fullMessage, id: Date.now() }])
+					// Avoid appending the exact same message repeatedly within a short window
+					const now = Date.now()
+					const last = lastAppendedMessageRef.current || { text: null, ts: 0 }
+					if (!(last.text === fullMessage && (now - last.ts) < 8000)) {
+						setConversation(prev => [...prev, { type: 'assistant', content: fullMessage, id: Date.now() }])
+						lastAppendedMessageRef.current = { text: fullMessage, ts: now }
+					} else {
+						console.log('⛔ Skipping duplicate assistant message append')
+					}
 					setCurrentMessage('') // Clear transient current message to avoid duplicate render
 					if (onComplete) onComplete()
 				}
@@ -189,22 +199,30 @@ export default function WaliOSAssistant({
 	const startFieldHelp = useCallback(async () => {
 		if (!fieldContext) return
 
-		// Check if we've already provided help for this specific field context
-		const contextKey = `${fieldContext.fieldName}_${fieldContext.opportunityId || 'default'}`
-		const lastHelpedKey = `${lastHelpedFieldContext?.fieldName}_${lastHelpedFieldContext?.opportunityId || 'default'}`
-
-		if (contextKey === lastHelpedKey) {
-			console.log('🔄 Field help already shown for:', fieldContext.fieldName)
-			return // Don't repeat the same field help
+		// Prevent re-entrancy
+		if (isFieldHelpRunning.current) {
+			console.log('⏳ Field help already running, skipping re-entrant call')
+			return
 		}
 
-		// Mark this field context as helped early to avoid race conditions
-		setLastHelpedFieldContext(fieldContext)
-
-		setIsThinking(true)
-		setAssistantState('thinking')
+		isFieldHelpRunning.current = true
 
 		try {
+			// Check if we've already provided help for this specific field context
+			const contextKey = `${fieldContext.fieldName}_${fieldContext.opportunityId || 'default'}`
+			const lastHelpedKey = `${lastHelpedFieldContext?.fieldName}_${lastHelpedFieldContext?.opportunityId || 'default'}`
+
+			if (contextKey === lastHelpedKey) {
+				console.log('🔄 Field help already shown for:', fieldContext.fieldName)
+				return // Don't repeat the same field help
+			}
+
+			// Mark this field context as helped early to avoid race conditions
+			setLastHelpedFieldContext(fieldContext)
+
+			setIsThinking(true)
+			setAssistantState('thinking')
+
 			// Prefer the comprehensive AI-backed help
 			const aiResult = await getComprehensiveFieldHelp(fieldContext.fieldName, fieldContext.fieldValue, {
 				userProfile: userProfile || userProfileState,
@@ -241,7 +259,7 @@ export default function WaliOSAssistant({
 				})
 			} else {
 				// Fallback short guidance
-				showMessage(`I can help with the "${(fieldContext.fieldName || '').replace(/_/g, ' ')}" field. Tell me what you'd like help with.`, () => {
+				showMessage(`I can help with the "${fieldContext.fieldName || ''}" field. Tell me what you'd like help with.`, () => {
 					setShowInput(true)
 					setAssistantState('listening')
 					setIsThinking(false)
@@ -257,6 +275,8 @@ export default function WaliOSAssistant({
 				setAssistantState('listening')
 				setIsThinking(false)
 			})
+		} finally {
+			isFieldHelpRunning.current = false
 		}
 	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput, userProfile, userProfileState, allProjects, allProjectsState])
 
