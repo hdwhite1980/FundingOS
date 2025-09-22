@@ -90,6 +90,9 @@ export default function WaliOSAssistant({
 	
 	// Track user-initiated opens to prevent isVisible from overriding
 	const userInitiatedOpen = useRef(false)
+	// Add refs to track conversation initialization to prevent loops
+	const conversationInitialized = useRef(false)
+	const lastInitializationTimestamp = useRef(0)
 	
 	// Sync isVisible prop with internal isOpen state (but don't override user-initiated opens)
 	useEffect(() => {
@@ -374,9 +377,19 @@ export default function WaliOSAssistant({
 			console.log('   userProfile:', userProfile?.full_name)
 			console.log('   current conversation length:', conversation.length)
 
+			// Prevent rapid re-initialization
+			const now = Date.now()
+			if (conversationInitialized.current && (now - lastInitializationTimestamp.current) < 1000) {
+				console.log('⏳ Conversation recently initialized, skipping')
+				return
+			}
+
 			// Only start conversation if we don't already have one in progress
 			if (conversation.length === 0 && !isThinking && !currentMessage) {
 				console.log('🎬 No existing conversation, starting new one...')
+
+				conversationInitialized.current = true
+				lastInitializationTimestamp.current = now
 
 				setTimeout(() => {
 					if (fieldContext && fieldContext.fieldName) {
@@ -397,6 +410,8 @@ export default function WaliOSAssistant({
 		} else {
 			// When assistant closes, clear everything for fresh start
 			console.log('📴 Assistant closed, clearing conversation')
+			conversationInitialized.current = false
+			lastInitializationTimestamp.current = 0
 			setConversation([])
 			setCurrentMessage('')
 			setShowInput(false)
@@ -410,7 +425,7 @@ export default function WaliOSAssistant({
 			}
 			typingMessageRef.current = null
 		}
-	}, [isOpen, fieldContext?.fieldName, isProactiveMode, conversation.length, isThinking, currentMessage, startFieldHelp, startGenericGreeting, startProactiveConversation, triggerContext?.trigger])
+	}, [isOpen]) // Simplified dependencies - only trigger on isOpen changes
 
 	useEffect(() => {
 		// When field context changes and assistant is already open
