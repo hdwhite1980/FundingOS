@@ -1685,13 +1685,30 @@ class UFAExpertFundingStrategist {
   }
 
   alignWithOrganizationalCapacity(opportunities, readinessAssessment) {
-    const capacityScore = readinessAssessment.overallScore
+    const safeAssessment = readinessAssessment || {}
+    const capacityScore = typeof safeAssessment.overallScore === 'number' ? safeAssessment.overallScore : 0
     const maxConcurrentApplications = Math.floor(capacityScore / 15) // Rough capacity formula
-    
+
+    // Normalize capacityGaps to an array of items
+    let capacityGaps = []
+    const rawGaps = safeAssessment.capacityGaps
+    if (Array.isArray(rawGaps)) {
+      capacityGaps = rawGaps
+    } else if (typeof rawGaps === 'string' && rawGaps.trim()) {
+      try {
+        const parsed = JSON.parse(rawGaps)
+        if (Array.isArray(parsed)) {
+          capacityGaps = parsed
+        }
+      } catch (_) {
+        // Not JSON, fall through to empty array
+      }
+    }
+
     return {
       recommended_concurrent_applications: Math.min(maxConcurrentApplications, 8),
-      capacity_building_priorities: readinessAssessment.capacityGaps?.slice(0, 3) || [],
-      resource_requirements: this.calculateResourceRequirements(opportunities.high_priority?.length || 0)
+      capacity_building_priorities: capacityGaps.slice(0, 3),
+      resource_requirements: this.calculateResourceRequirements(opportunities?.high_priority?.length || 0)
     }
   }
 
