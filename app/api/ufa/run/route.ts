@@ -11,29 +11,29 @@ export async function POST(request: NextRequest) {
 
 async function handleUFAAnalysis(request: NextRequest) {
   try {
-    let tenantId: string | null = null
+    let userId: string | null = null
     
     // Handle both GET and POST requests
     if (request.method === 'GET') {
-      tenantId = request.nextUrl.searchParams.get('tenantId')
+      userId = request.nextUrl.searchParams.get('userId')
     } else if (request.method === 'POST') {
       const body = await request.json().catch(() => ({}))
-      tenantId = body.tenantId || request.nextUrl.searchParams.get('tenantId')
+      userId = body.userId || request.nextUrl.searchParams.get('userId')
     }
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'tenantId required' }, { status: 400 })
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
     }
 
     // Import the service dynamically
     const { runExpertFundingAnalysisForTenant } = await import('../../../../services/ufaWithSBAIntelligence')
     
-    console.log(`🚀 Starting UFA analysis for tenant: ${tenantId}`)
-    const result = await runExpertFundingAnalysisForTenant(tenantId)
+    console.log(`🚀 Starting UFA analysis for user: ${userId}`)
+    const result = await runExpertFundingAnalysisForTenant(userId)
     
     return NextResponse.json({ 
       success: true,
-      tenantId, 
+      userId, 
       result,
       timestamp: new Date().toISOString()
     })

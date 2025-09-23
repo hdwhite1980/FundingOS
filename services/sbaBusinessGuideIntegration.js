@@ -260,6 +260,51 @@ class SBABusinessGuideIntegrator {
     return Math.min(value, 5) // Cap at 5
   }
 
+  assessApplicationComplexity(description) {
+    let complexity = 1
+    const text = description.toLowerCase()
+    
+    // Complexity indicators
+    if (text.includes('extensive documentation') || text.includes('detailed proposal')) complexity += 2
+    if (text.includes('business plan required') || text.includes('financial projections')) complexity += 1
+    if (text.includes('collateral') || text.includes('guarantee')) complexity += 1
+    if (text.includes('multiple phases') || text.includes('technical review')) complexity += 1
+    
+    return Math.min(complexity, 5) // Cap at 5
+  }
+
+  identifySuccessFactors(description) {
+    const factors = []
+    const text = description.toLowerCase()
+    
+    // Common success factors
+    if (text.includes('business plan') || text.includes('planning')) {
+      factors.push('Comprehensive business plan')
+    }
+    if (text.includes('credit') || text.includes('financial')) {
+      factors.push('Strong credit history')
+    }
+    if (text.includes('collateral') || text.includes('assets')) {
+      factors.push('Adequate collateral')
+    }
+    if (text.includes('experience') || text.includes('management')) {
+      factors.push('Management experience')
+    }
+    if (text.includes('market') || text.includes('demand')) {
+      factors.push('Market validation')
+    }
+    if (text.includes('innovation') || text.includes('technology')) {
+      factors.push('Technical innovation')
+    }
+    
+    // Default success factors if none identified
+    if (factors.length === 0) {
+      factors.push('Strong business fundamentals', 'Financial readiness', 'Clear growth strategy')
+    }
+    
+    return factors.slice(0, 4) // Return top 4 factors
+  }
+
   getMajorSBAPrograms() {
     return [
       {
@@ -381,13 +426,81 @@ class SBABusinessGuideIntegrator {
 
     // Generate strategic recommendations for each category
     Object.keys(intelligence).forEach(category => {
-      intelligence[category].strategic_recommendations = this.generateSBAStrategicRecommendations(
+      intelligence[category].strategic_recommendations = this.generateCategoryRecommendations(
         intelligence[category].insights,
         category
       )
     })
 
     return intelligence
+  }
+
+  generateCategoryRecommendations(insights, category) {
+    const recommendations = []
+    
+    // Generate category-specific recommendations based on insights
+    switch (category) {
+      case 'business_planning':
+        recommendations.push({
+          priority: 'high',
+          title: 'Develop Comprehensive Business Plan',
+          description: 'Create detailed business plan using SBA templates and guidance',
+          action: 'Use SBA business plan tools and templates for thorough preparation',
+          impact: 'Improves funding application success and strategic clarity'
+        })
+        break
+        
+      case 'funding_strategies':
+        recommendations.push({
+          priority: 'high',
+          title: 'Explore SBA Loan Programs',
+          description: 'Evaluate SBA 7(a) and 504 loan programs for optimal funding',
+          action: 'Research SBA loan programs and connect with SBA-approved lenders',
+          impact: 'Access to government-backed financing with favorable terms'
+        })
+        break
+        
+      case 'financial_planning':
+        recommendations.push({
+          priority: 'medium',
+          title: 'Prepare Financial Documentation',
+          description: 'Organize financial statements and projections for funding applications',
+          action: 'Work with accountant to prepare 3-year financial statements and projections',
+          impact: 'Strengthens funding applications and improves approval odds'
+        })
+        break
+        
+      case 'business_formation':
+        recommendations.push({
+          priority: 'medium',
+          title: 'Optimize Business Structure',
+          description: 'Ensure business structure supports funding and growth objectives',
+          action: 'Review business entity structure with legal counsel',
+          impact: 'Ensures compliance and optimal structure for funding'
+        })
+        break
+        
+      case 'compliance_requirements':
+        recommendations.push({
+          priority: 'critical',
+          title: 'Maintain Regulatory Compliance',
+          description: 'Stay current with all regulatory requirements and certifications',
+          action: 'Implement compliance monitoring systems and regular reviews',
+          impact: 'Prevents funding delays and maintains program eligibility'
+        })
+        break
+        
+      default:
+        recommendations.push({
+          priority: 'medium',
+          title: `Leverage ${category} Insights`,
+          description: `Apply SBA guidance for ${category.replace('_', ' ')} optimization`,
+          action: `Review and implement relevant SBA recommendations`,
+          impact: 'Improves business operations and funding readiness'
+        })
+    }
+    
+    return recommendations.slice(0, 3) // Return top 3 recommendations
   }
 
   extractBusinessInsights(content) {
@@ -536,14 +649,21 @@ class SBABusinessGuideIntegrator {
 
   async storeSBAKnowledgeBase(intelligence, programs) {
     // Store processed SBA intelligence in database for UFA use
-    if (!supabase) {
-      console.log('💾 Storing SBA knowledge base in memory (no database configured)')
-      this.knowledgeBase = intelligence
-      this.sbaPrograms = new Map(programs.map(p => [p.name, p]))
-      return
-    }
-    
     try {
+      const { createClient } = require('@supabase/supabase-js')
+      
+      const supabaseUrl = process.env.SUPABASE_URL
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!supabaseUrl || !supabaseKey) {
+        console.log('💾 Storing SBA knowledge base in memory (no database configured)')
+        this.knowledgeBase = new Map(Object.entries(intelligence))
+        this.sbaPrograms = new Map(programs.map(p => [p.name, p]))
+        return
+      }
+      
+      const supabase = createClient(supabaseUrl, supabaseKey)
+      
       // Store business intelligence
       for (const [category, data] of Object.entries(intelligence)) {
         await supabase.from('ufa_sba_knowledge').upsert([{
@@ -579,6 +699,9 @@ class SBABusinessGuideIntegrator {
       
     } catch (error) {
       console.error('Failed to store SBA knowledge base:', error)
+      // Fall back to in-memory storage
+      this.knowledgeBase = new Map(Object.entries(intelligence))
+      this.sbaPrograms = new Map(programs.map(p => [p.name, p]))
     }
   }
 

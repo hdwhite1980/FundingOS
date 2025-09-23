@@ -379,7 +379,7 @@ class UFAExpertStrategistWithSBA extends UFAExpertFundingStrategist {
       const { data: companySettings } = await supabase
         .from('company_settings')
         .select('*')
-        .eq('tenant_id', this.tenantId)
+        .eq('user_id', this.tenantId)
         .single()
       
       // Get any existing SBA readiness assessment
