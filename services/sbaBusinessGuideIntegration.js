@@ -208,36 +208,42 @@ class SBABusinessGuideIntegrator {
 
   generateAlternativeUrls(sectionPath) {
     const alternativeUrls = []
-    const baseSection = this.extractSectionFromUrl(sectionPath)
-    
-    // Try different URL patterns that SBA might use
-    const patterns = [
-      // Remove leading slash variations
-      sectionPath.startsWith('/') ? sectionPath.slice(1) : sectionPath,
-      
-      // Add /business-guide prefix if not present
-      sectionPath.includes('/business-guide') ? sectionPath : `/business-guide${sectionPath}`,
-      
-      // Try with www.sba.gov base
-      `https://www.sba.gov${sectionPath}`,
-      `https://www.sba.gov/business-guide${sectionPath.replace('/business-guide', '')}`,
-      
-      // Try section-specific patterns
-      baseSection ? `https://www.sba.gov/${baseSection}` : null,
-      baseSection ? `https://www.sba.gov/business-guide/${baseSection}` : null,
-      
-      // Try removing nested paths for top-level sections
-      sectionPath.includes('/') ? `https://www.sba.gov/${sectionPath.split('/')[1]}` : null,
-    ]
-    
-    // Filter out null values and duplicates
-    patterns.forEach(pattern => {
-      if (pattern && !alternativeUrls.includes(pattern)) {
-        alternativeUrls.push(pattern)
+    // Normalize to a pathname-only string (no protocol/host)
+    let pathOnly = sectionPath
+    try {
+      if (sectionPath.startsWith('http')) {
+        const u = new URL(sectionPath)
+        pathOnly = u.pathname || '/'
       }
+    } catch (_) {
+      // ignore URL parse errors; fall back to given sectionPath
+    }
+
+    const baseSection = this.extractSectionFromUrl(pathOnly)
+
+    // Try different URL patterns that SBA might use (all path-based)
+    const pathVariants = [
+      // Original path
+      pathOnly,
+      // Remove leading slash
+      pathOnly.startsWith('/') ? pathOnly.slice(1) : pathOnly,
+      // Ensure /business-guide prefix
+      pathOnly.includes('/business-guide') ? pathOnly : `/business-guide${pathOnly.startsWith('/') ? '' : '/'}${pathOnly}`,
+      // Base section fallbacks
+      baseSection ? `/${baseSection}` : null,
+      baseSection ? `/business-guide/${baseSection}` : null,
+      // Top-level section when nested
+      pathOnly.includes('/') ? `/${(pathOnly.split('/').filter(Boolean)[0] || '')}` : null
+    ]
+
+    // Convert to absolute URLs under sba.gov and de-duplicate
+    pathVariants.forEach(p => {
+      if (!p) return
+      const abs = this.ensureAbsoluteUrl(p)
+      if (abs && !alternativeUrls.includes(abs)) alternativeUrls.push(abs)
     })
-    
-    return alternativeUrls.slice(0, 5) // Limit to 5 alternative URLs to avoid too many requests
+
+    return alternativeUrls.slice(0, 5) // Limit to 5 alternative URLs
   }
 
   extractSectionFromUrl(sectionPath) {

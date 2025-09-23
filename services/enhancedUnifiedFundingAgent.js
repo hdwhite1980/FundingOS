@@ -31,8 +31,8 @@ class UFAExpertFundingStrategist {
     console.log(`💰 UFA Expert Strategist: Analyzing funding ecosystem for tenant ${this.tenantId}`)
     
     try {
-      // Step 1: Deep funding landscape analysis with expert strategies
-      const landscapeData = await this.analyzeComprehensiveFundingEcosystem()
+  // Step 1: Deep funding landscape analysis with expert strategies
+  const landscapeData = await this.analyzeComprehensiveFundingEcosystem()
       
       // Step 2: Assess organizational funding readiness and capacity
       const readinessAssessment = await this.assessFundingReadiness()
@@ -72,6 +72,9 @@ class UFAExpertFundingStrategist {
       return {
         ok: true,
         analysis: {
+          // Expose SBA intelligence and channel analysis when available
+          sbaIntelligence: landscapeData?.sbaIntelligence,
+          channelAnalysis: landscapeData?.channelAnalysis,
           expertStrategies,
           opportunities,
           seasonalStrategy,
