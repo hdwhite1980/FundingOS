@@ -367,7 +367,7 @@ class UFAExpertStrategistWithSBA extends UFAExpertFundingStrategist {
       const { data: userProfile, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('tenant_id', this.tenantId)
+        .eq('user_id', this.tenantId)
         .single()
       
       if (profileError || !userProfile) {
