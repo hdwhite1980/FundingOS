@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Import UFA Query Handler (ignore TypeScript error for JS import)
     // @ts-ignore
-    const { UFAQueryHandler } = await import('../../../services/ufaQueryHandler')
+    const { UFAQueryHandler } = await import('../../../../services/ufaQueryHandler')
     const ufaHandler = new UFAQueryHandler()
 
     // Process the query
