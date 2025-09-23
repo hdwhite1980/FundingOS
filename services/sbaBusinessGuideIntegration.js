@@ -137,9 +137,16 @@ class SBABusinessGuideIntegrator {
     const primaryUrl = `${this.baseUrl}${sectionPath}`
     console.log(`🏢 Scraping SBA content from: ${primaryUrl}`)
     
+    const requestHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cache-Control': 'no-cache'
+    }
+
     // Try primary URL first
     try {
-      const response = await axios.get(primaryUrl, { timeout: 10000 })
+      const response = await axios.get(primaryUrl, { timeout: 10000, maxRedirects: 5, headers: requestHeaders })
       
       if (response.status === 200 && response.data) {
         const content = await this.parseHTMLContent(response.data, primaryUrl, sectionPath, sectionTitle)
@@ -156,13 +163,14 @@ class SBABusinessGuideIntegrator {
     
     for (const altUrl of alternativeUrls) {
       try {
-        console.log(`🔄 Trying alternative URL: ${altUrl}`)
-        const response = await axios.get(altUrl, { timeout: 10000 })
+        const finalUrl = this.ensureAbsoluteUrl(altUrl)
+        console.log(`🔄 Trying alternative URL: ${finalUrl}`)
+        const response = await axios.get(finalUrl, { timeout: 10000, maxRedirects: 5, headers: requestHeaders })
         
         if (response.status === 200 && response.data) {
-          const content = await this.parseHTMLContent(response.data, altUrl, sectionPath, sectionTitle)
+          const content = await this.parseHTMLContent(response.data, finalUrl, sectionPath, sectionTitle)
           if (content && content.length > 0) {
-            console.log(`✅ Success with alternative URL: ${altUrl}`)
+            console.log(`✅ Success with alternative URL: ${finalUrl}`)
             return content
           }
         }
@@ -175,6 +183,13 @@ class SBABusinessGuideIntegrator {
     // If all URLs fail, generate fallback content
     console.log(`⚠️ All URLs failed for ${sectionPath}, generating fallback content`)
     return await this.getFallbackContent(sectionPath, sectionTitle)
+  }
+
+  ensureAbsoluteUrl(url) {
+    if (!url) return this.baseUrl
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    if (url.startsWith('/')) return `https://www.sba.gov${url}`
+    return `https://www.sba.gov/${url}`
   }
 
   generateAlternativeUrls(sectionPath) {
@@ -405,42 +420,86 @@ class SBABusinessGuideIntegrator {
     console.log('💰 Extracting SBA funding programs and opportunities...')
     
     try {
-      // Scrape SBA funding programs
-      const fundingUrl = 'https://www.sba.gov/funding-programs'
-      const response = await axios.get(fundingUrl)
-      const $ = cheerio.load(response.data)
-      
-      const programs = []
-      
-      $('.program-card, .funding-option, .loan-program').each((index, element) => {
-        const programName = $(element).find('h3, h4, .program-title').first().text().trim()
-        const description = $(element).find('p, .description').first().text().trim()
-        const eligibility = $(element).find('.eligibility, .requirements').text().trim()
-        const amounts = $(element).find('.amount, .loan-amount, .funding-range').text().trim()
-        const link = $(element).find('a').attr('href')
-        
-        if (programName && description) {
-          programs.push({
-            name: programName,
-            description: description,
-            eligibility_requirements: eligibility,
-            funding_amounts: amounts,
-            program_type: this.classifyProgramType(programName, description),
-            business_stage_fit: this.determineBusinessStageFit(description),
-            strategic_value: this.assessStrategicValue(programName, description),
-            application_complexity: this.assessApplicationComplexity(description),
-            success_factors: this.identifySuccessFactors(description),
-            link: link ? `https://www.sba.gov${link}` : fundingUrl,
-            extracted_at: new Date().toISOString()
+      // Scrape SBA funding programs from multiple likely pages with resilient selectors
+      const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      }
+
+      const candidateUrls = [
+        'https://www.sba.gov/funding-programs',
+        'https://www.sba.gov/funding-programs/loans',
+        'https://www.sba.gov/funding-programs/grants',
+        'https://www.sba.gov/funding-programs/investment-capital',
+        'https://www.sba.gov/funding-programs/loans/7a-loans',
+        'https://www.sba.gov/funding-programs/loans/504-loans',
+        'https://www.sba.gov/funding-programs/loans/microloans'
+      ]
+
+  const programs = []
+
+      for (const url of candidateUrls) {
+        try {
+          const resp = await axios.get(url, { timeout: 12000, maxRedirects: 5, headers })
+          if (resp.status !== 200 || !resp.data) continue
+          const $ = cheerio.load(resp.data)
+
+          const beforeCount = programs.length
+          $('.program-card, .funding-option, .loan-program, article, section').each((index, element) => {
+            const programName = $(element).find('h2, h3, h4, .program-title, .node-title').first().text().trim()
+            const description = $(element).find('p, .description').first().text().trim()
+            const eligibility = $(element).find('.eligibility, .requirements, .field--name-field-eligibility').text().trim()
+            const amounts = $(element).find('.amount, .loan-amount, .funding-range, .field--name-field-amount').text().trim()
+            let link = $(element).find('a').first().attr('href') || url
+
+            if (link && !link.startsWith('http')) link = `https://www.sba.gov${link.startsWith('/') ? '' : '/'}${link}`
+            
+            if (programName && description) {
+              programs.push({
+                name: programName,
+                description: description,
+                eligibility_requirements: eligibility,
+                funding_amounts: amounts,
+                program_type: this.classifyProgramType(programName, description),
+                business_stage_fit: this.determineBusinessStageFit(description),
+                strategic_value: this.assessStrategicValue(programName, description),
+                application_complexity: this.assessApplicationComplexity(description),
+                success_factors: this.identifySuccessFactors(description),
+                link,
+                extracted_at: new Date().toISOString()
+              })
+            }
           })
+          const added = programs.length - beforeCount
+          if (added > 0) {
+            console.log(`🔎 Parsed ${added} programs from ${url}`)
+          }
+        } catch (e) {
+          console.log(`Skipping candidate URL ${url}: ${e.message}`)
+          continue
         }
-      })
-      
+      }
+
       // Add known major SBA programs if not captured
       const majorPrograms = this.getMajorSBAPrograms()
       programs.push(...majorPrograms)
-      
-      return programs
+
+      // Deduplicate by normalized name (and prefer entries with higher strategic value)
+      const deduped = new Map()
+      for (const p of programs) {
+        const key = (p.name || '').toLowerCase().trim()
+        if (!key) continue
+        if (!deduped.has(key)) deduped.set(key, p)
+        else {
+          const existing = deduped.get(key)
+          const existingScore = (existing.strategic_value || 0) + (existing.description?.length || 0) / 1000
+          const newScore = (p.strategic_value || 0) + (p.description?.length || 0) / 1000
+          if (newScore > existingScore) deduped.set(key, p)
+        }
+      }
+
+      return Array.from(deduped.values())
       
     } catch (error) {
       console.error('Failed to extract SBA funding programs:', error)
