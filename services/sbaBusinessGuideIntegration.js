@@ -134,7 +134,10 @@ class SBABusinessGuideIntegrator {
   }
 
   async scrapeSBASection(sectionPath, sectionTitle) {
-    const primaryUrl = `${this.baseUrl}${sectionPath}`
+    const resolvedPath = this.resolveSBARedirect(sectionPath)
+    const primaryUrl = resolvedPath.startsWith('http')
+      ? resolvedPath
+      : `${this.baseUrl}${resolvedPath}`
     console.log(`🏢 Scraping SBA content from: ${primaryUrl}`)
     
     const requestHeaders = {
@@ -146,7 +149,7 @@ class SBABusinessGuideIntegrator {
 
     // Try primary URL first
     try {
-      const response = await axios.get(primaryUrl, { timeout: 10000, maxRedirects: 5, headers: requestHeaders })
+  const response = await axios.get(primaryUrl, { timeout: 10000, maxRedirects: 5, headers: requestHeaders })
       
       if (response.status === 200 && response.data) {
         const content = await this.parseHTMLContent(response.data, primaryUrl, sectionPath, sectionTitle)
@@ -159,7 +162,7 @@ class SBABusinessGuideIntegrator {
     }
     
     // Try alternative URL patterns
-    const alternativeUrls = this.generateAlternativeUrls(sectionPath)
+  const alternativeUrls = this.generateAlternativeUrls(resolvedPath)
     
     for (const altUrl of alternativeUrls) {
       try {
@@ -168,7 +171,7 @@ class SBABusinessGuideIntegrator {
         const response = await axios.get(finalUrl, { timeout: 10000, maxRedirects: 5, headers: requestHeaders })
         
         if (response.status === 200 && response.data) {
-          const content = await this.parseHTMLContent(response.data, finalUrl, sectionPath, sectionTitle)
+          const content = await this.parseHTMLContent(response.data, finalUrl, resolvedPath, sectionTitle)
           if (content && content.length > 0) {
             console.log(`✅ Success with alternative URL: ${finalUrl}`)
             return content
@@ -182,7 +185,18 @@ class SBABusinessGuideIntegrator {
     
     // If all URLs fail, generate fallback content
     console.log(`⚠️ All URLs failed for ${sectionPath}, generating fallback content`)
-    return await this.getFallbackContent(sectionPath, sectionTitle)
+    return await this.getFallbackContent(resolvedPath, sectionTitle)
+  }
+
+  resolveSBARedirect(sectionPath) {
+    // Map deprecated/moved Business Guide pages to current structure
+    const map = new Map([
+      ['/fund-your-business', 'https://www.sba.gov/funding-programs'],
+      ['/fund-your-business/determine-how-much-funding-you-need', 'https://www.sba.gov/funding-programs'],
+      ['/fund-your-business/explore-funding-options', 'https://www.sba.gov/funding-programs'],
+      ['/grow-your-business/expand-market-reach', 'https://www.sba.gov/grow-your-business']
+    ])
+    return map.get(sectionPath) || sectionPath
   }
 
   ensureAbsoluteUrl(url) {
@@ -314,6 +328,9 @@ class SBABusinessGuideIntegrator {
           
           const callouts = $(element).find('.callout, .highlight, .important, .alert, .note').map((i, el) => $(el).text().trim()).get()
           
+          // Skip obvious navigation sections
+          if ((title || '').toLowerCase().includes('breadcrumb')) return
+
           if (text && text.length > 50) { // Ensure we have substantial content
             content.push({
               category: this.categorizeSBAContent(sectionPath, title || sectionTitle),
@@ -455,6 +472,12 @@ class SBABusinessGuideIntegrator {
 
             if (link && !link.startsWith('http')) link = `https://www.sba.gov${link.startsWith('/') ? '' : '/'}${link}`
             
+            // Heuristics to filter out non-program CTA/listing cards
+            const lowerName = (programName || '').toLowerCase()
+            const looksLikeCTA = /find a|contact|content|near you|learn more|apply now/.test(lowerName)
+            const looksLikeListing = (link || '').toLowerCase().includes('/find-') || (link || '').toLowerCase().includes('/locator')
+            if (looksLikeCTA || looksLikeListing) return
+
             if (programName && description) {
               programs.push({
                 name: programName,
@@ -1011,9 +1034,19 @@ class SBABusinessGuideIntegrator {
         }
       }
       
+      // Filter programs again defensively before DB insert
+      const filteredPrograms = (programs || []).filter(p => {
+        const name = (p?.name || '').toLowerCase()
+        const link = (p?.link || '').toLowerCase()
+        if (!p?.description || name.length < 3) return false
+        if (/find a|contact|content|near you|learn more|apply now/.test(name)) return false
+        if (link.includes('/find-') || link.includes('/locator')) return false
+        return true
+      })
+
       // Store SBA funding programs
-      console.log(`💾 Storing ${programs.length} SBA programs...`)
-      for (const program of programs) {
+      console.log(`💾 Storing ${filteredPrograms.length} SBA programs...`)
+      for (const program of filteredPrograms) {
         try {
           const result = await supabase.from('ufa_sba_programs').insert({
             name: program.name,
