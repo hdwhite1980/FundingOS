@@ -1233,7 +1233,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 		const isDataLookup = /\b(ein|tax\s*id|duns|cage|sam)\b|what.*my.*(ein|duns|cage|sam)|my\s+(ein|duns|cage|sam)|show.*my.*(ein|duns|cage|sam)|tell.*my.*(ein|duns|cage|sam)/i.test(inputLower)
 		
 		// Check for UFA (Unified Funding Agent) queries - SBA and grants.gov intelligence
-		const ufaQueryPattern = /\b(sba|loan|grant|funding|capital|financing|business\s+(plan|formation|growth)|startup\s+funding|expansion\s+funding|working\s+capital|government\s+(loan|grant)|federal\s+(grant|funding)|grants\.gov)\b/i
+		const ufaQueryPattern = /\b(sba|loan|grant|funding|capital|financing|business\s+(plan|formation|growth)|startup\s+funding|expansion\s+funding|working\s+capital|government\s+(loan|grant)|federal\s+(grant|funding)|grants\.gov|strategic\s+advice|funding\s+strategy|long\s+term\s+plan|roadmap|comprehensive\s+plan|opportunities|what\s+can\s+i\s+apply\s+for|available\s+funding|funding\s+opportunities|analyze\s+my\s+situation|assess\s+my\s+business|funding\s+analysis|business\s+assessment)\b/i
 		const isUFAQuery = ufaQueryPattern.test(inputLower) && !isDataLookup
 		
 		console.log(`  UFA Query Detected: ${isUFAQuery}`)
