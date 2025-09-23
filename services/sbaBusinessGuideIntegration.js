@@ -46,69 +46,248 @@ class SBABusinessGuideIntegrator {
     const businessContent = []
     
     // Key SBA Business Guide sections for funding intelligence
-    const sbaGuideSections = [
-      '/business-guide/plan-your-business',
-      '/business-guide/launch-your-business', 
-      '/business-guide/manage-your-business',
-      '/business-guide/grow-your-business',
-      '/business-guide/fund-your-business',
-      '/business-guide/plan-your-business/calculate-your-startup-costs',
-      '/business-guide/plan-your-business/write-your-business-plan',
-      '/business-guide/launch-your-business/choose-business-structure',
-      '/business-guide/launch-your-business/register-your-business',
-      '/business-guide/manage-your-business/stay-legally-compliant',
-      '/business-guide/grow-your-business/expand-market-reach',
-      '/business-guide/fund-your-business/determine-how-much-funding-you-need',
-      '/business-guide/fund-your-business/explore-funding-options'
+    const SBA_BUSINESS_GUIDE_SECTIONS = [
+      { url: '/plan-your-business', title: 'Plan Your Business' },
+      { url: '/launch-your-business', title: 'Launch Your Business' },
+      { url: '/manage-your-business', title: 'Manage Your Business' },
+      { url: '/grow-your-business', title: 'Grow Your Business' },
+      { url: '/fund-your-business', title: 'Fund Your Business' },
+      { url: '/plan-your-business/calculate-your-startup-costs', title: 'Calculate Startup Costs' },
+      { url: '/plan-your-business/write-your-business-plan', title: 'Write Your Business Plan' },
+      { url: '/launch-your-business/choose-business-structure', title: 'Choose Business Structure' },
+      { url: '/launch-your-business/register-your-business', title: 'Register Your Business' },
+      { url: '/manage-your-business/stay-legally-compliant', title: 'Stay Legally Compliant' },
+      { url: '/grow-your-business/expand-market-reach', title: 'Expand Market Reach' },
+      { url: '/fund-your-business/determine-how-much-funding-you-need', title: 'Determine Funding Needs' },
+      { url: '/fund-your-business/explore-funding-options', title: 'Explore Funding Options' }
     ]
 
-    for (const section of sbaGuideSections) {
+    for (const section of SBA_BUSINESS_GUIDE_SECTIONS) {
       try {
-        const content = await this.scrapeSBASection(section)
+        const content = await this.scrapeSBASection(section.url, section.title)
         businessContent.push(...content)
       } catch (error) {
-        console.error(`Failed to scrape SBA section ${section}:`, error)
+        console.error(`Failed to scrape SBA section ${section.url}:`, error)
       }
     }
 
     return businessContent
   }
 
-  async scrapeSBASection(sectionPath) {
-    const url = `${this.baseUrl}${sectionPath}`
-    console.log(`🏢 Scraping SBA content from: ${url}`)
+  async scrapeSBASection(sectionPath, sectionTitle) {
+    const primaryUrl = `${this.baseUrl}${sectionPath}`
+    console.log(`🏢 Scraping SBA content from: ${primaryUrl}`)
     
+    // Try primary URL first
     try {
-      const response = await axios.get(url)
-      const $ = cheerio.load(response.data)
+      const response = await axios.get(primaryUrl, { timeout: 10000 })
       
+      if (response.status === 200 && response.data) {
+        const content = await this.parseHTMLContent(response.data, primaryUrl, sectionPath, sectionTitle)
+        if (content && content.length > 0) {
+          return content
+        }
+      }
+    } catch (error) {
+      console.log(`Primary URL failed for ${sectionPath}: ${error.message}`)
+    }
+    
+    // Try alternative URL patterns
+    const alternativeUrls = this.generateAlternativeUrls(sectionPath)
+    
+    for (const altUrl of alternativeUrls) {
+      try {
+        console.log(`🔄 Trying alternative URL: ${altUrl}`)
+        const response = await axios.get(altUrl, { timeout: 10000 })
+        
+        if (response.status === 200 && response.data) {
+          const content = await this.parseHTMLContent(response.data, altUrl, sectionPath, sectionTitle)
+          if (content && content.length > 0) {
+            console.log(`✅ Success with alternative URL: ${altUrl}`)
+            return content
+          }
+        }
+      } catch (error) {
+        console.log(`Alternative URL failed ${altUrl}: ${error.message}`)
+        continue
+      }
+    }
+    
+    // If all URLs fail, generate fallback content
+    console.log(`⚠️ All URLs failed for ${sectionPath}, generating fallback content`)
+    return await this.getFallbackContent(sectionPath, sectionTitle)
+  }
+
+  generateAlternativeUrls(sectionPath) {
+    const alternativeUrls = []
+    const baseSection = this.extractSectionFromUrl(sectionPath)
+    
+    // Try different URL patterns that SBA might use
+    const patterns = [
+      // Remove leading slash variations
+      sectionPath.startsWith('/') ? sectionPath.slice(1) : sectionPath,
+      
+      // Add /business-guide prefix if not present
+      sectionPath.includes('/business-guide') ? sectionPath : `/business-guide${sectionPath}`,
+      
+      // Try with www.sba.gov base
+      `https://www.sba.gov${sectionPath}`,
+      `https://www.sba.gov/business-guide${sectionPath.replace('/business-guide', '')}`,
+      
+      // Try section-specific patterns
+      baseSection ? `https://www.sba.gov/${baseSection}` : null,
+      baseSection ? `https://www.sba.gov/business-guide/${baseSection}` : null,
+      
+      // Try removing nested paths for top-level sections
+      sectionPath.includes('/') ? `https://www.sba.gov/${sectionPath.split('/')[1]}` : null,
+    ]
+    
+    // Filter out null values and duplicates
+    patterns.forEach(pattern => {
+      if (pattern && !alternativeUrls.includes(pattern)) {
+        alternativeUrls.push(pattern)
+      }
+    })
+    
+    return alternativeUrls.slice(0, 5) // Limit to 5 alternative URLs to avoid too many requests
+  }
+
+  extractSectionFromUrl(sectionPath) {
+    // Extract the main section name from URL path
+    const pathParts = sectionPath.split('/').filter(part => part && part !== 'business-guide')
+    return pathParts.length > 0 ? pathParts[0] : null
+  }
+
+  async getFallbackContent(sectionPath, sectionTitle) {
+    console.log(`📝 Generating fallback content for ${sectionPath}`)
+    
+    // Generate structured fallback content based on section type
+    const fallbackContent = this.generateFallbackSBAContent(sectionPath, sectionTitle)
+    
+    return [{
+      category: this.categorizeSBAContent(sectionPath, sectionTitle),
+      title: sectionTitle || 'SBA Business Guidance',
+      content: fallbackContent.content,
+      callouts: fallbackContent.callouts,
+      source_url: `${this.baseUrl}${sectionPath}`,
+      section: sectionPath,
+      business_stage: this.identifyBusinessStage(sectionPath),
+      funding_relevance: this.assessFundingRelevance(sectionTitle, fallbackContent.content),
+      extracted_at: new Date().toISOString(),
+      is_fallback: true
+    }]
+  }
+
+  generateFallbackSBAContent(sectionPath, sectionTitle) {
+    const section = this.extractSectionFromUrl(sectionPath)
+    
+    const fallbackContent = {
+      'plan-your-business': {
+        content: 'Business planning is essential for success. Develop a comprehensive business plan that includes market analysis, financial projections, and operational strategies. Consider your startup costs, funding needs, and growth projections. The SBA provides templates and resources to help create effective business plans that can attract investors and lenders.',
+        callouts: ['Business plan template available on SBA.gov', 'Consider SCORE mentoring for business planning guidance', 'Financial projections should cover 3-5 years']
+      },
+      'launch-your-business': {
+        content: 'Launching a business requires careful attention to legal structure, licensing, and registration requirements. Choose the right business entity type (LLC, Corporation, etc.) based on your needs. Register your business name and obtain necessary licenses and permits. Set up proper accounting systems and business banking.',
+        callouts: ['Choose business structure carefully - impacts taxes and liability', 'Register for required licenses and permits', 'Separate business and personal finances from day one']
+      },
+      'manage-your-business': {
+        content: 'Effective business management involves ongoing operations, compliance, and performance monitoring. Maintain accurate financial records, stay current with tax obligations, and ensure regulatory compliance. Develop systems for inventory, customer management, and employee oversight.',
+        callouts: ['Keep accurate financial records for tax and funding purposes', 'Stay current with changing regulations', 'Monitor key performance indicators regularly']
+      },
+      'grow-your-business': {
+        content: 'Business growth requires strategic planning and often additional funding. Consider market expansion opportunities, new product development, and operational scaling. Evaluate financing options including SBA loans, private investment, and revenue-based funding.',
+        callouts: ['Growth requires additional working capital', 'Consider SBA programs for expansion funding', 'Market research is crucial before expansion']
+      },
+      'fund-your-business': {
+        content: 'Business funding comes from multiple sources including personal savings, loans, grants, and investment. SBA loan programs offer government-backed financing with favorable terms. Consider your funding timeline, amount needed, and repayment capacity when choosing funding sources.',
+        callouts: ['SBA loans offer competitive terms and government backing', 'Prepare strong financial documentation', 'Consider multiple funding sources for optimal capital structure']
+      }
+    }
+    
+    // Return section-specific content or general business content
+    return fallbackContent[section] || {
+      content: 'The SBA provides comprehensive guidance for businesses at all stages of development. From initial planning through growth and expansion, SBA resources help entrepreneurs make informed decisions and access necessary funding. Consider consulting SBA resource partners including SCORE, SBDCs, and WBCs for personalized guidance.',
+      callouts: ['SBA resource partners provide free counseling', 'Local SBA district offices offer direct support', 'SBA.gov contains extensive business resources']
+    }
+  }
+
+  async parseHTMLContent(htmlData, sourceUrl, sectionPath, sectionTitle) {
+    try {
+      const $ = cheerio.load(htmlData)
       const content = []
       
-      // Extract main content areas
-      $('.guide-content, .section-content, .funding-option, .program-details').each((index, element) => {
-        const title = $(element).find('h1, h2, h3, h4').first().text().trim()
-        const text = $(element).find('p, li').map((i, el) => $(el).text().trim()).get().join(' ')
-        const callouts = $(element).find('.callout, .highlight, .important').map((i, el) => $(el).text().trim()).get()
+      // Extract main content areas with multiple selector strategies
+      const contentSelectors = [
+        '.guide-content',
+        '.section-content', 
+        '.funding-option',
+        '.program-details',
+        '.main-content',
+        '.content-body',
+        'main',
+        '.business-guide-content',
+        'article'
+      ]
+      
+      let foundContent = false
+      
+      for (const selector of contentSelectors) {
+        $(selector).each((index, element) => {
+          const title = $(element).find('h1, h2, h3, h4').first().text().trim()
+          const paragraphs = $(element).find('p').map((i, el) => $(el).text().trim()).get()
+          const listItems = $(element).find('li').map((i, el) => $(el).text().trim()).get()
+          const text = [...paragraphs, ...listItems].filter(t => t.length > 10).join(' ')
+          
+          const callouts = $(element).find('.callout, .highlight, .important, .alert, .note').map((i, el) => $(el).text().trim()).get()
+          
+          if (text && text.length > 50) { // Ensure we have substantial content
+            content.push({
+              category: this.categorizeSBAContent(sectionPath, title || sectionTitle),
+              title: title || sectionTitle || 'SBA Business Guidance',
+              content: text,
+              callouts: callouts,
+              source_url: sourceUrl,
+              section: sectionPath,
+              business_stage: this.identifyBusinessStage(sectionPath),
+              funding_relevance: this.assessFundingRelevance(title || sectionTitle, text),
+              extracted_at: new Date().toISOString()
+            })
+            foundContent = true
+          }
+        })
         
-        if (title && text) {
-          content.push({
-            category: this.categorizeSBAContent(sectionPath, title),
-            title: title,
-            content: text,
-            callouts: callouts,
-            source_url: url,
-            section: sectionPath,
-            business_stage: this.identifyBusinessStage(sectionPath),
-            funding_relevance: this.assessFundingRelevance(title, text),
-            extracted_at: new Date().toISOString()
-          })
+        // If we found content with this selector, break
+        if (foundContent) break
+      }
+      
+      // If no structured content found, try to extract from body text
+      if (!foundContent) {
+        const bodyText = $('body').text().trim()
+        if (bodyText && bodyText.length > 100) {
+          // Extract meaningful paragraphs from body text
+          const sentences = bodyText.split('.').filter(s => s.length > 30).slice(0, 10)
+          const meaningfulText = sentences.join('. ') + '.'
+          
+          if (meaningfulText.length > 100) {
+            content.push({
+              category: this.categorizeSBAContent(sectionPath, sectionTitle),
+              title: sectionTitle || 'SBA Business Guidance',
+              content: meaningfulText,
+              callouts: [],
+              source_url: sourceUrl,
+              section: sectionPath,
+              business_stage: this.identifyBusinessStage(sectionPath),
+              funding_relevance: this.assessFundingRelevance(sectionTitle, meaningfulText),
+              extracted_at: new Date().toISOString()
+            })
+          }
         }
-      })
+      }
       
       return content
       
     } catch (error) {
-      console.error(`Error scraping SBA ${url}:`, error)
+      console.error(`Error parsing HTML content from ${sourceUrl}:`, error)
       return []
     }
   }
