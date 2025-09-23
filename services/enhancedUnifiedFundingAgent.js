@@ -1857,6 +1857,45 @@ class UFAExpertFundingStrategist {
     }
   }
 
+  // Compute an overall expert confidence score for the analysis
+  calculateExpertConfidenceScore(readinessAssessment, marketIntelligence) {
+    try {
+      const readiness = Math.max(0, Math.min(100, Number(readinessAssessment?.overallScore ?? 0)))
+      let score = 50
+
+      // Weight readiness strongly
+      score += (readiness - 50) * 0.6
+
+      // Market outlook adjustments
+      const outlook = marketIntelligence?.market_conditions?.overall_outlook || 'neutral'
+      if (typeof outlook === 'string') {
+        const o = outlook.toLowerCase()
+        if (o.includes('very positive') || o.includes('strong')) score += 8
+        else if (o.includes('positive')) score += 4
+        else if (o.includes('neutral') || o.includes('moderate')) score += 0
+        else if (o.includes('negative') || o.includes('concern')) score -= 6
+      }
+
+      // Sector trends small boost if present
+      const sectorTrends = marketIntelligence?.sector_trends
+      if (sectorTrends && Object.keys(sectorTrends).length > 0) score += 2
+
+      // Competitive intelligence signal
+      const competition = marketIntelligence?.competitive_intelligence?.funding_competition_level
+      if (typeof competition === 'string') {
+        const c = competition.toLowerCase()
+        if (c.includes('low')) score += 5
+        else if (c.includes('medium')) score += 1
+        else if (c.includes('high')) score -= 4
+      }
+
+      // Clamp 0-100
+      return Math.max(1, Math.min(99, Math.round(score)))
+    } catch {
+      return 65
+    }
+  }
+
   async generateExpertStrategicCommunications(expertStrategies, marketIntelligence) {
     // Generate strategic communications based on analysis
     const communications = {
