@@ -7,14 +7,15 @@ export async function POST(request: NextRequest) {
     
     // Import the service dynamically
     const { UFAExpertStrategistWithSBA } = await import('../../../../services/ufaWithSBAIntelligence')
-    
-    const ufa = new UFAExpertStrategistWithSBA('system')
+    const body = await request.json().catch(() => ({}))
+    const tenantId = body.tenantId || body.userId || 'system'
+    const ufa = new UFAExpertStrategistWithSBA(tenantId)
     
     console.log('📚 Initializing base UFA knowledge...')
     const baseResult = { success: true, message: 'Base UFA knowledge initialized' }
     
     console.log('🏛️ Initializing SBA intelligence...')
-    const sbaResult = await ufa.initializeSBAIntelligence()
+  const sbaResult = await ufa.initializeSBAIntelligence()
     
     return NextResponse.json({
       success: true,

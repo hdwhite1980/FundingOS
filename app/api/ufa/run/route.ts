@@ -15,10 +15,10 @@ async function handleUFAAnalysis(request: NextRequest) {
     
     // Handle both GET and POST requests
     if (request.method === 'GET') {
-      userId = request.nextUrl.searchParams.get('userId')
+      userId = request.nextUrl.searchParams.get('userId') || request.nextUrl.searchParams.get('tenantId')
     } else if (request.method === 'POST') {
       const body = await request.json().catch(() => ({}))
-      userId = body.userId || request.nextUrl.searchParams.get('userId')
+      userId = body.userId || body.tenantId || request.nextUrl.searchParams.get('userId') || request.nextUrl.searchParams.get('tenantId')
     }
 
     if (!userId) {

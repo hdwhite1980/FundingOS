@@ -2152,8 +2152,8 @@ async function getIntelligenceDashboardData(tenantId) {
     const aiStatus = {
       state: lastAnalysis && new Date(lastAnalysis.created_at) > new Date(Date.now() - 5 * 60 * 1000) ? 'active' : 'idle',
       confidence: parseFloat(metrics.data?.find(m => m.metric_key === 'ai_confidence')?.value || '85'),
-      processing: 'National STEM Education Trends',
-      nextAnalysis: '2 hours'
+      processing: lastAnalysis?.event_type || null,
+      nextAnalysis: null
     }
 
     return {
@@ -2166,7 +2166,7 @@ async function getIntelligenceDashboardData(tenantId) {
       strategicOverview: {
         totalOpportunities: parseInt(metrics.data?.find(m => m.metric_key === 'opportunities_identified')?.value || '0'),
         highPriorityMatches: parseInt(metrics.data?.find(m => m.metric_key === 'high_priority_matches')?.value || '0'),
-        applicationsPending: 8, // Could be calculated from tasks
+        applicationsPending: (tasks.data || []).length,
         successRate: parseFloat(metrics.data?.find(m => m.metric_key === 'success_rate')?.value || '0'),
         portfolioValue: parseInt(metrics.data?.find(m => m.metric_key === 'portfolio_value')?.value || '0')
       }

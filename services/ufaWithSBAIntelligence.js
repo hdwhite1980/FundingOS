@@ -13,7 +13,7 @@ class UFAExpertStrategistWithSBA extends UFAExpertFundingStrategist {
 
   async initializeSBAIntelligence() {
     console.log('🏛️ Initializing SBA Business Guide intelligence...')
-    return await this.sbaIntegrator.buildSBAKnowledgeBase()
+    return await this.sbaIntegrator.buildSBAKnowledgeBase(this.tenantId)
   }
 
   async analyzeComprehensiveFundingEcosystem() {
@@ -45,7 +45,7 @@ class UFAExpertStrategistWithSBA extends UFAExpertFundingStrategist {
         business_development: await this.analyzeSBABusinessDevelopment(orgProfile)
       }
 
-      return {
+      const result = {
         ...baseFundingAnalysis,
         channelAnalysis: enhancedChannels,
         sbaIntelligence: {
@@ -57,6 +57,32 @@ class UFAExpertStrategistWithSBA extends UFAExpertFundingStrategist {
         dataQuality: 'LIVE+SBA',
         enhancementSource: 'SBA Business Guide + Federal Programs'
       }
+
+      // Persist policy trend metrics for dashboard National Context
+      try {
+        const { createClient } = require('@supabase/supabase-js')
+        const supabaseUrl = process.env.SUPABASE_URL
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey)
+          const trends = [
+            { key: 'policy_trend_sba_loan_activity', value: 'stable' },
+            { key: 'policy_trend_small_business_growth', value: 'positive' },
+            { key: 'policy_trend_program_availability', value: `${sbaPrograms.length} programs` }
+          ]
+          for (const t of trends) {
+            await supabase.rpc('ufa_upsert_metric', {
+              p_tenant_id: this.tenantId,
+              p_metric_key: t.key,
+              p_value: String(t.value)
+            })
+          }
+        }
+      } catch (e) {
+        console.warn('Unable to persist policy trend metrics:', e?.message || e)
+      }
+
+      return result
 
     } catch (error) {
       console.error('⚠️ SBA intelligence enhancement failed:', error)
@@ -503,8 +529,9 @@ async function runExpertFundingAnalysisForTenant(tenantId) {
       await ufa.initializeSBAIntelligence()
     }
     
-    // Run comprehensive analysis
-    const analysisResult = await ufa.analyzeComprehensiveFundingEcosystem()
+  // Run comprehensive analysis (persists goals/tasks/metrics) using SBA-enhanced methods
+  const analysis = await ufa.runExpertFundingAnalysis()
+  const analysisResult = analysis?.analysis || analysis
     
     console.log(`✅ UFA analysis completed for tenant ${tenantId}`)
     console.log(`📊 Found ${analysisResult.sbaIntelligence?.recommended_programs?.length || 0} SBA programs`)

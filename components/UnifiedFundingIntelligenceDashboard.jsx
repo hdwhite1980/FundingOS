@@ -61,6 +61,17 @@ export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'defaul
 
   const { aiStatus, goals, tasks, metrics, events, notifications, strategicOverview, sbaIntelligence } = data
 
+  // Derive context and recommendations from real data
+  const policyTrends = Array.isArray(metrics)
+    ? metrics
+        .filter(m => m.metric_key?.startsWith('policy_trend_'))
+        .map(m => ({ label: m.metric_key.replace('policy_trend_', ''), value: m.value }))
+    : []
+
+  const recommendedActions = Array.isArray(tasks)
+    ? tasks.filter(t => t.status === 'urgent' || t.status === 'high-priority').map(t => t.title || t.summary)
+    : []
+
   return (
     <div className="p-6 space-y-6">
       {/* AI Status & Controls */}
@@ -77,8 +88,12 @@ export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'defaul
           </div>
           <div className="mt-3 text-sm text-gray-600">
             <div>Confidence: <span className="font-medium">{aiStatus?.confidence?.toFixed ? aiStatus.confidence.toFixed(1) : aiStatus.confidence}%</span></div>
-            <div>Currently analyzing: <span className="font-medium">{aiStatus?.processing}</span></div>
-            <div>Next analysis: <span className="font-medium">{aiStatus?.nextAnalysis}</span></div>
+            {aiStatus?.processing && (
+              <div>Currently analyzing: <span className="font-medium">{labelize(aiStatus.processing)}</span></div>
+            )}
+            {aiStatus?.nextAnalysis && (
+              <div>Next analysis: <span className="font-medium">{aiStatus.nextAnalysis}</span></div>
+            )}
           </div>
           <div className="mt-3 flex gap-2">
             <button onClick={triggerAnalysis} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">
@@ -317,21 +332,30 @@ export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'defaul
 
       {/* Context & Strategy */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card title="National Context" icon={<Globe2 className="h-5 w-5 text-sky-600" />}> 
-          <ul className="space-y-2 text-sm">
-            <li className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-emerald-600" /> STEM education funding up 23%</li>
-            <li className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-emerald-600" /> Climate education grants surging</li>
-            <li className="flex items-center gap-2"><Map className="h-4 w-4 text-indigo-600" /> Regional partnerships improving competitiveness</li>
-          </ul>
-        </Card>
+        {policyTrends.length > 0 && (
+          <Card title="National Context" icon={<Globe2 className="h-5 w-5 text-sky-600" />}> 
+            <ul className="space-y-2 text-sm">
+              {policyTrends.slice(0, 3).map((t, idx) => (
+                <li key={idx} className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-emerald-600" />
+                  {labelize(t.label)}: {t.value}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
 
-        <Card title="Recommended Actions" icon={<ArrowUpRight className="h-5 w-5 text-rose-600" />}> 
-          <ul className="space-y-2 text-sm">
-            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-600" /> Prioritize NSF Education Innovation Hub</li>
-            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-600" /> Initiate corporate partnership outreach</li>
-            <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-600" /> Accelerate grant writing cycle</li>
-          </ul>
-        </Card>
+        {recommendedActions.length > 0 && (
+          <Card title="Recommended Actions" icon={<ArrowUpRight className="h-5 w-5 text-rose-600" />}> 
+            <ul className="space-y-2 text-sm">
+              {recommendedActions.slice(0, 3).map((a, idx) => (
+                <li key={idx} className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600" /> {a}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </section>
     </div>
   )

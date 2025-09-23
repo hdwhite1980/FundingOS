@@ -12,7 +12,7 @@ class SBABusinessGuideIntegrator {
     this.sbaPrograms = new Map()
   }
 
-  async buildSBAKnowledgeBase() {
+  async buildSBAKnowledgeBase(tenantId = null) {
     console.log('🏛️ Building UFA knowledge base from SBA Business Guide...')
     
     try {
@@ -27,6 +27,14 @@ class SBABusinessGuideIntegrator {
       
       // Store structured knowledge base
       await this.storeSBAKnowledgeBase(processedKnowledge, fundingPrograms)
+
+      // Infer and persist policy trends for dashboard National Context when tenant provided
+      if (tenantId) {
+        const trends = this.inferPolicyTrends(businessContent)
+        if (trends.length > 0) {
+          await this.persistPolicyTrends(tenantId, trends)
+        }
+      }
       
       return {
         success: true,
@@ -39,6 +47,57 @@ class SBABusinessGuideIntegrator {
     } catch (error) {
       console.error('Failed to build SBA knowledge base:', error)
       return { success: false, error: error.message }
+    }
+  }
+
+  inferPolicyTrends(businessContent) {
+    const textBlob = (businessContent || [])
+      .map(c => `${c.title}. ${c.content}`)
+      .join(' ')
+      .toLowerCase()
+
+    const score = (patterns) => patterns.reduce((acc, p) => acc + (textBlob.includes(p) ? 1 : 0), 0)
+
+    const trends = []
+    const loanSignals = score(['loan', '7(a)', '504', 'lender', 'collateral', 'guarantee'])
+    const grantSignals = score(['grant', 'award', 'sbir', 'sttr', 'non-dilutive'])
+    const exportSignals = score(['export', 'international', 'trade', 'exim'])
+    const disasterSignals = score(['disaster', 'emergency', 'recovery', 'relief'])
+    const microSignals = score(['microloan', 'microlender', 'startup'])
+    const complianceSignals = score(['compliance', 'regulation', 'license', 'permit'])
+
+    const label = (n) => (n >= 5 ? 'surging' : n >= 3 ? 'increasing' : n >= 1 ? 'stable' : 'low')
+
+    trends.push({ key: 'policy_trend_sba_loans', value: label(loanSignals) })
+    trends.push({ key: 'policy_trend_sba_grants', value: label(grantSignals) })
+    trends.push({ key: 'policy_trend_export_support', value: label(exportSignals) })
+    trends.push({ key: 'policy_trend_disaster_relief', value: label(disasterSignals) })
+    trends.push({ key: 'policy_trend_microloans', value: label(microSignals) })
+    trends.push({ key: 'policy_trend_compliance_emphasis', value: label(complianceSignals) })
+
+    return trends
+  }
+
+  async persistPolicyTrends(tenantId, trends) {
+    try {
+      const { createClient } = require('@supabase/supabase-js')
+      const supabaseUrl = process.env.SUPABASE_URL
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (!supabaseUrl || !supabaseKey) {
+        console.warn('Supabase not configured; skipping policy trend persistence')
+        return
+      }
+      const supabase = createClient(supabaseUrl, supabaseKey)
+      for (const t of trends) {
+        await supabase.rpc('ufa_upsert_metric', {
+          p_tenant_id: tenantId,
+          p_metric_key: t.key,
+          p_value: String(t.value)
+        })
+      }
+      console.log(`📈 Persisted ${trends.length} policy trend metrics for tenant ${tenantId}`)
+    } catch (e) {
+      console.error('Failed to persist policy trends:', e)
     }
   }
 
@@ -1088,6 +1147,30 @@ class SBABusinessGuideIntegrator {
       readiness_level: readinessScore > 80 ? 'high' : readinessScore > 60 ? 'medium' : 'low',
       factors: factors,
       recommendations: this.generateReadinessRecommendations(readinessScore, factors)
+    }
+  }
+
+  async calculateAlignmentScore(program, orgProfile) {
+    try {
+      let score = 50
+      if (!program || !orgProfile) return score
+      // Stage fit
+      if (program.business_stage_fit?.includes(orgProfile.business_stage) || program.business_stage_fit?.includes('all_stages')) {
+        score += 15
+      }
+      // Strategic value
+      if (typeof program.strategic_value === 'number') {
+        score += Math.min(20, program.strategic_value * 3)
+      }
+      // Readiness
+      if (orgProfile.sba_loan_readiness >= 80) score += 10
+      else if (orgProfile.sba_loan_readiness >= 60) score += 5
+      // Complexity penalty
+      if (program.application_complexity >= 4) score -= 5
+      // Clamp 0-100
+      return Math.max(0, Math.min(100, score))
+    } catch {
+      return 50
     }
   }
 
