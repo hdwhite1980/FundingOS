@@ -844,34 +844,77 @@ class SBABusinessGuideIntegrator {
       const supabase = createClient(supabaseUrl, supabaseKey)
       
       // Store business intelligence
+      console.log(`🧠 Storing ${Object.keys(intelligence).length} knowledge categories...`)
       for (const [category, data] of Object.entries(intelligence)) {
-        await supabase.from('ufa_sba_knowledge').upsert([{
-          category: category,
-          description: data.description,
-          insights: data.insights,
-          funding_applications: data.funding_applications,
-          ufa_integrations: data.ufa_integrations,
-          strategic_recommendations: data.strategic_recommendations,
-          source: 'sba.gov',
-          last_updated: new Date().toISOString()
-        }], { onConflict: ['category', 'source'] })
+        // Store each insight as a separate record
+        for (const insight of data.insights || []) {
+          try {
+            const result = await supabase.from('ufa_sba_knowledge_base').insert({
+              title: insight.type ? `${insight.type}: ${category.replace('_', ' ')}` : `SBA Guidance: ${category.replace('_', ' ')}`,
+              content: insight.content,
+              content_type: 'guide',
+              category: category,
+              keywords: insight.priority ? [insight.priority] : [],
+              topics: [category],
+              business_stage_relevance: insight.business_stage ? [insight.business_stage] : ['all_stages'],
+              source_url: 'https://www.sba.gov/business-guide',
+              active: true
+            })
+            if (result.error) {
+              console.error(`Failed to insert insight for ${category}:`, result.error)
+            }
+          } catch (error) {
+            console.error(`Error inserting insight for ${category}:`, error)
+          }
+        }
+
+        // Store strategic recommendations
+        for (const rec of data.strategic_recommendations || []) {
+          try {
+            const result = await supabase.from('ufa_sba_knowledge_base').insert({
+              title: rec.title,
+              content: `${rec.description}\n\nAction: ${rec.action}\n\nImpact: ${rec.impact}`,
+              content_type: 'guide',
+              category: category,
+              keywords: [rec.priority, 'strategic', 'recommendation'],
+              topics: [category, 'strategy'],
+              business_stage_relevance: ['all_stages'],
+              source_url: 'https://www.sba.gov/business-guide',
+              active: true
+            })
+            if (result.error) {
+              console.error(`Failed to insert recommendation for ${category}:`, result.error)
+            }
+          } catch (error) {
+            console.error(`Error inserting recommendation for ${category}:`, error)
+          }
+        }
       }
       
       // Store SBA funding programs
+      console.log(`💾 Storing ${programs.length} SBA programs...`)
       for (const program of programs) {
-        await supabase.from('ufa_sba_programs').upsert([{
-          name: program.name,
-          description: program.description,
-          eligibility_requirements: program.eligibility_requirements,
-          funding_amounts: program.funding_amounts,
-          program_type: program.program_type,
-          business_stage_fit: program.business_stage_fit,
-          strategic_value: program.strategic_value,
-          application_complexity: program.application_complexity,
-          success_factors: program.success_factors,
-          link: program.link,
-          last_updated: new Date().toISOString()
-        }], { onConflict: ['name'] })
+        try {
+          const result = await supabase.from('ufa_sba_programs').insert({
+            name: program.name,
+            program_type: program.program_type,
+            description: program.description,
+            eligibility_criteria: program.eligibility_requirements,
+            funding_amounts: program.funding_amounts,
+            application_process: program.application_process || 'Contact SBA lender for application process',
+            source_url: program.link,
+            agency: 'SBA',
+            active: true,
+            updated_at: new Date().toISOString()
+          })
+          if (result.error) {
+            console.error(`Failed to insert program ${program.name}:`, result.error)
+          } else {
+            console.log(`✅ Inserted program: ${program.name}`)
+          }
+        } catch (error) {
+          console.error(`Error inserting program ${program.name}:`, error)
+        }
       }
       
       console.log('✅ SBA knowledge base stored successfully')
