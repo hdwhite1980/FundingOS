@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Activity, ArrowUpRight, Bell, Brain, CheckCircle2, Clock, Database, Globe2, Mail, Map, Play, RefreshCw, Settings, Shield, TrendingUp, Zap } from 'lucide-react'
+import { Activity, ArrowUpRight, Bell, Brain, CheckCircle2, Clock, Database, Globe2, Mail, Map, Play, RefreshCw, Settings, Shield, TrendingUp, Zap, Building2, Award, Target, ExternalLink, Info } from 'lucide-react'
 
 export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'default-tenant' }) {
   const [data, setData] = useState(null)
@@ -27,7 +27,8 @@ export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'defaul
 
   async function triggerAnalysis() {
     try {
-      await fetch('/api/ufa/enhanced-run', { 
+      // Use the new UFA SBA intelligence endpoint
+      await fetch('/api/ufa/run', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId })
@@ -38,11 +39,27 @@ export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'defaul
     }
   }
 
+  async function initializeKnowledgeBase() {
+    try {
+      setLoading(true)
+      await fetch('/api/ufa/initialize', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId })
+      })
+      await fetchData()
+    } catch (e) {
+      console.error('Failed to initialize knowledge base', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading && !data) return <div className="p-6">Loading intelligence...</div>
   if (error) return <div className="p-6 text-red-600">{error}</div>
   if (!data) return <div className="p-6">No intelligence available</div>
 
-  const { aiStatus, goals, tasks, metrics, events, notifications, strategicOverview } = data
+  const { aiStatus, goals, tasks, metrics, events, notifications, strategicOverview, sbaIntelligence } = data
 
   return (
     <div className="p-6 space-y-6">
@@ -66,6 +83,9 @@ export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'defaul
           <div className="mt-3 flex gap-2">
             <button onClick={triggerAnalysis} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">
               <Play className="h-4 w-4" /> Run Analysis
+            </button>
+            <button onClick={initializeKnowledgeBase} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">
+              <Database className="h-4 w-4" /> Initialize KB
             </button>
             <button onClick={fetchData} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded border hover:bg-gray-50">
               <RefreshCw className="h-4 w-4" /> Refresh
@@ -108,6 +128,112 @@ export default function UnifiedFundingIntelligenceDashboard({ tenantId = 'defaul
           </ul>
         </div>
       </section>
+
+      {/* SBA Intelligence Section */}
+      {sbaIntelligence && (
+        <section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Building2 className="h-6 w-6 text-blue-600" />
+            <h2 className="text-xl font-semibold text-blue-900">SBA Intelligence Integration</h2>
+            <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700">ENHANCED</span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-5 w-5 text-green-600" />
+                <h3 className="font-medium">Readiness Score</h3>
+              </div>
+              <div className="text-2xl font-bold text-green-600">
+                {sbaIntelligence.readiness_assessment?.sba_loan_readiness || 0}%
+              </div>
+              <div className="text-sm text-gray-600">SBA Loan Ready</div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="h-5 w-5 text-purple-600" />
+                <h3 className="font-medium">Programs</h3>
+              </div>
+              <div className="text-2xl font-bold text-purple-600">
+                {sbaIntelligence.recommended_programs?.length || 0}
+              </div>
+              <div className="text-sm text-gray-600">Recommended</div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                <h3 className="font-medium">Actions</h3>
+              </div>
+              <div className="text-2xl font-bold text-blue-600">
+                {sbaIntelligence.business_guidance?.next_steps?.length || 0}
+              </div>
+              <div className="text-sm text-gray-600">Next Steps</div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-5 w-5 text-emerald-600" />
+                <h3 className="font-medium">Success Rate</h3>
+              </div>
+              <div className="text-2xl font-bold text-emerald-600">
+                {sbaIntelligence.success_probability || 0}%
+              </div>
+              <div className="text-sm text-gray-600">Predicted</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-lg p-4">
+              <h3 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                Top Programs
+              </h3>
+              <div className="space-y-2">
+                {sbaIntelligence.recommended_programs?.slice(0, 3).map((program, idx) => (
+                  <div key={idx} className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                    <span className="text-sm font-medium truncate">{program.name}</span>
+                    <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded">
+                      {program.strategic_value}/5
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <h3 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Next Steps
+              </h3>
+              <div className="space-y-2">
+                {sbaIntelligence.business_guidance?.next_steps?.slice(0, 3).map((step, idx) => (
+                  <div key={idx} className="flex items-start gap-2 p-2 bg-green-50 rounded">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <h3 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Key Insights
+              </h3>
+              <div className="space-y-2 text-sm">
+                {sbaIntelligence.business_guidance?.key_insights?.slice(0, 3).map((insight, idx) => (
+                  <div key={idx} className="flex items-start gap-2 p-2 bg-amber-50 rounded">
+                    <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <span>{insight}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Goals & Decisions */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
