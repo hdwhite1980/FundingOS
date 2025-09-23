@@ -1232,11 +1232,69 @@ QUESTIONS: [What you need to know to help better, if anything]`
 		// Exclude specific data lookups from field help - these should go to API assistant
 		const isDataLookup = /\b(ein|tax\s*id|duns|cage|sam)\b|what.*my.*(ein|duns|cage|sam)|my\s+(ein|duns|cage|sam)|show.*my.*(ein|duns|cage|sam)|tell.*my.*(ein|duns|cage|sam)/i.test(inputLower)
 		
-		// Debug logging for EIN issue
-		console.log(`🔍 Input analysis: "${input}"`)
-		console.log(`  Field Help Pattern Match: ${fieldHelpPattern.test(input)}`)
-		console.log(`  Data Lookup Detected: ${isDataLookup}`)
-		console.log(`  Will use field help: ${fieldHelpPattern.test(input) && !isDataLookup}`)
+		// Check for UFA (Unified Funding Agent) queries - SBA and grants.gov intelligence
+		const ufaQueryPattern = /\b(sba|loan|grant|funding|capital|financing|business\s+(plan|formation|growth)|startup\s+funding|expansion\s+funding|working\s+capital|government\s+(loan|grant)|federal\s+(grant|funding)|grants\.gov)\b/i
+		const isUFAQuery = ufaQueryPattern.test(inputLower) && !isDataLookup
+		
+		console.log(`  UFA Query Detected: ${isUFAQuery}`)
+		
+		if (isUFAQuery) {
+			try {
+				console.log('🎯 Routing to UFA API endpoint')
+				
+				const userId = userProfile?.user_id || userProfile?.id
+				
+				if (!userId) {
+					throw new Error('No user ID available for UFA query')
+				}
+				
+				// Call the UFA API endpoint
+				const ufaResponse = await fetch('/api/ufa/query', {
+					method: 'POST',
+					headers: { 
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						userId,
+						query: input,
+						userProfile: userProfile || userProfileState,
+						project: (allProjects || allProjectsState)?.[0]
+					})
+				})
+				
+				if (!ufaResponse.ok) {
+					const errorData = await ufaResponse.json()
+					throw new Error(errorData.error || `UFA API error: ${ufaResponse.status}`)
+				}
+				
+				const ufaResult = await ufaResponse.json()
+				
+				if (ufaResult.success) {
+					// Present UFA response via showMessage
+					setIsThinking(false)
+					setAssistantState('idle')
+					setIsSearchingAPIs(false)
+					showMessage(ufaResult.message, () => {
+						setTimeout(() => {
+							showMessage('Would you like me to dive deeper into any of these options or run a full funding analysis?', () => {
+								setShowInput(true)
+								setAssistantState('listening')
+							})
+						}, 1000)
+					})
+					
+					console.log('UFA query handled successfully via API')
+					return
+				} else if (ufaResult.fallback) {
+					// Continue to regular processing if UFA fails
+					console.log('UFA query failed, falling back to regular processing')
+				}
+				
+			} catch (error) {
+				console.error('UFA API call failed:', error)
+				// Continue to regular processing if UFA fails
+			}
+		}
 		
 		if (fieldHelpPattern.test(input) && !isDataLookup) {
 			try {
