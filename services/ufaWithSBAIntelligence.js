@@ -220,12 +220,13 @@ class UFAExpertStrategistWithSBA extends UFAExpertFundingStrategist {
   }
 
   async identifyMissingRequirements(program, orgProfile) {
-    // Placeholder - implement based on program requirements
+    // TODO: Implement detailed program requirement analysis
+    // For now, return standard business requirements
     return ['Financial documentation', 'Business plan update', 'Compliance verification']
   }
 
   async estimatePreparationTime(program, orgProfile) {
-    // Placeholder - implement based on complexity and org readiness
+    // Calculate preparation time based on program complexity and organization readiness
     const baseComplexity = program.application_complexity || 3
     const readinessScore = orgProfile.overall_readiness || 60
     
@@ -348,20 +349,145 @@ class UFAExpertStrategistWithSBA extends UFAExpertFundingStrategist {
   }
 
   async getOrganizationBusinessProfile() {
-    // This should integrate with your organization data
-    // Placeholder implementation
-    return {
-      business_stage: 'early_stage',
-      industry: 'technology',
-      annual_revenue: 500000,
-      employee_count: 15,
-      years_in_business: 3,
-      innovation_focus: true,
-      sba_loan_readiness: 70,
-      overall_readiness: 65,
-      credit_score: 720,
-      collateral_available: 200000
+    // Integration with real organization data from database
+    try {
+      const { createClient } = require('@supabase/supabase-js')
+      
+      const supabaseUrl = process.env.SUPABASE_URL
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!supabaseUrl || !supabaseKey) {
+        console.warn('Database not configured - cannot fetch real organization profile')
+        return { error: 'Database not configured' }
+      }
+      
+      const supabase = createClient(supabaseUrl, supabaseKey)
+      
+      // Get user profile data
+      const { data: userProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('tenant_id', this.tenantId)
+        .single()
+      
+      if (profileError || !userProfile) {
+        console.warn('No user profile found for tenant:', this.tenantId)
+        return { error: 'No organization profile found' }
+      }
+      
+      // Get company settings if available
+      const { data: companySettings } = await supabase
+        .from('company_settings')
+        .select('*')
+        .eq('tenant_id', this.tenantId)
+        .single()
+      
+      // Get any existing SBA readiness assessment
+      const { data: sbaAssessment } = await supabase
+        .from('ufa_sba_readiness_assessments')
+        .select('*')
+        .eq('tenant_id', this.tenantId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      // Build real organization profile from database data
+      const orgProfile = {
+        tenant_id: this.tenantId,
+        business_stage: this.determineBusinessStage(userProfile, companySettings),
+        industry: companySettings?.industry || userProfile.industry || 'unknown',
+        annual_revenue: companySettings?.annual_revenue || 0,
+        employee_count: companySettings?.employee_count || 1,
+        years_in_business: this.calculateYearsInBusiness(companySettings?.founding_date),
+        innovation_focus: this.assessInnovationFocus(userProfile, companySettings),
+        
+        // SBA readiness scores from database or calculated
+        sba_loan_readiness: sbaAssessment?.overall_score || this.calculateBasicReadiness(userProfile, companySettings),
+        overall_readiness: sbaAssessment?.overall_score || this.calculateBasicReadiness(userProfile, companySettings),
+        credit_score: sbaAssessment?.credit_score || 0,
+        collateral_available: sbaAssessment?.collateral_value || 0,
+        
+        // Profile completeness indicators
+        has_business_plan: !!(companySettings?.business_plan_url || companySettings?.business_description),
+        has_financial_statements: !!(companySettings?.financial_documents || companySettings?.annual_revenue),
+        
+        // Metadata
+        profile_source: 'database',
+        last_updated: new Date().toISOString()
+      }
+      
+      console.log(`📊 Loaded real organization profile for tenant ${this.tenantId}:`, {
+        industry: orgProfile.industry,
+        stage: orgProfile.business_stage,
+        readiness: orgProfile.sba_loan_readiness
+      })
+      
+      return orgProfile
+      
+    } catch (error) {
+      console.error('Failed to fetch organization profile from database:', error)
+      return { error: `Database error: ${error.message}` }
     }
+  }
+  
+  determineBusinessStage(userProfile, companySettings) {
+    const yearsInBusiness = this.calculateYearsInBusiness(companySettings?.founding_date)
+    const revenue = companySettings?.annual_revenue || 0
+    const employees = companySettings?.employee_count || 1
+    
+    if (yearsInBusiness < 1 || revenue < 50000) {
+      return 'startup'
+    } else if (yearsInBusiness < 3 || revenue < 500000 || employees < 10) {
+      return 'early_stage'
+    } else if (revenue < 2000000 || employees < 50) {
+      return 'growth'
+    } else {
+      return 'mature'
+    }
+  }
+  
+  calculateYearsInBusiness(foundingDate) {
+    if (!foundingDate) return 0
+    
+    const founded = new Date(foundingDate)
+    const now = new Date()
+    const years = (now - founded) / (1000 * 60 * 60 * 24 * 365.25)
+    
+    return Math.max(0, Math.floor(years))
+  }
+  
+  assessInnovationFocus(userProfile, companySettings) {
+    const industry = (companySettings?.industry || userProfile?.industry || '').toLowerCase()
+    const description = (companySettings?.business_description || userProfile?.bio || '').toLowerCase()
+    
+    const innovationKeywords = ['technology', 'tech', 'software', 'ai', 'innovation', 'research', 'development', 'startup', 'fintech', 'biotech', 'medtech']
+    
+    return innovationKeywords.some(keyword => 
+      industry.includes(keyword) || description.includes(keyword)
+    )
+  }
+  
+  calculateBasicReadiness(userProfile, companySettings) {
+    let readinessScore = 0
+    
+    // Profile completeness (20 points)
+    if (userProfile?.bio || companySettings?.business_description) readinessScore += 10
+    if (userProfile?.website || companySettings?.website) readinessScore += 10
+    
+    // Business information (30 points)
+    if (companySettings?.industry) readinessScore += 10
+    if (companySettings?.annual_revenue && companySettings.annual_revenue > 0) readinessScore += 10
+    if (companySettings?.employee_count && companySettings.employee_count > 0) readinessScore += 10
+    
+    // Financial indicators (30 points)
+    if (companySettings?.annual_revenue && companySettings.annual_revenue > 100000) readinessScore += 15
+    if (companySettings?.founding_date) readinessScore += 15
+    
+    // Documentation (20 points)
+    if (companySettings?.business_plan_url) readinessScore += 10
+    if (companySettings?.financial_documents) readinessScore += 10
+    
+    return Math.min(readinessScore, 100)
   }
 }
 
