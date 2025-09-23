@@ -893,10 +893,12 @@ class SBABusinessGuideIntegrator {
       const supabaseUrl = process.env.SUPABASE_URL
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
       
+      // Always populate in-memory caches for runtime usage
+      this.knowledgeBase = new Map(Object.entries(intelligence))
+      this.sbaPrograms = new Map(programs.map(p => [p.name, p]))
+
       if (!supabaseUrl || !supabaseKey) {
-        console.log('💾 Storing SBA knowledge base in memory (no database configured)')
-        this.knowledgeBase = new Map(Object.entries(intelligence))
-        this.sbaPrograms = new Map(programs.map(p => [p.name, p]))
+        console.log('💾 Stored SBA knowledge base in memory (no database configured)')
         return
       }
       
@@ -1004,44 +1006,52 @@ class SBABusinessGuideIntegrator {
 
   async findRelevantSBAPrograms(opportunity, orgProfile) {
     // Find SBA programs that match the opportunity and organization
-    const allPrograms = Array.from(this.sbaPrograms.values())
-    
-    return allPrograms.filter(program => {
-      // Match business stage
-      const stageMatch = program.business_stage_fit.includes(orgProfile.business_stage) || 
-                         program.business_stage_fit.includes('all_stages')
-      
-      // Match funding type/purpose
-      const purposeMatch = this.assessPurposeMatch(program, opportunity)
-      
-      // Match funding amount range
-      const amountMatch = this.assessAmountMatch(program, opportunity)
-      
-      return stageMatch && (purposeMatch || amountMatch)
-    }).sort((a, b) => b.strategic_value - a.strategic_value)
+    const allPrograms = Array.from(this.sbaPrograms.values() || [])
+
+    // If no programs loaded, return empty
+    if (!allPrograms || allPrograms.length === 0) return []
+
+    const opp = opportunity || {}
+    const safeProfile = orgProfile || {}
+
+    return allPrograms
+      .filter(program => {
+        const stages = Array.isArray(program.business_stage_fit) ? program.business_stage_fit : ['all_stages']
+        const stageMatch = stages.includes(safeProfile.business_stage) || stages.includes('all_stages')
+
+        // If no specific opportunity context, accept stage match
+        if (!opp || (!opp.title && !opp.description && !opp.funding_amount && !opp.value)) {
+          return stageMatch
+        }
+
+        const purposeMatch = this.assessPurposeMatch(program, opp)
+        const amountMatch = this.assessAmountMatch(program, opp)
+        return stageMatch && (purposeMatch || amountMatch)
+      })
+      .sort((a, b) => (b.strategic_value || 0) - (a.strategic_value || 0))
   }
 
   assessPurposeMatch(program, opportunity) {
-    const programText = (program.name + ' ' + program.description).toLowerCase()
-    const opportunityText = (opportunity.title + ' ' + opportunity.description).toLowerCase()
-    
+    const programText = ((program?.name || '') + ' ' + (program?.description || '')).toLowerCase()
+    const opportunityText = ((opportunity?.title || '') + ' ' + (opportunity?.description || '')).toLowerCase()
+
+    if (!opportunityText) return false
+
     const commonTerms = ['equipment', 'real estate', 'working capital', 'expansion', 'research', 'development']
-    
-    return commonTerms.some(term => 
-      programText.includes(term) && opportunityText.includes(term)
-    )
+    return commonTerms.some(term => programText.includes(term) && opportunityText.includes(term))
   }
 
   assessAmountMatch(program, opportunity) {
     // Extract funding amounts and compare
-    const programAmount = this.extractFundingAmount(program.funding_amounts)
-    const opportunityAmount = opportunity.funding_amount || opportunity.value
-    
+    const programAmount = this.extractFundingAmount(program?.funding_amounts)
+    const opportunityAmount = opportunity?.funding_amount || opportunity?.value
+
     if (programAmount && opportunityAmount) {
-      return opportunityAmount <= programAmount * 1.2 // Allow 20% buffer
+      return Number(opportunityAmount) <= Number(programAmount) * 1.2 // Allow 20% buffer
     }
-    
-    return true // If can't determine, assume match
+
+    // If we can't determine, don't let amount filter exclude candidates
+    return true
   }
 
   extractFundingAmount(amountString) {
