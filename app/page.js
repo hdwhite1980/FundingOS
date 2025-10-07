@@ -54,10 +54,13 @@ export default function HomePage() {
       console.log('HomePage: Checking user profile for', user.id)
       
       // Make direct API call to get real profile from database
-      const response = await fetch(`/api/user/profile/${user.id}`, {
+      // Add cache busting to force fresh data
+      const response = await fetch(`/api/user/profile/${user.id}?_=${Date.now()}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         }
       })
       
