@@ -47,6 +47,7 @@
     "pdf2json": "^2.0.1",
     "pdfjs-dist": "^5.4.149",
     "postcss": "^8.4.31",
+    "puppeteer": "^24.23.0",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
