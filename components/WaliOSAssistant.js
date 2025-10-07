@@ -299,7 +299,10 @@ export default function WaliOSAssistant({
 	const startFieldHelp = useCallback(async () => {
 		if (!fieldContext || !fieldContext.fieldName) {
 			console.log('⚠️ No valid field context, falling back to generic greeting')
-			startGenericGreeting()
+			// Only fall back if we don't already have a conversation started
+			if (conversation.length === 0 && !isThinking && !currentMessage) {
+				startGenericGreeting()
+			}
 			return
 		}
 
@@ -372,7 +375,7 @@ export default function WaliOSAssistant({
 		} finally {
 			isFieldHelpRunning.current = false
 		}
-	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput, userProfile, userProfileState, allProjects, allProjectsState, startGenericGreeting])
+	}, [fieldContext, lastHelpedFieldContext, setIsThinking, setAssistantState, showMessage, setShowInput, userProfile, userProfileState, allProjects, allProjectsState, startGenericGreeting, conversation, isThinking, currentMessage])
 
 	useEffect(() => {
 		// When assistant becomes visible/open, start appropriate conversation
@@ -435,10 +438,12 @@ export default function WaliOSAssistant({
 
 	useEffect(() => {
 		// When field context changes and assistant is already open
-		if (fieldContext && isOpen) {
+		// Only trigger if we don't already have a conversation started
+		if (fieldContext && isOpen && conversation.length === 0 && !isThinking) {
+			console.log('🎯 Field context detected, starting field help')
 			startFieldHelp()
 		}
-	}, [fieldContext, isOpen, startFieldHelp])
+	}, [fieldContext, isOpen, startFieldHelp, conversation.length, isThinking])
 
 	useEffect(() => { if (showInput && inputRef.current) inputRef.current.focus() }, [showInput])
 
