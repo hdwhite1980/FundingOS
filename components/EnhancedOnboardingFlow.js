@@ -185,7 +185,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
 
       // Use direct supabase call with proper sanitization
       const { data: profile, error: upsertError } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .upsert(cleanedProfileData, { onConflict: 'user_id' })  // Changed from 'id' to 'user_id'
         .select()
         .single()
