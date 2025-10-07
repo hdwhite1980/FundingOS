@@ -21,10 +21,15 @@ export async function GET(req: NextRequest) {
       .eq('user_id', userId)  // Changed from 'id' to 'user_id'
       .maybeSingle()
     
+    console.log('API: Raw Supabase data:', JSON.stringify(data, null, 2))
+    console.log('API: setup_completed value:', data?.setup_completed)
+    console.log('API: setup_completed type:', typeof data?.setup_completed)
+    
     if (error && error.code !== 'PGRST116') throw error
     
     // If no profile exists, create a minimal one with user's email
     if (!data) {
+      console.log('API: No profile found, creating minimal profile')
       const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
       if (authError || !authUser?.user?.email) {
         return NextResponse.json({ profile: null })
@@ -38,6 +43,8 @@ export async function GET(req: NextRequest) {
         updated_at: new Date().toISOString()
       }
       
+      console.log('API: Creating minimal profile:', minimalProfile)
+      
       const { data: newProfile, error: insertError } = await supabase
         .from('user_profiles')
         .insert(minimalProfile)
@@ -49,9 +56,11 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ profile: null })
       }
       
+      console.log('API: Created new minimal profile:', newProfile)
       return NextResponse.json({ profile: newProfile })
     }
     
+    console.log('API: Returning existing profile with setup_completed:', data.setup_completed)
     return NextResponse.json({ profile: data })
   } catch (e: any) {
     console.error('GET /api/account/profile error:', e)
