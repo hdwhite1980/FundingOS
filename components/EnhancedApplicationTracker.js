@@ -347,23 +347,26 @@ const validateFieldInRealTime = (fieldName, value, context) => {
   const warnings = []
   const suggestions = []
   
+  // Ensure value is a string
+  const stringValue = value != null ? String(value) : ''
+  
   // Character limits with smart warnings
-  if (context.wordLimit && value.length > context.wordLimit * 0.9) {
+  if (context.wordLimit && stringValue.length > context.wordLimit * 0.9) {
     warnings.push(`Approaching ${context.wordLimit} character limit`)
   }
   
   // Content quality checks
-  if (fieldName.includes('narrative') && value.length > 100) {
-    if (!value.match(/\d+/)) {
+  if (fieldName.includes('narrative') && stringValue.length > 100) {
+    if (!stringValue.match(/\d+/)) {
       suggestions.push("Consider adding specific numbers or metrics")
     }
-    if (!value.includes('will') && !value.includes('plan')) {
+    if (!stringValue.includes('will') && !stringValue.includes('plan')) {
       suggestions.push("Consider adding future-oriented language about your plans")
     }
   }
   
   // Required field completeness
-  if (context.isRequired && !value.trim()) {
+  if (context.isRequired && !stringValue.trim()) {
     warnings.push("This field is required for submission")
   }
   
@@ -879,9 +882,11 @@ export default function EnhancedApplicationTracker({
       Object.keys(enhancedFormStructure.narrativeFields || {}).length : 
       Object.keys(filledForm).length || 1
     
-    const completedFields = Object.values(filledForm).filter(value => 
-      value && value.toString().trim().length > 0
-    ).length
+    const completedFields = Object.values(filledForm).filter(value => {
+      if (!value) return false
+      const stringValue = typeof value === 'string' ? value : String(value)
+      return stringValue.trim().length > 0
+    }).length
     
     return Math.round((completedFields / Math.max(totalFields, 1)) * 100)
   }, [filledForm, enhancedFormStructure])
@@ -1752,7 +1757,11 @@ export default function EnhancedApplicationTracker({
               {/* Progress Gamification */}
               <ProgressGamification 
                 completionPercentage={completionPercentage}
-                fieldsCompleted={Object.values(filledForm).filter(value => value && value.toString().trim().length > 0).length}
+                fieldsCompleted={Object.values(filledForm).filter(value => {
+                  if (!value) return false
+                  const stringValue = typeof value === 'string' ? value : String(value)
+                  return stringValue.trim().length > 0
+                }).length}
                 totalFields={Object.keys(filledForm).length}
               />
               
