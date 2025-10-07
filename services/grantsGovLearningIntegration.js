@@ -3,18 +3,54 @@
 
 const axios = require('axios')
 const cheerio = require('cheerio')
+const puppeteer = require('puppeteer')
 
 class GrantsGovLearningIntegrator {
   constructor() {
     this.baseUrl = 'https://www.grants.gov/learn-grants'
     this.knowledgeBase = new Map()
     this.lastUpdated = null
+    this.browser = null
+    this.usePuppeteer = process.env.USE_PUPPETEER !== 'false' // Enable by default
+  }
+
+  async initBrowser() {
+    if (!this.usePuppeteer || this.browser) return
+    
+    console.log('🚀 Launching browser for Grants.gov scraping...')
+    try {
+      this.browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu'
+        ]
+      })
+      console.log('✅ Browser launched successfully')
+    } catch (error) {
+      console.error('❌ Failed to launch browser:', error.message)
+      this.usePuppeteer = false
+    }
+  }
+
+  async closeBrowser() {
+    if (this.browser) {
+      console.log('🔒 Closing browser...')
+      await this.browser.close()
+      this.browser = null
+    }
   }
 
   async buildUFAKnowledgeBase() {
     console.log('📚 Building UFA knowledge base from Grants.gov learning resources...')
     
     try {
+      // Initialize browser if using Puppeteer
+      await this.initBrowser()
+      
       // Scrape and categorize all learning content
       const learningContent = await this.scrapeLearningContent()
       
@@ -24,15 +60,20 @@ class GrantsGovLearningIntegrator {
       // Store in structured knowledge base
       await this.storeKnowledgeBase(processedKnowledge)
       
+      // Close browser
+      await this.closeBrowser()
+      
       return {
         success: true,
         content_categories: Object.keys(processedKnowledge),
         total_resources: learningContent.length,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
+        scraping_method: this.usePuppeteer ? 'puppeteer' : 'traditional'
       }
       
     } catch (error) {
       console.error('Failed to build knowledge base:', error)
+      await this.closeBrowser()
       return { success: false, error: error.message }
     }
   }
@@ -64,9 +105,117 @@ class GrantsGovLearningIntegrator {
     return learningContent
   }
 
+  async scrapeSectionWithPuppeteer(sectionPath) {
+    if (!this.browser) {
+      await this.initBrowser()
+    }
+
+    if (!this.browser) {
+      throw new Error('Browser not available')
+    }
+
+    const url = `${this.baseUrl}${sectionPath}`
+    console.log(`🎭 Puppeteer scraping: ${url}`)
+
+    try {
+      const page = await this.browser.newPage()
+      
+      // Set user agent and viewport
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+      await page.setViewport({ width: 1920, height: 1080 })
+      
+      // Navigate and wait for content
+      await page.goto(url, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 
+      })
+      
+      // Wait for main content to render
+      await page.waitForSelector('main, .content, article, .grant-info', { timeout: 10000 }).catch(() => {
+        console.log('No specific content selector found, proceeding with full page')
+      })
+      
+      // Additional wait for dynamic content
+      await page.waitForTimeout(2000)
+      
+      // Extract content
+      const content = await page.evaluate((sectionPath) => {
+        const items = []
+        
+        // Try multiple content selectors
+        const selectors = [
+          '.content-section',
+          '.grant-info',
+          '.tip-box',
+          '.process-step',
+          'article',
+          'main section',
+          '.learning-content'
+        ]
+        
+        let contentElements = []
+        for (const selector of selectors) {
+          contentElements = document.querySelectorAll(selector)
+          if (contentElements.length > 0) break
+        }
+        
+        // Fallback to main if no specific selectors found
+        if (contentElements.length === 0) {
+          contentElements = document.querySelectorAll('main')
+        }
+        
+        contentElements.forEach(element => {
+          const title = element.querySelector('h1, h2, h3, h4')?.textContent?.trim() || ''
+          const paragraphs = element.querySelectorAll('p, li')
+          const text = Array.from(paragraphs).map(p => p.textContent.trim()).filter(t => t).join(' ')
+          const tipElements = element.querySelectorAll('.tip, .important, .note')
+          const tips = Array.from(tipElements).map(tip => tip.textContent.trim()).filter(t => t)
+          
+          if (title && text) {
+            items.push({
+              title: title,
+              content: text,
+              tips: tips,
+              section: sectionPath
+            })
+          }
+        })
+        
+        return items
+      }, sectionPath)
+      
+      await page.close()
+      console.log(`✅ Puppeteer extracted ${content.length} items from ${sectionPath}`)
+      
+      return content.map(item => ({
+        ...item,
+        category: this.categorizeContent(sectionPath, item.title),
+        source_url: url,
+        extracted_at: new Date().toISOString(),
+        scraping_method: 'puppeteer'
+      }))
+      
+    } catch (error) {
+      console.error(`❌ Puppeteer failed for ${sectionPath}:`, error.message)
+      throw error
+    }
+  }
+
   async scrapeLearningSection(sectionPath) {
     const url = `${this.baseUrl}${sectionPath}`
-    console.log(`📖 Scraping learning content from: ${url}`)
+    
+    // Try Puppeteer first if enabled
+    if (this.usePuppeteer) {
+      try {
+        return await this.scrapeSectionWithPuppeteer(sectionPath)
+      } catch (error) {
+        console.log(`⚠️ Puppeteer failed for ${sectionPath}, falling back to traditional method:`, error.message)
+        // Fall through to traditional method
+      }
+    }
+    
+    // Traditional Axios + Cheerio fallback
+    console.log(`📖 Traditional scraping: ${url}`)
     
     try {
       const response = await axios.get(url)
@@ -88,11 +237,13 @@ class GrantsGovLearningIntegrator {
             tips: tips,
             source_url: url,
             section: sectionPath,
-            extracted_at: new Date().toISOString()
+            extracted_at: new Date().toISOString(),
+            scraping_method: 'traditional'
           })
         }
       })
       
+      console.log(`✅ Traditional method extracted ${content.length} items from ${sectionPath}`)
       return content
       
     } catch (error) {

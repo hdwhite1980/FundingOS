@@ -3,6 +3,7 @@
 
 const axios = require('axios')
 const cheerio = require('cheerio')
+const puppeteer = require('puppeteer')
 const tf = require('@tensorflow/tfjs-node')
 
 class RealFundingDataSources {
@@ -10,6 +11,38 @@ class RealFundingDataSources {
     this.grantsGovAPI = process.env.GRANTS_GOV_API_KEY
     this.newsAPI = process.env.NEWS_API_KEY
     this.foundationAPI = process.env.FOUNDATION_CENTER_API_KEY
+    this.browser = null
+    this.usePuppeteer = process.env.USE_PUPPETEER !== 'false' // Enable by default
+  }
+
+  async initBrowser() {
+    if (!this.usePuppeteer || this.browser) return
+    
+    console.log('🚀 Launching browser for Foundation Directory scraping...')
+    try {
+      this.browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu'
+        ]
+      })
+      console.log('✅ Browser launched successfully')
+    } catch (error) {
+      console.error('❌ Failed to launch browser:', error.message)
+      this.usePuppeteer = false
+    }
+  }
+
+  async closeBrowser() {
+    if (this.browser) {
+      console.log('🔒 Closing browser...')
+      await this.browser.close()
+      this.browser = null
+    }
   }
 
   // =============================================
@@ -21,6 +54,9 @@ class RealFundingDataSources {
     // Alternative: Use their public data exports or partner API
     
     try {
+      // Initialize browser if using Puppeteer
+      await this.initBrowser()
+      
       // Option 1: Foundation Center API (if you have access)
       if (this.foundationAPI) {
         const response = await axios.get('https://fconline.foundationcenter.org/api/search', {
@@ -31,20 +67,168 @@ class RealFundingDataSources {
             'sort': 'assets_desc'
           }
         })
+        await this.closeBrowser()
         return this.processFoundationAPIData(response.data)
       }
       
       // Option 2: Scrape Foundation Directory Online (public data)
-      return await this.scrapeFoundationDirectory()
+      const result = await this.scrapeFoundationDirectory()
+      
+      // Close browser
+      await this.closeBrowser()
+      
+      return result
       
     } catch (error) {
       console.error('Foundation data fetch failed:', error)
+      await this.closeBrowser()
       return this.getFallbackFoundationData()
     }
   }
 
+  async scrapeFoundationDirectoryWithPuppeteer() {
+    if (!this.browser) {
+      await this.initBrowser()
+    }
+
+    if (!this.browser) {
+      throw new Error('Browser not available')
+    }
+
+    console.log('🎭 Puppeteer: Scraping Foundation Directory...')
+    const foundations = []
+    
+    try {
+      const page = await this.browser.newPage()
+      
+      // Set user agent and viewport
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+      await page.setViewport({ width: 1920, height: 1080 })
+      
+      // Navigate to Foundation Directory Online
+      const searchUrl = 'https://fconline.foundationcenter.org/search-results'
+      await page.goto(searchUrl, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 
+      })
+      
+      // Wait for search form to load
+      await page.waitForSelector('input[name="keywords"], #search-input, .search-field', { timeout: 10000 }).catch(() => {
+        console.log('Search form not found, trying alternative approach')
+      })
+      
+      // Fill search form (if available)
+      const searchInputSelector = await page.evaluate(() => {
+        const inputs = document.querySelectorAll('input[type="text"], input[type="search"]')
+        for (const input of inputs) {
+          if (input.name.includes('search') || input.name.includes('keyword') || input.placeholder.toLowerCase().includes('search')) {
+            return input.name || input.id || 'input[type="text"]'
+          }
+        }
+        return null
+      })
+      
+      if (searchInputSelector) {
+        console.log('✅ Found search input, entering keywords...')
+        await page.type(searchInputSelector, 'education technology STEM')
+        
+        // Submit search
+        await Promise.all([
+          page.keyboard.press('Enter'),
+          page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => {})
+        ])
+        
+        // Wait for results to load
+        await page.waitForTimeout(3000)
+      }
+      
+      // Extract foundation data
+      const extractedFoundations = await page.evaluate(() => {
+        const items = []
+        
+        // Try multiple result selectors
+        const selectors = [
+          '.foundation-result',
+          '.search-result',
+          '.foundation-item',
+          '.result-item',
+          '[data-foundation]',
+          '.foundation-card'
+        ]
+        
+        let resultElements = []
+        for (const selector of selectors) {
+          resultElements = document.querySelectorAll(selector)
+          if (resultElements.length > 0) break
+        }
+        
+        resultElements.forEach(element => {
+          const nameElement = element.querySelector('.foundation-name, .name, h3, h4, .title')
+          const assetsElement = element.querySelector('.assets, .total-assets, [data-assets]')
+          const givingElement = element.querySelector('.giving, .annual-giving, [data-giving]')
+          const locationElement = element.querySelector('.location, .address, .state')
+          const focusElement = element.querySelector('.focus-areas, .interests, .areas')
+          const einElement = element.querySelector('.ein, .tax-id, [data-ein]')
+          
+          const foundation = {
+            name: nameElement?.textContent?.trim() || '',
+            assets: assetsElement?.textContent?.trim() || '',
+            giving_amount: givingElement?.textContent?.trim() || '',
+            location: locationElement?.textContent?.trim() || '',
+            focus_areas: focusElement?.textContent?.trim() || '',
+            ein: einElement?.textContent?.trim() || ''
+          }
+          
+          if (foundation.name) {
+            items.push(foundation)
+          }
+        })
+        
+        return items
+      })
+      
+      await page.close()
+      console.log(`✅ Puppeteer extracted ${extractedFoundations.length} foundations`)
+      
+      // Process extracted foundations
+      for (const foundation of extractedFoundations) {
+        const processedFoundation = {
+          name: foundation.name,
+          assets: this.parseAssets(foundation.assets),
+          giving_amount: this.parseGivingAmount(foundation.giving_amount),
+          location: foundation.location,
+          focus_areas: foundation.focus_areas ? foundation.focus_areas.split(',').map(area => area.trim()) : [],
+          ein: foundation.ein,
+          scraping_method: 'puppeteer'
+        }
+        
+        if (processedFoundation.name && processedFoundation.assets > 1000000) { // $1M+ foundations
+          foundations.push(processedFoundation)
+        }
+      }
+      
+      return foundations
+      
+    } catch (error) {
+      console.error('❌ Puppeteer foundation scraping failed:', error.message)
+      throw error
+    }
+  }
+
   async scrapeFoundationDirectory() {
-    // Scrape public Foundation Directory data
+    // Try Puppeteer first if enabled
+    if (this.usePuppeteer) {
+      try {
+        const foundations = await this.scrapeFoundationDirectoryWithPuppeteer()
+        return this.categorizeFoundations(foundations)
+      } catch (error) {
+        console.log('⚠️ Puppeteer failed for Foundation Directory, falling back to traditional method:', error.message)
+        // Fall through to traditional method
+      }
+    }
+    
+    // Traditional Axios + Cheerio fallback
+    console.log('📄 Traditional scraping: Foundation Directory')
     const foundations = []
     
     try {
@@ -67,7 +251,8 @@ class RealFundingDataSources {
           giving_amount: this.parseGivingAmount($(element).find('.giving').text()),
           location: $(element).find('.location').text().trim(),
           focus_areas: $(element).find('.focus-areas').text().split(',').map(area => area.trim()),
-          ein: $(element).find('.ein').text().trim()
+          ein: $(element).find('.ein').text().trim(),
+          scraping_method: 'traditional'
         }
         
         if (foundation.name && foundation.assets > 1000000) { // $1M+ foundations
@@ -75,6 +260,7 @@ class RealFundingDataSources {
         }
       })
       
+      console.log(`✅ Traditional method extracted ${foundations.length} foundations`)
       return this.categorizeFoundations(foundations)
       
     } catch (error) {
