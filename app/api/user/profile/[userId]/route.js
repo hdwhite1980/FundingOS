@@ -18,8 +18,12 @@ export async function GET(request, { params }) {
     const { data: profile, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)  // Fixed: was 'id', should be 'user_id'
       .maybeSingle()
+
+    console.log('API /user/profile: userId:', userId)
+    console.log('API /user/profile: profile found:', !!profile)
+    console.log('API /user/profile: setup_completed:', profile?.setup_completed)
 
     if (error && error.code !== 'PGRST116') {
       console.error('Database error:', error)
