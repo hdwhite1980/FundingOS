@@ -228,6 +228,12 @@ export default function WaliOSAssistant({
 
 	// Define startGenericGreeting FIRST to avoid circular dependency
 	const startGenericGreeting = useCallback(() => {
+		// Prevent multiple calls in quick succession
+		if (isThinking || currentMessage) {
+			console.log('⚠️ Greeting already in progress, skipping duplicate')
+			return
+		}
+		
 		setIsThinking(true)
 		setAssistantState('thinking')
 		setTimeout(() => {
@@ -241,7 +247,7 @@ export default function WaliOSAssistant({
 				}, 1600)
 			})
 		}, 1200)
-	}, [userProfile, showMessage, setIsThinking, setAssistantState, setShowInput])
+	}, [userProfile, showMessage, setIsThinking, setAssistantState, setShowInput, isThinking, currentMessage])
 
 	const startProactiveConversation = useCallback(() => {
 		setIsThinking(true)
