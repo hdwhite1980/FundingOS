@@ -14,11 +14,11 @@ ORDER BY created_at DESC;
 -- Check if there's a profiles table (legacy) that might be interfering
 SELECT 
     id,
-    user_id,
     email,
     setup_completed,
     created_at,
     updated_at
 FROM public.profiles
-WHERE user_id = '187c155b-b079-4d5c-bd68-0ce36b99cd2b'
+WHERE id = '187c155b-b079-4d5c-bd68-0ce36b99cd2b'
+   OR email = 'hdwhite@ahts4me.com'
 ORDER BY created_at DESC;

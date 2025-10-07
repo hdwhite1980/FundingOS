@@ -195,6 +195,48 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
       console.log('Profile saved successfully:', profile) // Debug log
       console.log('Saved profile setup_completed:', profile.setup_completed) // Debug log
 
+      // ALSO save organization-specific data to company_settings table
+      const companyData = {
+        user_id: user.id,
+        organization_name: formData.organization_name || null,
+        organization_id: formData.organization_id || null,
+        ein: formData.ein || formData.tax_id || null,
+        tax_id: formData.tax_id || formData.ein || null,
+        duns_number: formData.duns_number || null,
+        cage_code: formData.cage_code || null,
+        organization_type: formData.organization_type || null,
+        address_line1: formData.address_line1 || null,
+        address_line2: formData.address_line2 || null,
+        city: formData.city || null,
+        state: formData.state || null,
+        zip_code: formData.zip_code || null,
+        country: formData.country || 'United States',
+        phone: formData.phone || null,
+        website: formData.website || null,
+        contact_person: formData.contact_person || null,
+        contact_title: formData.contact_title || null,
+        contact_email: formData.contact_email || formData.email || user.email
+      }
+
+      // Only save to company_settings if we have organization data
+      const hasOrgData = companyData.organization_name || companyData.ein || companyData.tax_id
+      if (hasOrgData) {
+        try {
+          const { error: companyError } = await supabase
+            .from('company_settings')
+            .upsert(companyData, { onConflict: 'user_id' })
+          
+          if (companyError) {
+            console.warn('⚠️ Failed to save company_settings (non-critical):', companyError)
+            // Don't fail onboarding if company_settings fails
+          } else {
+            console.log('✅ Saved organization data to company_settings')
+          }
+        } catch (companyError) {
+          console.warn('⚠️ Company settings save error (non-critical):', companyError)
+        }
+      }
+
       toast.success('Profile setup completed!')
       
       // Small delay to ensure database transaction is fully committed

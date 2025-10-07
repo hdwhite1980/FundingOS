@@ -155,6 +155,56 @@ export async function PUT(req: NextRequest) {
       
       if (error) throw error
 
+      // ALSO save organization-specific data to company_settings table
+      const companyFields: Record<string, any> = {
+        user_id: userId,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Extract organization fields that exist in company_settings
+      const orgFieldMap: Record<string, string> = {
+        'organization_name': 'organization_name',
+        'organization_id': 'organization_id',
+        'ein': 'ein',
+        'tax_id': 'tax_id',
+        'duns_number': 'duns_number',
+        'cage_code': 'cage_code',
+        'organization_type': 'organization_type',
+        'address_line1': 'address_line1',
+        'address_line2': 'address_line2',
+        'city': 'city',
+        'state': 'state',
+        'zip_code': 'zip_code',
+        'country': 'country',
+        'phone': 'phone',
+        'website': 'website',
+        'contact_person': 'contact_person',
+        'contact_title': 'contact_title',
+        'contact_email': 'contact_email'
+      }
+      
+      for (const [key, companyKey] of Object.entries(orgFieldMap)) {
+        if (key in sanitizedUpdates) {
+          companyFields[companyKey] = sanitizedUpdates[key]
+        }
+      }
+      
+      // Only update company_settings if we have organization data
+      if (Object.keys(companyFields).length > 2) { // More than just user_id and updated_at
+        try {
+          await supabase
+            .from('company_settings')
+            .upsert(companyFields, { 
+              onConflict: 'user_id',
+              ignoreDuplicates: false 
+            })
+          console.log('✅ Updated company_settings with organization data')
+        } catch (companyError) {
+          console.warn('⚠️ Failed to update company_settings (non-critical):', companyError)
+          // Don't fail the main update if company_settings fails
+        }
+      }
+
       // Smart cache invalidation - only invalidate if significant changes
       try {
         const scoringCache = await import('../../../../lib/scoringCache.js')
@@ -182,6 +232,54 @@ export async function PUT(req: NextRequest) {
         .single()
       
       if (error) throw error
+
+      // ALSO save organization-specific data to company_settings table
+      const companyFields: Record<string, any> = {
+        user_id: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      
+      // Extract organization fields that exist in company_settings
+      const orgFieldMap: Record<string, string> = {
+        'organization_name': 'organization_name',
+        'organization_id': 'organization_id',
+        'ein': 'ein',
+        'tax_id': 'tax_id',
+        'duns_number': 'duns_number',
+        'cage_code': 'cage_code',
+        'organization_type': 'organization_type',
+        'address_line1': 'address_line1',
+        'address_line2': 'address_line2',
+        'city': 'city',
+        'state': 'state',
+        'zip_code': 'zip_code',
+        'country': 'country',
+        'phone': 'phone',
+        'website': 'website',
+        'contact_person': 'contact_person',
+        'contact_title': 'contact_title',
+        'contact_email': 'contact_email'
+      }
+      
+      for (const [key, companyKey] of Object.entries(orgFieldMap)) {
+        if (key in sanitizedUpdates) {
+          companyFields[companyKey] = sanitizedUpdates[key]
+        }
+      }
+      
+      // Only create company_settings if we have organization data
+      if (Object.keys(companyFields).length > 3) { // More than just user_id, created_at, updated_at
+        try {
+          await supabase
+            .from('company_settings')
+            .insert(companyFields)
+          console.log('✅ Created company_settings with organization data')
+        } catch (companyError) {
+          console.warn('⚠️ Failed to create company_settings (non-critical):', companyError)
+          // Don't fail the main insert if company_settings fails
+        }
+      }
 
       // For new profiles, no need to invalidate since there shouldn't be cached scores yet
       // But invalidate anyway to be safe
