@@ -69,6 +69,9 @@ export default function HomePage() {
         const result = await response.json()
         profile = result.profile
         console.log('HomePage: API returned profile:', profile)
+        console.log('HomePage: profile.setup_completed raw value:', profile?.setup_completed)
+        console.log('HomePage: profile.setup_completed type:', typeof profile?.setup_completed)
+        console.log('HomePage: Full profile keys:', Object.keys(profile || {}))
       } else {
         console.log('HomePage: API response not ok:', response.status, response.statusText)
       }
