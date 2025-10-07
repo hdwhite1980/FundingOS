@@ -155,7 +155,7 @@ export default function OnboardingFlow({ user, existingProfile, onComplete }) {
 
       const profileData = {
         ...formData,
-        id: user.id,
+        user_id: user.id,  // Fixed: was 'id', should be 'user_id'
         email: user.email,
         setup_completed: true,
         // Sanitize all known numeric fields in profiles table
