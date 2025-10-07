@@ -38,18 +38,45 @@ export async function PUT(req: NextRequest) {
 
       const merged = { ...(existing?.notification_preferences || {}), ...preferences }
 
-      const payload = { 
-        user_id: userId, 
-        notification_preferences: merged, 
-        updated_at: new Date().toISOString() 
+      // For upsert, we need to handle two cases:
+      // 1. If profile exists - just update notification_preferences
+      // 2. If profile doesn't exist - we need email (get from auth)
+      
+      if (existing) {
+        // Profile exists - just update notification_preferences
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .update({ 
+            notification_preferences: merged, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('user_id', userId)
+          .select()
+          .single()
+        if (error) throw error
+        return NextResponse.json({ profile: data })
+      } else {
+        // Profile doesn't exist - need to get email from auth first
+        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
+        if (authError || !authUser?.user?.email) {
+          throw new Error('User email required to create profile')
+        }
+        
+        const payload = { 
+          user_id: userId,
+          email: authUser.user.email,  // Required NOT NULL field
+          notification_preferences: merged, 
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString() 
+        }
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        return NextResponse.json({ profile: data })
       }
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .upsert(payload, { onConflict: 'user_id' })  // Changed conflict column
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ profile: data })
     } catch (dbError: any) {
       // If any database error, fail gracefully
       console.log('Database error in notifications API:', dbError.message)
