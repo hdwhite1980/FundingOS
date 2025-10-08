@@ -16,6 +16,7 @@ import CreateProjectModal from './EnhancedCreateProjectModal'
 import AccountSettingsModal from './AccountSettingsModal'
 import dynamic from 'next/dynamic'
 const UnifiedFundingIntelligenceDashboard = dynamic(() => import('./UnifiedFundingIntelligenceDashboard'), { ssr: false })
+const ComplianceDashboard = dynamic(() => import('./ComplianceDashboard'), { ssr: false })
 import ProactiveAssistantManager from './ProactiveAssistantManager'
 import { directUserServices } from '../lib/supabase'
 import { 
@@ -104,7 +105,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     { id: 'opportunities', label: 'Projects & Funding', icon: Target, description: 'Funding opportunities, applications & project matching' },
     { id: 'applications', label: 'Applications', icon: FileText, description: 'Active applications' },
     { id: 'donations', label: 'Donors & Investors', icon: Heart, description: 'Donor & investor management' },
-  { id: 'ai-agent', label: 'Intelligence', icon: Brain, description: 'Intelligent analysis' }
+    { id: 'ai-agent', label: 'Intelligence', icon: Brain, description: 'Intelligent analysis' },
+    { id: 'compliance', label: 'Compliance', icon: CheckCircle, description: 'Track requirements, documents & deadlines' }
   ]
 
   // Load dashboard data when user and profile are available
@@ -1219,6 +1221,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
             <UnifiedFundingIntelligenceDashboard 
               tenantId={userProfile?.tenant_id || user?.user_metadata?.tenant_id || user?.id || 'default-tenant'}
+            />
+          </div>
+        )}
+
+        {activeTab === 'compliance' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+            <ComplianceDashboard 
+              userId={user?.id}
+              userProfile={userProfile}
             />
           </div>
         )}
