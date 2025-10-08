@@ -955,9 +955,13 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       {showInvestmentModal && selectedInvestor && (
         <RecordInvestmentModal
           investor={selectedInvestor}
+          user={user}
           onClose={() => {
             setShowInvestmentModal(false)
             setSelectedInvestor(null)
+          }}
+          onSuccess={() => {
+            loadData() // Reload data to show the new investment
           }}
         />
       )}
@@ -1749,20 +1753,42 @@ function DonationDetailModal({ donation, onClose }) {
 }
 
 // Record Investment Modal Component
-const RecordInvestmentModal = ({ investor, onClose }) => {
+const RecordInvestmentModal = ({ investor, user, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     amount: '',
     investment_date: new Date().toISOString().split('T')[0],
     investment_type: 'equity',
     notes: ''
   })
+  const [saving, setSaving] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    toast.success(`Investment of $${parseFloat(formData.amount).toLocaleString()} from ${investor.name} recorded!`, {
-      duration: 3000
-    })
-    onClose()
+    setSaving(true)
+    
+    try {
+      const investment = await directUserServices.investors?.createInvestment(user.id, {
+        investor_id: investor.id,
+        amount: parseFloat(formData.amount),
+        investment_date: formData.investment_date,
+        investment_type: formData.investment_type,
+        notes: formData.notes
+      })
+      
+      toast.success(`Investment of $${parseFloat(formData.amount).toLocaleString()} from ${investor.name} recorded!`, {
+        duration: 3000
+      })
+      
+      if (onSuccess) {
+        onSuccess(investment)
+      }
+      
+      onClose()
+    } catch (error) {
+      toast.error('Failed to record investment: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -1855,15 +1881,17 @@ const RecordInvestmentModal = ({ investor, onClose }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 font-medium transition-colors"
+                disabled={saving}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 font-medium transition-colors"
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Record Investment
+                {saving ? 'Recording...' : 'Record Investment'}
               </button>
             </div>
           </form>
