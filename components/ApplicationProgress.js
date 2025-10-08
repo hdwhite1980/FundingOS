@@ -307,8 +307,17 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs font-medium text-slate-600">Submission Date</p>
-              <p className="text-sm text-slate-900">{format(new Date(submission.submission_date), 'MMM d, yyyy')}</p>
+              <p className="text-xs font-medium text-slate-600">
+                {submission.status === 'draft' ? 'Created Date' : 'Submission Date'}
+              </p>
+              <p className="text-sm text-slate-900">
+                {submission.submission_date 
+                  ? format(new Date(submission.submission_date), 'MMM d, yyyy')
+                  : submission.created_at 
+                    ? format(new Date(submission.created_at), 'MMM d, yyyy')
+                    : 'Not set'
+                }
+              </p>
             </div>
             {submission.response_date && (
               <div>
