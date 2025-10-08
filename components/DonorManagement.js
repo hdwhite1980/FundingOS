@@ -156,7 +156,21 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
 
   const handleCreateInvestor = async (investorData) => {
     try {
-      const newInvestor = await directUserServices.investors?.createInvestor(user.id, investorData)
+      // Filter fields to only those relevant to investors table
+      const filteredData = {
+        name: investorData.name,
+        email: investorData.email || null,
+        phone: investorData.phone || null,
+        company: investorData.company || null,
+        investor_type: investorData.type || 'individual',
+        status: investorData.status || 'active',
+        focus_areas: investorData.focus_areas || null,
+        website: investorData.website || null,
+        linkedin: investorData.linkedin || null,
+        notes: investorData.notes || null
+      }
+      
+      const newInvestor = await directUserServices.investors?.createInvestor(user.id, filteredData)
       setInvestors([newInvestor, ...investors])
       setShowCreateModal(false)
       toast.success('Investor added successfully!')
