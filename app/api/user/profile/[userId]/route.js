@@ -24,6 +24,12 @@ export async function GET(request, { params }) {
     console.log('API /user/profile: userId:', userId)
     console.log('API /user/profile: profile found:', !!profile)
     console.log('API /user/profile: setup_completed:', profile?.setup_completed)
+    console.log('API /user/profile: Legal Foundation fields:', {
+      tax_id: profile?.tax_id,
+      date_incorporated: profile?.date_incorporated,
+      state_incorporated: profile?.state_incorporated,
+      duns_uei_number: profile?.duns_uei_number
+    })
 
     if (error && error.code !== 'PGRST116') {
       console.error('Database error:', error)
