@@ -72,6 +72,16 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json()
     const { userId, updates } = body || {}
+    
+    console.log('📨 Received profile update request')
+    console.log('🔑 Fields in updates:', Object.keys(updates || {}))
+    console.log('📋 Legal Foundation received:', {
+      tax_id: updates?.tax_id,
+      date_incorporated: updates?.date_incorporated,
+      state_incorporated: updates?.state_incorporated,
+      duns_uei_number: updates?.duns_uei_number
+    })
+    
     if (!userId || !updates || typeof updates !== 'object') {
       return NextResponse.json({ error: 'userId and updates required' }, { status: 400 })
     }
@@ -143,6 +153,14 @@ export async function PUT(req: NextRequest) {
 
     if (existingProfile) {
       // Profile exists - update it
+      console.log('🔄 Updating user_profiles with:', Object.keys(sanitizedUpdates))
+      console.log('📋 Legal Foundation fields:', {
+        tax_id: sanitizedUpdates.tax_id,
+        date_incorporated: sanitizedUpdates.date_incorporated,
+        state_incorporated: sanitizedUpdates.state_incorporated,
+        duns_uei_number: sanitizedUpdates.duns_uei_number
+      })
+      
       const { data, error } = await supabase
         .from('user_profiles')
         .update({ 
@@ -153,7 +171,17 @@ export async function PUT(req: NextRequest) {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('❌ Update error:', error)
+        throw error
+      }
+      
+      console.log('✅ Profile updated successfully:', {
+        tax_id: data.tax_id,
+        date_incorporated: data.date_incorporated,
+        state_incorporated: data.state_incorporated,
+        duns_uei_number: data.duns_uei_number
+      })
 
       // ALSO save organization-specific data to company_settings table
       const companyFields: Record<string, any> = {
