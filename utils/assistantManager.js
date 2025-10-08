@@ -15,7 +15,8 @@ class AssistantManager {
       allProjects: [],
       opportunities: [],
       submissions: [],
-      settings: {}
+      settings: {},
+      compliance: null
     }
     this.lastDataUpdate = null
     this.dataValidation = {
@@ -23,6 +24,7 @@ class AssistantManager {
       hasProjects: false,
       hasApplications: false,
       hasOpportunities: false,
+      hasComplianceData: false,
       orgName: null
     }
   }
@@ -99,7 +101,8 @@ class AssistantManager {
       // Ensure arrays are always arrays
       allProjects: data.allProjects || this.currentData.allProjects || [],
       opportunities: data.opportunities || this.currentData.opportunities || [],
-      submissions: data.submissions || this.currentData.submissions || []
+      submissions: data.submissions || this.currentData.submissions || [],
+      compliance: data.compliance || this.currentData.compliance || null
     }
     
     // Update validation flags
@@ -121,6 +124,7 @@ class AssistantManager {
       hasProjects: (this.currentData.allProjects?.length || 0) > 0,
       hasApplications: (this.currentData.submissions?.length || 0) > 0,
       hasOpportunities: (this.currentData.opportunities?.length || 0) > 0,
+      hasComplianceData: !!this.currentData.compliance,
       orgName: profile?.organization_name || profile?.full_name || null,
       userId: profile?.user_id || profile?.id || null
     }

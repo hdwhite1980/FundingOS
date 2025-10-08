@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import UnifiedFundingIntelligenceDashboard from '@/components/UnifiedFundingIntelligenceDashboard'
+import ComplianceDashboard from '@/components/ComplianceDashboard'
 import { Brain, Shield, Users, TrendingUp, ArrowLeft } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
@@ -10,6 +11,7 @@ export default function UFAPage() {
   const [user, setUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('intelligence')
   const router = useRouter()
   const supabase = createClientComponentClient()
 
@@ -117,10 +119,34 @@ export default function UFAPage() {
       </div>
 
       {/* Dashboard Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <UnifiedFundingIntelligenceDashboard 
-          tenantId={userProfile?.tenant_id || user?.user_metadata?.tenant_id || user?.id || 'default-tenant'} 
-        />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="flex flex-wrap items-center gap-3">
+          {[
+            { id: 'intelligence', label: 'Intelligence', description: 'Strategic insights & funding matches' },
+            { id: 'compliance', label: 'Compliance', description: 'Requirements, documents, recurring tasks' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 rounded-md border transition-colors text-sm ${
+                activeTab === tab.id
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-transparent bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <span className="font-medium block">{tab.label}</span>
+              <span className="block text-xs font-normal text-slate-500">{tab.description}</span>
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'intelligence' ? (
+          <UnifiedFundingIntelligenceDashboard 
+            tenantId={userProfile?.tenant_id || user?.user_metadata?.tenant_id || user?.id || 'default-tenant'} 
+          />
+        ) : (
+          <ComplianceDashboard userId={user?.id} userProfile={userProfile} />
+        )}
       </div>
     </div>
   )

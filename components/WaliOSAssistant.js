@@ -50,23 +50,20 @@ export default function WaliOSAssistant({
 			if (data.allProjects) setAllProjects(data.allProjects)
 			if (data.opportunities) setOpportunities(data.opportunities)  
 			if (data.submissions) setSubmissions(data.submissions)
+			if (data.compliance) {
+				setComplianceData(data.compliance)
+				setLastComplianceRefresh(Date.now())
+			}
+		},
+		refreshCompliance: (options) => {
+			if (options?.force) {
+				fetchComplianceOverview({ force: true })
+			} else {
+				fetchComplianceOverview()
+			}
 		}
 	})
 
-	useEffect(() => {
-		assistantManager.setInstance(assistantInstanceRef.current)
-		assistantManager.updateCustomerData({
-			userProfile,
-			allProjects,
-			opportunities,
-			submissions
-		})
-		
-		return () => {
-			// Don't clear the instance on unmount, let manager handle it
-		}
-	}, [])
-	
 	const [isOpen, setIsOpen] = useState(isVisible) // Initialize with isVisible prop
 	const [expanded, setExpanded] = useState(false)
 	const [currentMessage, setCurrentMessage] = useState('')
@@ -87,6 +84,11 @@ export default function WaliOSAssistant({
     const typewriterTimerRef = useRef(null)
 	const [isSearchingAPIs, setIsSearchingAPIs] = useState(false)
 	const [lastAPISearch, setLastAPISearch] = useState(null)
+	const [complianceData, setComplianceData] = useState(null)
+	const [complianceLoading, setComplianceLoading] = useState(false)
+	const [complianceError, setComplianceError] = useState(null)
+	const [lastComplianceRefresh, setLastComplianceRefresh] = useState(null)
+	const [isRunningComplianceCheck, setIsRunningComplianceCheck] = useState(false)
 	
 	// Track user-initiated opens to prevent isVisible from overriding
 	const userInitiatedOpen = useRef(false)
@@ -133,6 +135,77 @@ export default function WaliOSAssistant({
 	const [allProjectsState, setAllProjects] = useState(allProjects)
 	const [opportunitiesState, setOpportunities] = useState(opportunities)
 	const [submissionsState, setSubmissions] = useState(submissions)
+
+	const activeUserId = userProfile?.user_id || userProfile?.id || userProfileState?.user_id || userProfileState?.id
+
+	const fetchComplianceOverview = useCallback(async ({ force = false } = {}) => {
+		if (!activeUserId) {
+			console.log('⚠️ Skipping compliance fetch, no active user ID')
+			return
+		}
+
+		if (complianceLoading && !force) {
+			return
+		}
+
+		const now = Date.now()
+		const refreshCooldownMs = 2 * 60 * 1000 // 2 minutes cooldown
+		if (!force && lastComplianceRefresh && (now - lastComplianceRefresh) < refreshCooldownMs) {
+			return
+		}
+
+		try {
+			setComplianceLoading(true)
+			setComplianceError(null)
+
+			const response = await fetch(`/api/compliance?userId=${activeUserId}`)
+			if (!response.ok) {
+				throw new Error(`Compliance fetch failed (${response.status})`)
+			}
+
+			const payload = await response.json()
+			if (!payload?.success || !payload?.data) {
+				throw new Error(payload?.error || 'Compliance data unavailable')
+			}
+
+			setComplianceData(payload.data)
+			const fetchedAt = Date.now()
+			setLastComplianceRefresh(fetchedAt)
+			assistantManager.updateCustomerData({ compliance: payload.data })
+		} catch (error) {
+			console.error('Failed to fetch compliance overview:', error)
+			setComplianceError(error?.message || 'Unable to load compliance overview')
+		} finally {
+			setComplianceLoading(false)
+		}
+	}, [activeUserId, complianceLoading, lastComplianceRefresh, assistantManager])
+
+		useEffect(() => {
+			assistantManager.setInstance(assistantInstanceRef.current)
+			return () => {
+				// Manager retains instance lifecycle externally
+			}
+		}, [])
+
+		useEffect(() => {
+			assistantManager.updateCustomerData({
+				userProfile: userProfileState || userProfile,
+				allProjects: allProjectsState || allProjects,
+				opportunities: opportunitiesState || opportunities,
+				submissions: submissionsState || submissions,
+				compliance: complianceData
+			})
+		}, [assistantManager, userProfileState, userProfile, allProjectsState, allProjects, opportunitiesState, opportunities, submissionsState, submissions, complianceData])
+
+		useEffect(() => {
+			if (!isOpen) return
+			if (!activeUserId) return
+			if (complianceLoading) return
+			const isStale = !complianceData || (lastComplianceRefresh && Date.now() - lastComplianceRefresh > 5 * 60 * 1000)
+			if (isStale) {
+				fetchComplianceOverview()
+			}
+		}, [isOpen, activeUserId, complianceLoading, complianceData, lastComplianceRefresh, fetchComplianceOverview])
 	
 	// Drag and drop state
 	const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -278,6 +351,19 @@ export default function WaliOSAssistant({
 						message = `One application is ${context.completionPercentage}% complete. I can help you finish it quickly.`
 					}
 					break
+				case 'compliance_alert':
+					// New compliance-driven proactive trigger
+					if (complianceData) {
+						const overdueItems = complianceData.summary?.overdue_count || 0
+						const expiredDocs = complianceData.summary?.expired_documents || 0
+						const activeAlerts = complianceData.alerts?.active?.length || 0
+						if (overdueItems > 0 || expiredDocs > 0) {
+							message = `⚠️ You have ${overdueItems} overdue compliance item${overdueItems !== 1 ? 's' : ''} and ${expiredDocs} expired document${expiredDocs !== 1 ? 's' : ''}. I can help you get back on track.`
+						} else if (activeAlerts > 0) {
+							message = `You have ${activeAlerts} compliance alert${activeAlerts !== 1 ? 's' : ''} that need attention. Want to review them together?`
+						}
+					}
+					break
 			}
 			
 			// If no valid proactive message, fall back to generic greeting
@@ -293,7 +379,7 @@ export default function WaliOSAssistant({
 				}, 1800)
 			})
 		}, 800)
-	}, [triggerContext, showMessage, setIsThinking, setAssistantState, setShowInput, startGenericGreeting])
+	}, [triggerContext, complianceData, showMessage, setIsThinking, setAssistantState, setShowInput, startGenericGreeting])
 
 	// Define callback functions AFTER startGenericGreeting is defined
 	const startFieldHelp = useCallback(async () => {
@@ -1304,6 +1390,94 @@ QUESTIONS: [What you need to know to help better, if anything]`
 			} catch (error) {
 				console.error('UFA API call failed:', error)
 				// Continue to regular processing if UFA fails
+			}
+		}
+
+		// Check for compliance queries
+		const complianceQueryPattern = /\b(compliance|compliant|regulatory|regulation|audit|reporting\s+status|policy|obligation|alert|run\s+compliance\s+check|compliance\s+score|compliance\s+status|compliance\s+overview|compliance\s+dashboard)\b/i
+		const isComplianceQuery = complianceQueryPattern.test(inputLower) && !isDataLookup
+
+		if (isComplianceQuery) {
+			try {
+				console.log('🛡️ Compliance query detected, refreshing data')
+				await fetchComplianceOverview({ force: true })
+				
+				if (!complianceData) {
+					throw new Error('Compliance data not available')
+				}
+
+				const status = complianceData.overall_status || 'unknown'
+				const score = complianceData.compliance_score || 0
+				const activeAlerts = complianceData.alerts?.active?.length || 0
+				const overdueItems = complianceData.summary?.overdue_count || 0
+				const expiredDocs = complianceData.summary?.expired_documents || 0
+
+				let complianceResponse = `📊 **Compliance Status Overview**\n\n`
+				complianceResponse += `Overall Status: **${status.toUpperCase()}**\n`
+				complianceResponse += `Compliance Score: **${score}%**\n\n`
+
+				if (status === 'critical' || status === 'warning') {
+					complianceResponse += `⚠️ **Attention Needed:**\n`
+					if (overdueItems > 0) complianceResponse += `• ${overdueItems} overdue compliance item${overdueItems > 1 ? 's' : ''}\n`
+					if (expiredDocs > 0) complianceResponse += `• ${expiredDocs} expired document${expiredDocs > 1 ? 's' : ''}\n`
+					if (activeAlerts > 0) complianceResponse += `• ${activeAlerts} active alert${activeAlerts > 1 ? 's' : ''}\n`
+					complianceResponse += `\n`
+				} else {
+					complianceResponse += `✅ Your compliance tracking is up to date!\n\n`
+				}
+
+				complianceResponse += `**Current Tracking:**\n`
+				complianceResponse += `• ${complianceData.summary?.total_tracking_items || 0} compliance tasks (${complianceData.summary?.completed_items || 0} completed)\n`
+				complianceResponse += `• ${complianceData.summary?.total_documents || 0} documents tracked (${complianceData.summary?.verified_documents || 0} verified)\n`
+				complianceResponse += `• ${complianceData.summary?.total_recurring_items || 0} recurring obligations\n\n`
+
+				if (inputLower.includes('run') && inputLower.includes('check')) {
+					complianceResponse += `Running comprehensive compliance check...`
+					setIsThinking(false)
+					setAssistantState('idle')
+					showMessage(complianceResponse, async () => {
+						setIsRunningComplianceCheck(true)
+						try {
+							const checkResponse = await fetch('/api/compliance', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({ userId: activeUserId, action: 'run_compliance_check' })
+							})
+							if (!checkResponse.ok) throw new Error('Compliance check failed')
+							const checkResult = await checkResponse.json()
+							await fetchComplianceOverview({ force: true })
+							showMessage(`✅ Compliance check complete. I've updated all tracking items and generated fresh recommendations.`, () => {
+								setShowInput(true)
+								setAssistantState('listening')
+							})
+						} catch (err) {
+							showMessage(`⚠️ Compliance check encountered an error: ${err.message}`, () => {
+								setShowInput(true)
+								setAssistantState('listening')
+							})
+						} finally {
+							setIsRunningComplianceCheck(false)
+						}
+					})
+					return
+				}
+
+				setIsThinking(false)
+				setAssistantState('idle')
+				showMessage(complianceResponse, () => {
+					setTimeout(() => {
+						showMessage('Would you like me to run a compliance check, review alerts, or dive into any specific area?', () => {
+							setShowInput(true)
+							setAssistantState('listening')
+						})
+					}, 800)
+				})
+
+				console.log('Compliance query handled successfully')
+				return
+			} catch (error) {
+				console.error('Compliance query handler failed:', error)
+				// Continue to regular processing if compliance fails
 			}
 		}
 		
