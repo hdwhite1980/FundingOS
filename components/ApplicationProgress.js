@@ -99,20 +99,33 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
         return
       }
       
-      // Try to fetch opportunities from the API with userId
-      const response = await fetch(`/api/project-opportunities?userId=${user.id}`)
-      if (response.ok) {
-        const data = await response.json()
-        setOpportunities(data.opportunities || [])
-      } else {
-        console.error('API response error:', response.status, await response.text())
-        setOpportunities([])
-      }
+      const opportunitiesData = await directUserServices.opportunities.getOpportunities(user.id)
+      setOpportunities(opportunitiesData)
     } catch (error) {
-      console.error('Failed to load opportunities:', error)
-      setOpportunities([])
+      console.error('Error loading opportunities:', error)
     }
   }
+
+  const handleDeleteSubmission = async (submissionId) => {
+    if (!window.confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const success = await directUserServices.applications.deleteApplication(user.id, submissionId)
+      
+      if (success) {
+        toast.success('Application deleted successfully')
+        loadSubmissions() // Reload the list
+      } else {
+        toast.error('Failed to delete application')
+      }
+    } catch (error) {
+      console.error('Error deleting application:', error)
+      toast.error('Failed to delete application: ' + error.message)
+    }
+  }
+
 
   const handleCreateSubmission = async (submissionData) => {
     try {
@@ -351,14 +364,23 @@ export default function ApplicationProgress({ user, userProfile, projects, onNav
               <button
                 onClick={() => setSelectedSubmission(submission)}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+                title="View Details"
               >
                 <Eye className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setShowDocumentModal(submission)}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors"
+                title="Upload Documents"
               >
                 <Upload className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteSubmission(submission.id)}
+                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                title="Delete Application"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
