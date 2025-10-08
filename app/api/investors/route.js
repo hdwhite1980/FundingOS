@@ -17,10 +17,10 @@ export async function GET(request) {
       return Response.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    console.log('🔍 Service role API: Getting angel investors for user:', userId)
+    console.log('🔍 Service role API: Getting investors for user:', userId)
 
     const { data: investors, error } = await supabaseAdmin
-      .from('angel_investors')
+      .from('investors')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -54,7 +54,7 @@ export async function POST(request) {
       return Response.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    console.log('🚀 Service role API: Creating angel investor for user:', user_id)
+    console.log('🚀 Service role API: Creating investor for user:', user_id)
 
     // Add missing required fields
     const investorToCreate = {
@@ -65,7 +65,7 @@ export async function POST(request) {
     }
 
     const { data: investor, error } = await supabaseAdmin
-      .from('angel_investors')
+      .from('investors')
       .insert([investorToCreate])
       .select()
       .single()
@@ -99,7 +99,7 @@ export async function PUT(request) {
       return Response.json({ error: 'Investor ID and User ID are required' }, { status: 400 })
     }
 
-    console.log('🚀 Service role API: Updating angel investor:', id)
+    console.log('🚀 Service role API: Updating investor:', id)
 
     // Add updated_at timestamp
     const updateData = {
@@ -108,7 +108,7 @@ export async function PUT(request) {
     }
 
     const { data: investor, error } = await supabaseAdmin
-      .from('angel_investors')
+      .from('investors')
       .update(updateData)
       .eq('id', id)
       .eq('user_id', userId) // Ensure user can only update their own investors
@@ -149,10 +149,10 @@ export async function DELETE(request) {
       return Response.json({ error: 'Investor ID and User ID are required' }, { status: 400 })
     }
 
-    console.log('🗑️ Service role API: Deleting angel investor:', id)
+    console.log('🗑️ Service role API: Deleting investor:', id)
 
     const { error } = await supabaseAdmin
-      .from('angel_investors')
+      .from('investors')
       .delete()
       .eq('id', id)
       .eq('user_id', userId) // Ensure user can only delete their own investors
