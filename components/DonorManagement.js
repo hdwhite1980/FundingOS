@@ -42,6 +42,7 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
   const [modalType, setModalType] = useState('donor') // 'donor' or 'investor'
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [showCampaignModal, setShowCampaignModal] = useState(false)
+  const [showInvestmentModal, setShowInvestmentModal] = useState(false)
   const [showDonationDetailModal, setShowDonationDetailModal] = useState(false)
   const [selectedDonor, setSelectedDonor] = useState(null)
   const [selectedInvestor, setSelectedInvestor] = useState(null)
@@ -409,6 +410,7 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
                 <button
                   onClick={() => {
                     setSelectedInvestor(investor)
+                    setShowInvestmentModal(true)
                   }}
                   className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium transition-colors px-3 py-1.5 text-sm"
                 >
@@ -946,6 +948,16 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
           projects={projects}
           onClose={() => setShowCampaignModal(false)}
           onSubmit={handleCreateCampaign}
+        />
+      )}
+
+      {showInvestmentModal && selectedInvestor && (
+        <RecordInvestmentModal
+          investor={selectedInvestor}
+          onClose={() => {
+            setShowInvestmentModal(false)
+            setSelectedInvestor(null)
+          }}
         />
       )}
 
@@ -1729,6 +1741,131 @@ function DonationDetailModal({ donation, onClose }) {
               Close
             </button>
           </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// Record Investment Modal Component
+const RecordInvestmentModal = ({ investor, onClose }) => {
+  const [formData, setFormData] = useState({
+    amount: '',
+    investment_date: new Date().toISOString().split('T')[0],
+    investment_type: 'equity',
+    notes: ''
+  })
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    toast.success(`Investment of $${parseFloat(formData.amount).toLocaleString()} from ${investor.name} recorded!`, {
+      duration: 3000
+    })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl max-w-md w-full"
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Record Investment</h2>
+              <p className="text-sm text-slate-600 mt-1">From: {investor.name}</p>
+            </div>
+            <button 
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Investment Amount *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Investment Date *
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.investment_date}
+                onChange={(e) => setFormData({ ...formData, investment_date: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Investment Type
+              </label>
+              <select
+                value={formData.investment_type}
+                onChange={(e) => setFormData({ ...formData, investment_type: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="equity">Equity</option>
+                <option value="convertible_note">Convertible Note</option>
+                <option value="safe">SAFE</option>
+                <option value="grant">Grant</option>
+                <option value="loan">Loan</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Notes
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Add any additional details..."
+              />
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 font-medium transition-colors"
+              >
+                Record Investment
+              </button>
+            </div>
+          </form>
         </div>
       </motion.div>
     </div>
