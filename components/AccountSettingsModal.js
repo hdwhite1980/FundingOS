@@ -243,8 +243,8 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
   const toggleNotif = (key) => setNotifications((prev) => ({ ...prev, [key]: !prev[key] }))
 
   const prepareUpdates = () => {
-    // Only send keys that exist on the profile to avoid DB errors on missing columns
-    const allowed = {}
+    // Collect all form fields that have changed
+    const updates = {}
     const candidates = {
       // Basic Profile
       full_name: form.full_name,
@@ -253,7 +253,7 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       organization_types: form.organization_types,
       user_role: form.user_role,
       
-      // Legal Foundation
+      // Legal Foundation - these are standard schema fields
       tax_id: form.tax_id,
       date_incorporated: form.date_incorporated,
       state_incorporated: form.state_incorporated,
@@ -305,8 +305,12 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       disadvantaged_business: form.disadvantaged_business,
     }
     
+    // Include all fields that have changed, regardless of whether they exist in current profile
+    // The API will handle fields that don't exist in the schema
     for (const [k, v] of Object.entries(candidates)) {
-      if (hasColumn(k) && v !== userProfile?.[k]) allowed[k] = v
+      if (v !== userProfile?.[k]) {
+        updates[k] = v
+      }
     }
 
     // Merge notification_preferences JSONB if column exists
@@ -318,9 +322,10 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
         sms: notifications.sms,
         digest: notifications.digest,
       }
-      allowed.notification_preferences = merged
+      updates.notification_preferences = merged
     }
-    return allowed
+    
+    return updates
   }
 
   const handleSave = async () => {
