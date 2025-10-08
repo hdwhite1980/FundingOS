@@ -32,6 +32,7 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
   const [investors, setInvestors] = useState([])
   const [campaigns, setCampaigns] = useState([])
   const [donations, setDonations] = useState([])
+  const [investments, setInvestments] = useState([])
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -58,11 +59,12 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
   const loadData = async () => {
     try {
       setLoading(true)
-      const [donorsData, donationsData, campaignsData, investorsData, statsData] = await Promise.all([
+      const [donorsData, donationsData, campaignsData, investorsData, investmentsData, statsData] = await Promise.all([
         directUserServices.donors?.getDonors(user.id, { search: searchQuery, ...filters }) || Promise.resolve([]),
         directUserServices.donors?.getDonations(user.id) || Promise.resolve([]),
         directUserServices.campaigns?.getCampaigns(user.id, { search: searchQuery, ...filters }) || Promise.resolve([]),
         directUserServices.investors?.getInvestors(user.id, { search: searchQuery, ...filters }) || Promise.resolve([]),
+        directUserServices.investors?.getInvestments(user.id) || Promise.resolve([]),
         directUserServices.donors?.getDonorStats(user.id) || Promise.resolve({})
       ])
 
@@ -70,7 +72,29 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
       setDonations(donationsData)
       setCampaigns(campaignsData)
       setInvestors(investorsData)
-      setStats(statsData)
+      setInvestments(investmentsData)
+      
+      // Calculate comprehensive stats including investments
+      const totalInvestments = investmentsData.reduce((sum, inv) => sum + parseFloat(inv.amount || 0), 0)
+      const totalDonations = statsData.totalRaised || 0
+      const combinedTotal = totalDonations + totalInvestments
+      
+      // Count major contributors (donors + investors with $1000+)
+      const majorDonors = donorsData.filter(d => parseFloat(d.total_donated || 0) >= 1000).length
+      const majorInvestors = investorsData.filter(inv => {
+        const investorTotal = investmentsData
+          .filter(i => i.investor_id === inv.id)
+          .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0)
+        return investorTotal >= 1000
+      }).length
+      
+      setStats({
+        ...statsData,
+        totalInvestments,
+        totalInvestmentsCount: investmentsData.length,
+        totalRaisedCombined: combinedTotal,
+        majorContributors: majorDonors + majorInvestors
+      })
     } catch (error) {
       toast.error('Failed to load data')
       console.error('Error loading data:', error)
@@ -330,6 +354,11 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
   )
 
   const InvestorCard = ({ investor }) => {
+    // Calculate investor's total from investments array
+    const investorInvestments = investments.filter(inv => inv.investor_id === investor.id)
+    const totalInvested = investorInvestments.reduce((sum, inv) => sum + parseFloat(inv.amount || 0), 0)
+    const investmentCount = investorInvestments.length
+    
     const getInvestorTypeIcon = () => {
       const type = investor.type || 'individual';
       switch(type) {
@@ -400,10 +429,10 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-lg font-bold text-emerald-600">
-                  {formatCurrency(investor.total_invested || 0)}
+                  {formatCurrency(totalInvested)}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {investor.investment_count || 0} investment{(investor.investment_count || 0) !== 1 ? 's' : ''}
+                  {investmentCount} investment{investmentCount !== 1 ? 's' : ''}
                 </p>
               </div>
               
@@ -555,21 +584,28 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
         <ModernStatCard
           icon={DollarSign}
           title="Total Raised"
-          value={formatCurrency(stats.totalRaised)}
-          subtitle={`${formatCurrency(stats.thisYearRaised)} this year`}
+          value={formatCurrency(stats.totalRaisedCombined || stats.totalRaised || 0)}
+          subtitle={`${formatCurrency(stats.totalRaised || 0)} donations + ${formatCurrency(stats.totalInvestments || 0)} investments`}
           color="emerald"
         />
         <ModernStatCard
           icon={Heart}
           title="Total Donations"
           value={stats.totalDonations || 0}
-          subtitle={`${formatCurrency(stats.avgDonationAmount)} average`}
+          subtitle={`${formatCurrency(stats.avgDonationAmount || 0)} average`}
           color="red"
         />
         <ModernStatCard
+          icon={TrendingUp}
+          title="Total Investments"
+          value={stats.totalInvestmentsCount || 0}
+          subtitle={`${formatCurrency(stats.totalInvestments || 0)} raised`}
+          color="blue"
+        />
+        <ModernStatCard
           icon={Star}
-          title="Major Donors"
-          value={stats.majorDonors || 0}
+          title="Major Contributors"
+          value={stats.majorContributors || stats.majorDonors || 0}
           subtitle="$1,000+ lifetime"
           color="amber"
         />
@@ -582,6 +618,7 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
             { id: 'donors', label: 'Donors', icon: Users },
             { id: 'investors', label: 'Investors', icon: TrendingUp },
             { id: 'campaigns', label: 'Campaigns', icon: Heart },
+            { id: 'investments', label: 'Investments', icon: TrendingUp },
             { id: 'donations', label: 'Donations', icon: DollarSign }
           ].map(tab => {
             const Icon = tab.icon
@@ -771,6 +808,127 @@ export default function DonorManagement({ user, userProfile, projects, initialTa
               >
                 Link First Campaign
               </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'investments' && (
+        <div className="space-y-6">
+          {/* Investment Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search investments..."
+                  className="pl-10 pr-3 py-2 bg-white border border-slate-200 rounded-md text-sm w-64 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-medium transition-colors px-4 py-2.5 text-sm flex items-center space-x-2">
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Investments Table */}
+          {investments.length > 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Investor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Notes
+                    </th>
+                    <th className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-100">
+                  {investments.map((investment) => (
+                    <tr key={investment.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">
+                              {investment.investors?.name?.charAt(0)?.toUpperCase() || 'I'}
+                            </span>
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-slate-900">
+                              {investment.investors?.name || 'Unknown Investor'}
+                            </div>
+                            {investment.investors?.company && (
+                              <div className="text-xs text-slate-500">{investment.investors.company}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-emerald-600">
+                          {formatCurrency(investment.amount)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-900">
+                          {new Date(investment.investment_date).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                          {investment.investment_type?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-slate-600 truncate max-w-xs">
+                          {investment.notes || '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this investment?')) {
+                              directUserServices.investors?.deleteInvestment(user.id, investment.id)
+                                .then(() => {
+                                  toast.success('Investment deleted')
+                                  loadData()
+                                })
+                                .catch(err => toast.error('Failed to delete: ' + err.message))
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+              <TrendingUp className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No investments yet</h3>
+              <p className="text-slate-500 mb-6">Start by adding investors and recording their investments.</p>
             </div>
           )}
         </div>
