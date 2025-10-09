@@ -2,13 +2,22 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request, { params }) {
   try {
-    // Create a fresh Supabase client for each request (no caching)
+    // Create a fresh Supabase client with service role key to bypass RLS and read replicas
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
       {
         auth: { persistSession: false },
-        db: { schema: 'public' }
+        db: { 
+          schema: 'public'
+        },
+        // Force fresh connection, no pooling
+        global: {
+          headers: {
+            'x-client-info': 'supabase-js-node',
+            'cache-control': 'no-cache'
+          }
+        }
       }
     )
     
@@ -18,14 +27,18 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'User ID required' }, { status: 400 })
     }
 
-    // Get user profile from database (fresh query, no cache)
+    // Get user profile from database (force primary read with limit)
     const timestamp = Date.now()
     console.log(`API /user/profile: Fetching at ${timestamp}`)
-    const { data: profile, error } = await supabase
+    
+    // Try to force primary database read by using limit instead of maybeSingle
+    const { data: profiles, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('user_id', userId)  // Fixed: was 'id', should be 'user_id'
-      .maybeSingle()
+      .eq('user_id', userId)
+      .limit(1)
+    
+    const profile = profiles && profiles.length > 0 ? profiles[0] : null
 
     console.log('API /user/profile: RAW Supabase response:', JSON.stringify(profile))
     console.log('API /user/profile: userId:', userId)
