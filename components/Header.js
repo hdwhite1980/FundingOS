@@ -1,15 +1,122 @@
 'use client'
 import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import { Bell, Search, Settings, LogOut, ChevronDown } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Logo from './Logo'
 import AccountSettingsModal from './AccountSettingsModal'
+import { directUserServices } from '../lib/supabase'
 
 export default function Header({ user, userProfile, onProfileUpdate }) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showAccountSettings, setShowAccountSettings] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const supabase = useSupabaseClient()
+
+  // Fetch notifications on mount and poll every 30 seconds
+  useEffect(() => {
+    if (!user?.id) return
+
+    const fetchNotifications = async () => {
+      try {
+        const data = await directUserServices.notifications.getNotifications(user.id, { limit: 10 })
+        setNotifications(data)
+        
+        const count = await directUserServices.notifications.getUnreadCount(user.id)
+        setUnreadCount(count)
+      } catch (error) {
+        console.error('Error fetching notifications:', error)
+      }
+    }
+
+    // Initial fetch
+    fetchNotifications()
+
+    // Poll every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000)
+
+    return () => clearInterval(interval)
+  }, [user?.id])
+
+  const handleMarkAsRead = async (notificationId) => {
+    if (!user?.id) return
+
+    try {
+      const success = await directUserServices.notifications.markAsRead(user.id, notificationId)
+      if (success) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif.id === notificationId ? { ...notif, is_read: true } : notif
+          )
+        )
+        setUnreadCount(prev => Math.max(0, prev - 1))
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    if (!user?.id) return
+
+    try {
+      const success = await directUserServices.notifications.markAllAsRead(user.id)
+      if (success) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notif => ({ ...notif, is_read: true }))
+        )
+        setUnreadCount(0)
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+    }
+  }
+
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date()
+    const past = new Date(timestamp)
+    const diffMs = now - past
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
+    return past.toLocaleDateString()
+  }
+
+  const getNotificationColor = (type) => {
+    switch (type) {
+      case 'grant_match':
+      case 'funding_opportunity':
+        return 'emerald'
+      case 'deadline_reminder':
+        return 'amber'
+      case 'status_update':
+        return 'blue'
+      default:
+        return 'slate'
+    }
+  }
+
+  const formatNotificationAmount = (metadata) => {
+    if (!metadata) return null
+    if (metadata.total_funding) {
+      const amount = metadata.total_funding
+      if (amount >= 1000000) {
+        return `$${(amount / 1000000).toFixed(1)}M+`
+      } else if (amount >= 1000) {
+        return `$${(amount / 1000).toFixed(0)}K+`
+      }
+      return `$${amount}`
+    }
+    return null
+  }
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -73,34 +180,68 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition-colors relative"
               >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full"></span>
+                )}
               </button>
               
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden">
                   <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">Notifications</h3>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-lg font-semibold text-slate-900">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-600">Stay updated with your funding opportunities</p>
                   </div>
                   <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
-                    <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-900 mb-1">New grant matches found</p>
-                        <p className="text-sm text-slate-600 mb-2">3 new opportunities match your projects</p>
-                        <p className="text-sm font-bold text-emerald-600">$2.5M+ total funding</p>
-                        <p className="text-xs text-slate-500 mt-2">2 minutes ago</p>
+                    {notifications.length === 0 ? (
+                      <div className="text-center py-8 text-slate-500">
+                        <Bell className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">No notifications yet</p>
                       </div>
-                    </div>
-                    <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
-                      <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-900 mb-1">Application deadline reminder</p>
-                        <p className="text-sm text-slate-600 mb-2">CDBG Community Development Grant</p>
-                        <p className="text-sm font-bold text-amber-600">Due in 5 days</p>
-                        <p className="text-xs text-slate-500 mt-2">1 hour ago</p>
-                      </div>
-                    </div>
+                    ) : (
+                      notifications.map(notif => {
+                        const color = getNotificationColor(notif.type)
+                        const amount = formatNotificationAmount(notif.metadata)
+                        
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => !notif.is_read && handleMarkAsRead(notif.id)}
+                            className={`flex items-start space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                              notif.is_read ? 'bg-slate-50 hover:bg-slate-100' : 'bg-white hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className={`w-2 h-2 bg-${color}-500 rounded-full mt-2 flex-shrink-0`}></div>
+                            <div className="flex-1">
+                              <p className={`text-sm font-medium mb-1 ${
+                                notif.is_read ? 'text-slate-600' : 'text-slate-900'
+                              }`}>
+                                {notif.title}
+                              </p>
+                              <p className="text-sm text-slate-600 mb-2">{notif.message}</p>
+                              {amount && (
+                                <p className={`text-sm font-bold text-${color}-600`}>{amount} total funding</p>
+                              )}
+                              {notif.metadata?.days_remaining && (
+                                <p className={`text-sm font-bold text-${color}-600`}>
+                                  Due in {notif.metadata.days_remaining} days
+                                </p>
+                              )}
+                              <p className="text-xs text-slate-500 mt-2">{formatTimeAgo(notif.created_at)}</p>
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
                   </div>
                   <div className="p-4 border-t border-slate-100">
                     <button className="w-full text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors text-center py-2 hover:bg-emerald-50 rounded-md">
