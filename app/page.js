@@ -72,6 +72,15 @@ export default function HomePage() {
         const result = await response.json()
         profile = result.profile
         console.log('HomePage: API returned profile:', profile)
+        console.log('HomePage: Address fields from API:', {
+          address_line1: profile?.address_line1,
+          city: profile?.city,
+          state: profile?.state,
+          zip_code: profile?.zip_code,
+          phone: profile?.phone,
+          website: profile?.website,
+          service_radius: profile?.service_radius
+        })
         console.log('HomePage: profile.setup_completed raw value:', profile?.setup_completed)
         console.log('HomePage: profile.setup_completed type:', typeof profile?.setup_completed)
         console.log('HomePage: Full profile keys:', Object.keys(profile || {}))
