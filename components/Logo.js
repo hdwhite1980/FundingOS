@@ -8,56 +8,37 @@ const Logo = ({
   className = '',
   showText = true 
 }) => {
-  // Size configurations
+  // Size configurations for the entire logo with text
   const sizeConfig = {
-    sm: { width: 24, height: 24, textSize: 'text-lg' },
-    md: { width: 32, height: 32, textSize: 'text-xl' },
-    lg: { width: 40, height: 40, textSize: 'text-2xl' },
-    xl: { width: 48, height: 48, textSize: 'text-3xl' }
+    sm: { iconWidth: 32, iconHeight: 32, textSize: 'text-lg' },
+    md: { iconWidth: 40, iconHeight: 40, textSize: 'text-xl' },
+    lg: { iconWidth: 48, iconHeight: 48, textSize: 'text-2xl' },
+    xl: { iconWidth: 56, iconHeight: 56, textSize: 'text-3xl' }
   };
 
-  const { width, height, textSize } = sizeConfig[size];
+  const { iconWidth, iconHeight, textSize } = sizeConfig[size];
 
-  // Logo styling based on variant - white logo on dark backgrounds, dark logo on light backgrounds
-  const logoIconStyle = variant === 'light' 
-    ? 'bg-white/20 backdrop-blur-sm border border-white/30 text-white' 
-    : 'bg-gradient-to-br from-green-500 to-green-600 shadow-lg text-white';
-    
-  const textColor = variant === 'light' 
-    ? 'text-white' 
-    : 'text-neutral-900';
-    
-  const subtextColor = variant === 'light' 
-    ? 'text-white/80' 
-    : 'text-neutral-500';
+  // Choose the appropriate logo file based on variant
+  // For light variant (on dark backgrounds), use white logo
+  // For dark variant (on light backgrounds), use black logo
+  const logoSrc = showText
+    ? (variant === 'light' ? '/images/wali-os-logo-white.svg' : '/images/wali-os-logo-black.svg')
+    : (variant === 'light' ? '/images/wali-os-icon-white.svg' : '/images/wali-os-icon-black.svg');
+
+  // If showing full logo with text, use larger dimensions
+  const logoWidth = showText ? iconWidth * 4 : iconWidth;
+  const logoHeight = showText ? iconHeight : iconHeight;
 
   return (
-    <div className={`flex items-center space-x-3 ${className}`}>
-      {/* Logo Icon */}
-      <div 
-        className={`
-          rounded-xl flex items-center justify-center font-bold text-center leading-none
-          ${logoIconStyle}
-          ${size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : 'text-base'}
-        `}
-        style={{ width: `${width}px`, height: `${height}px` }}
-      >
-        W
-      </div>
-
-      {/* Logo Text */}
-      {showText && (
-        <div className="flex flex-col">
-          <span className={`font-bold tracking-tight ${textSize} ${textColor} leading-none`}>
-            WALI-OS
-          </span>
-          <span className={`
-            text-xs font-medium tracking-wide ${subtextColor}
-          `}>
-            Powered by AHTS
-          </span>
-        </div>
-      )}
+    <div className={`flex items-center ${className}`}>
+      <Image
+        src={logoSrc}
+        alt="WALI-OS"
+        width={logoWidth}
+        height={logoHeight}
+        className="object-contain"
+        priority
+      />
     </div>
   );
 };

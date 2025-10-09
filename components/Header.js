@@ -138,15 +138,7 @@ export default function Header({ user, userProfile, onProfileUpdate }) {
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-emerald-600 rounded-lg">
-                <Logo variant="light" size="sm" showText={false} />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-slate-900">WALI-OS</h1>
-                <p className="text-xs text-slate-500">Powered by AHTS</p>
-              </div>
-            </div>
+            <Logo variant="dark" size="md" showText={true} />
             
             {userProfile?.organization_name && (
               <div className="hidden md:block">
