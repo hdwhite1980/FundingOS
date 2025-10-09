@@ -831,7 +831,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                 trend={stats.totalProjects > 0 ? "up" : "neutral"}
               />
               <div className="sm:col-span-2">
-                <FundingProcessIndicator />
+                <FundingProcessIndicator key={`funding-${stats.totalDonated}-${stats.totalInvested}-${stats.totalAwarded}`} />
               </div>
               <MetricCard
                 icon={Zap}
