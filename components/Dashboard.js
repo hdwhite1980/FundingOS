@@ -429,6 +429,12 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
   // Dynamic funding process indicator with colors for each funding type
   const FundingProcessIndicator = () => {
     // Calculate funding breakdown by type
+    console.log('💰 Funding Process Stats:', {
+      totalDonated: stats.totalDonated,
+      totalInvested: stats.totalInvested,
+      totalAwarded: stats.totalAwarded
+    })
+    
     const fundingBreakdown = {
       grants: {
         secured: stats.totalAwarded || 0,
