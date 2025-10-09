@@ -168,19 +168,26 @@ export async function PUT(req: NextRequest) {
         duns_uei_number: sanitizedUpdates.duns_uei_number
       })
       
-      const { data, error } = await supabase
+      const updatedAt = new Date().toISOString()
+      const { error } = await supabase
         .from('user_profiles')
         .update({ 
           ...sanitizedUpdates, 
-          updated_at: new Date().toISOString() 
+          updated_at: updatedAt 
         })
         .eq('user_id', userId)
-        .select()
-        .single()
       
       if (error) {
         console.error('❌ Update error:', error)
         throw error
+      }
+      
+      // Construct the updated profile by merging existing data with updates
+      // This avoids read replica lag issues
+      const data = {
+        ...existingProfile,
+        ...sanitizedUpdates,
+        updated_at: updatedAt
       }
       
       console.log('✅ Profile updated successfully - ALL FIELDS:', Object.keys(data || {}))
@@ -189,7 +196,8 @@ export async function PUT(req: NextRequest) {
         organization_name: data.organization_name,
         city: data.city,
         years_in_operation: data.years_in_operation,
-        full_time_staff: data.full_time_staff
+        full_time_staff: data.full_time_staff,
+        grant_experience: data.grant_experience
       })
 
       // ALSO save organization-specific data to company_settings table
