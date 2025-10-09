@@ -217,6 +217,16 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     })
   }, [userProfile, user])
 
+  // Debug: Log userProfile when modal opens
+  useEffect(() => {
+    console.log('🎯 AccountSettingsModal opened with userProfile:', {
+      years_in_operation: userProfile?.years_in_operation,
+      full_time_staff: userProfile?.full_time_staff,
+      board_size: userProfile?.board_size,
+      annual_budget: userProfile?.annual_budget,
+    })
+  }, [])
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     const newValue = type === 'checkbox' ? checked : value
