@@ -85,6 +85,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     totalDonated: 0,
     avgDonationAmount: 0,
     majorDonors: 0,
+    totalInvestors: 0,
+    totalInvested: 0,
+    activeInvestments: 0,
     totalSubmissions: 0,
     totalRequested: 0,
     totalAwarded: 0,
@@ -203,9 +206,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     try {
       if (!user?.id) return
 
-      const [donorStats, applicationStats, totalReceivedStats, financialInsights] = await Promise.all([
+      const [donorStats, applicationStats, investorStats, totalReceivedStats, financialInsights] = await Promise.all([
         directUserServices.donors.getDonorStats(user.id),
         directUserServices.applications.getSubmissionStats(user.id),
+        directUserServices.investors.getInvestorStats(user.id),
         directUserServices.donors.getTotalAmountReceived(user.id),
         directUserServices.donors.getFinancialInsights(user.id)
       ])
@@ -230,6 +234,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         totalDonated: donorStats.totalRaised || 0,
         avgDonationAmount: donorStats.avgDonationAmount || 0,
         majorDonors: donorStats.majorDonors || 0,
+        totalInvestors: investorStats.totalInvestors || 0,
+        totalInvested: investorStats.totalInvested || 0,
+        activeInvestments: investorStats.activeInvestments || 0,
         totalSubmissions: applicationStats.totalSubmissions || 0,
         totalRequested: applicationStats.totalRequested || 0,
         totalAwarded: applicationStats.totalAwarded || 0,
@@ -442,8 +449,8 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         textColor: 'text-rose-700'
       },
       investments: {
-        secured: 0, // Angel investments secured
-        pending: stats.totalFunding * 0.1, // Estimated pending investments
+        secured: stats.totalInvested || 0,
+        pending: stats.activeInvestments * 50000, // Estimate based on active deals
         target: stats.totalFunding * 0.15, // 15% from investments
         color: 'blue',
         bgColor: 'bg-blue-500',
