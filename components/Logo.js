@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 const Logo = ({ 
   variant = 'dark', // 'dark' or 'light'
-  size = 'md', // 'sm', 'md', 'lg', 'xl'
+  size = 'md', // 'sm', 'md', 'lg', 'xl', 'xxl'
   className = '',
   showText = true 
 }) => {
@@ -13,7 +13,8 @@ const Logo = ({
     sm: { iconWidth: 32, iconHeight: 32, textSize: 'text-lg' },
     md: { iconWidth: 40, iconHeight: 40, textSize: 'text-xl' },
     lg: { iconWidth: 48, iconHeight: 48, textSize: 'text-2xl' },
-    xl: { iconWidth: 56, iconHeight: 56, textSize: 'text-3xl' }
+    xl: { iconWidth: 56, iconHeight: 56, textSize: 'text-3xl' },
+    xxl: { iconWidth: 96, iconHeight: 96, textSize: 'text-5xl' }
   };
 
   const { iconWidth, iconHeight, textSize } = sizeConfig[size];

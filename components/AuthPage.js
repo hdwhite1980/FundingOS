@@ -227,7 +227,7 @@ export default function AuthPage() {
           >
             {/* Logo */}
             <div className="mb-8">
-              <Logo variant="light" size="lg" showText={true} />
+              <Logo variant="light" size="xxl" showText={true} />
             </div>
             
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6">
@@ -261,7 +261,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-6 sm:mb-8">
-            <Logo variant="dark" size="lg" showText={true} />
+            <Logo variant="dark" size="xxl" showText={true} />
           </div>
 
           <motion.div

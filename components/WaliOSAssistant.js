@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageCircle, X, Sparkles, Send, GripHorizontal, Search, Database } from 'lucide-react'
 import assistantManager from '../utils/assistantManager'
+import Logo from './Logo'
 
 export default function WaliOSAssistant({ 
 	isVisible = true,
@@ -1796,11 +1797,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 									{!expanded && (
 										<GripHorizontal className="w-3 h-3 text-gray-400" />
 									)}
-									<img 
-										src="/images/wali-os-icon-black.svg" 
-										alt="WALI-OS" 
-										className="w-4 h-4"
-									/>
+									<Logo variant="dark" size="sm" showText={false} className="w-4 h-4" />
 									WALI-OS Assistant
 									{isDragging && !expanded && (
 										<span className="text-emerald-500 text-xs">Moving...</span>
@@ -1916,11 +1913,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 						className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg flex items-center justify-center z-50"
 						title="Open WALI-OS Assistant"
 					>
-						<img 
-							src="/images/wali-os-icon-white.svg" 
-							alt="WALI-OS Assistant" 
-							className="w-8 h-8"
-						/>
+						<Logo variant="light" size="md" showText={false} />
 					</motion.button>
 				)}
 			</AnimatePresence>
