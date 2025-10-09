@@ -88,6 +88,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     totalInvestors: 0,
     totalInvested: 0,
     activeInvestments: 0,
+    totalCampaigns: 0,
+    activeCampaigns: 0,
+    totalCampaignRaised: 0,
     totalSubmissions: 0,
     totalRequested: 0,
     totalAwarded: 0,
@@ -206,10 +209,11 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     try {
       if (!user?.id) return
 
-      const [donorStats, applicationStats, investorStats, totalReceivedStats, financialInsights] = await Promise.all([
+      const [donorStats, applicationStats, investorStats, campaignStats, totalReceivedStats, financialInsights] = await Promise.all([
         directUserServices.donors.getDonorStats(user.id),
         directUserServices.applications.getSubmissionStats(user.id),
         directUserServices.investors.getInvestorStats(user.id),
+        directUserServices.campaigns.getCampaignStats(user.id),
         directUserServices.donors.getTotalAmountReceived(user.id),
         directUserServices.donors.getFinancialInsights(user.id)
       ])
@@ -237,6 +241,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         totalInvestors: investorStats.totalInvestors || 0,
         totalInvested: investorStats.totalInvested || 0,
         activeInvestments: investorStats.activeInvestments || 0,
+        totalCampaigns: campaignStats.totalCampaigns || 0,
+        activeCampaigns: campaignStats.activeCampaigns || 0,
+        totalCampaignRaised: campaignStats.totalRaised || 0,
         totalSubmissions: applicationStats.totalSubmissions || 0,
         totalRequested: applicationStats.totalRequested || 0,
         totalAwarded: applicationStats.totalAwarded || 0,
@@ -432,14 +439,15 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     console.log('💰 Funding Process Stats:', {
       totalDonated: stats.totalDonated,
       totalInvested: stats.totalInvested,
-      totalAwarded: stats.totalAwarded
+      totalAwarded: stats.totalAwarded,
+      totalCampaignRaised: stats.totalCampaignRaised
     })
     
     const fundingBreakdown = {
       grants: {
         secured: stats.totalAwarded || 0,
         pending: (stats.totalRequested || 0) - (stats.totalAwarded || 0),
-        target: stats.totalFunding * 0.6, // 60% from grants
+        target: stats.totalFunding * 0.5, // 50% from grants
         color: 'emerald',
         bgColor: 'bg-emerald-500',
         lightBg: 'bg-emerald-100',
@@ -447,12 +455,21 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       },
       donations: {
         secured: stats.totalDonated || 0,
-        pending: stats.totalFunding * 0.15, // Estimated pending donations
-        target: stats.totalFunding * 0.25, // 25% from donations
+        pending: stats.totalFunding * 0.1, // Estimated pending donations
+        target: stats.totalFunding * 0.2, // 20% from donations
         color: 'rose',
         bgColor: 'bg-rose-500',
         lightBg: 'bg-rose-100',
         textColor: 'text-rose-700'
+      },
+      campaigns: {
+        secured: stats.totalCampaignRaised || 0,
+        pending: 0, // Campaigns show actual raised amounts
+        target: stats.totalFunding * 0.15, // 15% from campaigns
+        color: 'purple',
+        bgColor: 'bg-purple-500',
+        lightBg: 'bg-purple-100',
+        textColor: 'text-purple-700'
       },
       investments: {
         secured: stats.totalInvested || 0,
@@ -521,10 +538,16 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                   style={{ width: `${Math.min((fundingBreakdown.donations.secured / totalTarget) * 100, 100 - (fundingBreakdown.grants.secured / totalTarget) * 100)}%` }}
                   title={`Donations: $${(fundingBreakdown.donations.secured / 1000).toFixed(0)}K`}
                 />
+                {/* Campaigns Progress */}
+                <div
+                  className="bg-purple-500 h-full transition-all duration-700 ease-out"
+                  style={{ width: `${Math.min((fundingBreakdown.campaigns.secured / totalTarget) * 100, 100 - ((fundingBreakdown.grants.secured + fundingBreakdown.donations.secured) / totalTarget) * 100)}%` }}
+                  title={`Campaigns: $${(fundingBreakdown.campaigns.secured / 1000).toFixed(0)}K`}
+                />
                 {/* Investments Progress */}
                 <div
                   className="bg-blue-500 h-full transition-all duration-700 ease-out"
-                  style={{ width: `${Math.min((fundingBreakdown.investments.secured / totalTarget) * 100, 100 - ((fundingBreakdown.grants.secured + fundingBreakdown.donations.secured) / totalTarget) * 100)}%` }}
+                  style={{ width: `${Math.min((fundingBreakdown.investments.secured / totalTarget) * 100, 100 - ((fundingBreakdown.grants.secured + fundingBreakdown.donations.secured + fundingBreakdown.campaigns.secured) / totalTarget) * 100)}%` }}
                   title={`Investments: $${(fundingBreakdown.investments.secured / 1000).toFixed(0)}K`}
                 />
                 {/* Pending indicator overlay */}
@@ -543,12 +566,13 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
           </div>
 
           {/* Funding Type Breakdown */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3">
             {Object.entries(fundingBreakdown).map(([type, data]) => {
               const typeProgress = data.target > 0 ? (data.secured / data.target) * 100 : 0
               const typeNames = {
                 grants: 'Grants',
-                donations: 'Donations', 
+                donations: 'Donations',
+                campaigns: 'Campaigns',
                 investments: 'Investments'
               }
               
