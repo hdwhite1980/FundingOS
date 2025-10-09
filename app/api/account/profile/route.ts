@@ -176,11 +176,13 @@ export async function PUT(req: NextRequest) {
         throw error
       }
       
-      console.log('✅ Profile updated successfully:', {
+      console.log('✅ Profile updated successfully - ALL FIELDS:', Object.keys(data || {}))
+      console.log('✅ Sample fields from response:', {
         tax_id: data.tax_id,
-        date_incorporated: data.date_incorporated,
-        state_incorporated: data.state_incorporated,
-        duns_uei_number: data.duns_uei_number
+        organization_name: data.organization_name,
+        city: data.city,
+        years_in_operation: data.years_in_operation,
+        full_time_staff: data.full_time_staff
       })
 
       // ALSO save organization-specific data to company_settings table
