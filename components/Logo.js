@@ -22,8 +22,8 @@ const Logo = ({
   // For light variant (on dark backgrounds), use white logo
   // For dark variant (on light backgrounds), use black logo
   const logoSrc = showText
-    ? (variant === 'light' ? '/images/wali-os-logo-white.svg' : '/images/wali-os-logo-black.svg')
-    : (variant === 'light' ? '/images/wali-os-icon-white.svg' : '/images/wali-os-icon-black.svg');
+    ? (variant === 'light' ? '/images/wali-os-logo-white.svg?v=2' : '/images/wali-os-logo-black.svg?v=2')
+    : (variant === 'light' ? '/images/wali-os-icon-white.svg?v=2' : '/images/wali-os-icon-black.svg?v=2');
 
   // If showing full logo with text, use larger dimensions
   const logoWidth = showText ? iconWidth * 4 : iconWidth;

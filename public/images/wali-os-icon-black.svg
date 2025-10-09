@@ -1,21 +1,26 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <!-- Main circle -->
-  <circle cx="32" cy="32" r="28" fill="white" stroke="black" stroke-width="2"/>
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer circle border -->
+  <circle cx="50" cy="50" r="48" stroke="#1F2937" stroke-width="3" fill="white"/>
   
-  <!-- Shield outline -->
-  <path d="M18 18 L32 14 L46 18 L46 28 C46 36 39 42 32 46 C25 42 18 36 18 28 Z" 
-        fill="white" stroke="black" stroke-width="1.5"/>
+  <!-- Shield -->
+  <path d="M30 30 L50 22 L70 30 L70 48 C70 60 60 68 50 75 C40 68 30 60 30 48 Z" 
+        fill="none" stroke="#1F2937" stroke-width="3"/>
   
-  <!-- Center person -->
-  <circle cx="32" cy="22" r="4" fill="black"/>
-  <path d="M28 26 L32 38 L36 26 C36 24 34 22 32 22 C30 22 28 24 28 26 Z" fill="black"/>
+  <!-- Center person head -->
+  <circle cx="50" cy="38" r="6" fill="#1F2937"/>
   
-  <!-- Left person -->
-  <circle cx="24" cy="26" r="3" fill="black"/>
-  <path d="M21 29 L24 38 L27 29 C27 27 25.5 25 24 25 C22.5 25 21 27 21 29 Z" fill="black"/>
+  <!-- Left person head -->
+  <circle cx="35" cy="48" r="5" fill="#1F2937"/>
   
-  <!-- Right person -->
-  <circle cx="40" cy="26" r="3" fill="black"/>
-  <path d="M37 29 L40 38 L43 29 C43 27 41.5 25 40 25 C38.5 25 37 27 37 29 Z" fill="black"/>
+  <!-- Right person head -->
+  <circle cx="65" cy="48" r="5" fill="#1F2937"/>
+  
+  <!-- Center person body -->
+  <path d="M44 44 L50 62 L56 44" stroke="#1F2937" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Left person body -->
+  <path d="M30 53 L35 70 L40 53" stroke="#1F2937" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Right person body -->
+  <path d="M60 53 L65 70 L70 53" stroke="#1F2937" stroke-width="3" stroke-linecap="round"/>
 </svg>
