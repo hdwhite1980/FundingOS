@@ -114,22 +114,29 @@ export async function PUT(req: NextRequest) {
     ])
 
     const sanitizedUpdates: Record<string, any> = {}
+    console.log('🧹 Starting sanitization of updates:', updates)
     for (const [key, val] of Object.entries(updates)) {
       if (val === '') {
+        console.log(`  ➡️ ${key}: empty string → null`)
         sanitizedUpdates[key] = null
         continue
       }
       if (numericFields.has(key)) {
         if (val === null || val === undefined) {
+          console.log(`  ➡️ ${key}: null/undefined → null`)
           sanitizedUpdates[key] = null
         } else {
           const n = typeof val === 'string' ? Number(val) : Number(val as any)
-          sanitizedUpdates[key] = Number.isFinite(n) ? n : null
+          const result = Number.isFinite(n) ? n : null
+          console.log(`  ➡️ ${key}: "${val}" (${typeof val}) → ${result}`)
+          sanitizedUpdates[key] = result
         }
         continue
       }
+      console.log(`  ➡️ ${key}: "${val}" → passthrough`)
       sanitizedUpdates[key] = val
     }
+    console.log('🧹 Sanitization complete:', sanitizedUpdates)
 
     // Check if profile exists first
     const { data: existingProfile } = await supabase
