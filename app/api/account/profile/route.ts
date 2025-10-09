@@ -138,25 +138,15 @@ export async function PUT(req: NextRequest) {
     }
     console.log('🧹 Sanitization complete:', sanitizedUpdates)
 
-    // Check if profile exists first
+    // Check if profile exists and get full data for merging
     const { data: existingProfile } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('*')
       .eq('user_id', userId)
       .maybeSingle()
 
-    // Get current profile data for comparison
-    let currentProfile = null
-    try {
-      const { data: currentData } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-      currentProfile = currentData
-    } catch (error) {
-      console.warn('Could not fetch current profile for comparison:', error)
-    }
+    // Get current profile data for comparison (for scoring invalidation)
+    let currentProfile = existingProfile
 
     if (existingProfile) {
       // Profile exists - update it
