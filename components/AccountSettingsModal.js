@@ -509,111 +509,95 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
               <div className="bg-slate-50 rounded-lg p-4">
                 <h4 className="font-semibold text-slate-900 mb-3">Legal Foundation</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {hasColumn('tax_id') && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Tax ID/EIN</label>
-                      <input
-                        name="tax_id"
-                        value={form.tax_id}
-                        onChange={handleChange}
-                        className="w-full form-input"
-                        placeholder="XX-XXXXXXX"
-                      />
-                    </div>
-                  )}
-                  {hasColumn('date_incorporated') && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Date Incorporated</label>
-                      <input
-                        type="date"
-                        name="date_incorporated"
-                        value={form.date_incorporated}
-                        onChange={handleChange}
-                        className="w-full form-input"
-                      />
-                    </div>
-                  )}
-                  {hasColumn('state_incorporated') && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">State Incorporated</label>
-                      <input
-                        name="state_incorporated"
-                        value={form.state_incorporated}
-                        onChange={handleChange}
-                        className="w-full form-input"
-                        placeholder="Delaware, California, etc."
-                      />
-                    </div>
-                  )}
-                  {hasColumn('duns_uei_number') && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">DUNS/UEI Number</label>
-                      <input
-                        name="duns_uei_number"
-                        value={form.duns_uei_number}
-                        onChange={handleChange}
-                        className="w-full form-input"
-                        placeholder="Unique Entity Identifier"
-                      />
-                    </div>
-                  )}
-                  {hasColumn('sam_gov_status') && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">SAM.gov Status</label>
-                      <select
-                        name="sam_gov_status"
-                        value={form.sam_gov_status}
-                        onChange={handleChange}
-                        className="w-full form-input"
-                      >
-                        <option value="">Select status</option>
-                        <option value="active">Active and current</option>
-                        <option value="needs_renewal">Needs renewal</option>
-                        <option value="not_registered">Not registered</option>
-                        <option value="dont_know">Don't know</option>
-                      </select>
-                    </div>
-                  )}
-                  {hasColumn('grants_gov_status') && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Grants.gov Status</label>
-                      <select
-                        name="grants_gov_status"
-                        value={form.grants_gov_status}
-                        onChange={handleChange}
-                        className="w-full form-input"
-                      >
-                        <option value="">Select status</option>
-                        <option value="active">Active and current</option>
-                        <option value="needs_setup">Needs setup</option>
-                        <option value="not_registered">Not registered</option>
-                        <option value="dont_know">Don't know</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-                {hasColumn('compliance_history') && (
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Compliance History</label>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Tax ID/EIN</label>
+                    <input
+                      name="tax_id"
+                      value={form.tax_id}
+                      onChange={handleChange}
+                      className="w-full form-input"
+                      placeholder="XX-XXXXXXX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Date Incorporated</label>
+                    <input
+                      type="date"
+                      name="date_incorporated"
+                      value={form.date_incorporated}
+                      onChange={handleChange}
+                      className="w-full form-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">State Incorporated</label>
+                    <input
+                      name="state_incorporated"
+                      value={form.state_incorporated}
+                      onChange={handleChange}
+                      className="w-full form-input"
+                      placeholder="Delaware, California, etc."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">DUNS/UEI Number</label>
+                    <input
+                      name="duns_uei_number"
+                      value={form.duns_uei_number}
+                      onChange={handleChange}
+                      className="w-full form-input"
+                      placeholder="Unique Entity Identifier"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">SAM.gov Status</label>
                     <select
-                      name="compliance_history"
-                      value={form.compliance_history}
+                      name="sam_gov_status"
+                      value={form.sam_gov_status}
                       onChange={handleChange}
                       className="w-full form-input"
                     >
-                      <option value="">Select compliance status</option>
-                      <option value="clean">Clean record - no compliance issues</option>
-                      <option value="minor_resolved">Minor issues resolved</option>
-                      <option value="addressing_issues">Currently addressing compliance issues</option>
-                      <option value="major_violations">Major compliance violations</option>
+                      <option value="">Select status</option>
+                      <option value="active">Active and current</option>
+                      <option value="needs_renewal">Needs renewal</option>
+                      <option value="not_registered">Not registered</option>
+                      <option value="dont_know">Don't know</option>
                     </select>
                   </div>
-                )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Grants.gov Status</label>
+                    <select
+                      name="grants_gov_status"
+                      value={form.grants_gov_status}
+                      onChange={handleChange}
+                      className="w-full form-input"
+                    >
+                      <option value="">Select status</option>
+                      <option value="active">Active and current</option>
+                      <option value="needs_setup">Needs setup</option>
+                      <option value="not_registered">Not registered</option>
+                      <option value="dont_know">Don't know</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Compliance History</label>
+                  <select
+                    name="compliance_history"
+                    value={form.compliance_history}
+                    onChange={handleChange}
+                    className="w-full form-input"
+                  >
+                    <option value="">Select compliance status</option>
+                    <option value="clean">Clean record - no compliance issues</option>
+                    <option value="minor_resolved">Minor issues resolved</option>
+                    <option value="addressing_issues">Currently addressing compliance issues</option>
+                    <option value="major_violations">Major compliance violations</option>
+                  </select>
+                </div>
               </div>
             </div>
-          )}
-
-          {activeTab === 'organization' && (
+          )}          {activeTab === 'organization' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Organization Name</label>
