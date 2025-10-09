@@ -58,7 +58,15 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
   const [saving, setSaving] = useState(false)
 
   const existingKeys = useMemo(() => Object.keys(userProfile || {}), [userProfile])
-  const hasColumn = (key) => existingKeys.includes(key)
+  // Always return true for standard fields, only check for special fields like notification_preferences
+  const hasColumn = (key) => {
+    // Only check existence for JSONB fields that might not exist
+    if (key === 'notification_preferences') {
+      return existingKeys.includes(key)
+    }
+    // All other fields are standard schema fields - always show them
+    return true
+  }
 
   const [form, setForm] = useState({
     // Basic Profile
