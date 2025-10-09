@@ -489,7 +489,11 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
             <div className="mb-3 sm:mb-4">
               <div className="flex items-baseline space-x-1 sm:space-x-2">
                 <p className="text-lg sm:text-2xl font-bold text-slate-900">
-                  ${totalSecured > 1000000 ? (totalSecured / 1000000).toFixed(1) + 'M' : (totalSecured / 1000).toFixed(0) + 'K'}
+                  ${totalSecured >= 1000000 
+                    ? (totalSecured / 1000000).toFixed(1) + 'M' 
+                    : totalSecured >= 1000 
+                      ? (totalSecured / 1000).toFixed(1) + 'K'
+                      : totalSecured.toFixed(0)}
                 </p>
                 <p className="text-xs sm:text-sm text-slate-500">
                   of ${totalTarget > 1000000 ? (totalTarget / 1000000).toFixed(1) + 'M' : (totalTarget / 1000).toFixed(0) + 'K'} goal
@@ -558,7 +562,9 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     </div>
                   </div>
                   <div className={`text-xs sm:text-sm font-bold ${data.textColor} mb-1`}>
-                    ${(data.secured / 1000).toFixed(0)}K
+                    ${data.secured >= 1000 
+                      ? (data.secured / 1000).toFixed(1) + 'K' 
+                      : data.secured.toFixed(0)}
                   </div>
                   <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
                     <div
