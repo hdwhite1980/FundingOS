@@ -22,8 +22,8 @@ const Logo = ({
   // For light variant (on dark backgrounds), use white logo
   // For dark variant (on light backgrounds), use black logo
   const logoSrc = showText
-    ? (variant === 'light' ? '/images/wali-os-logo-white.svg?v=3' : '/images/wali-os-logo-black.svg?v=3')
-    : (variant === 'light' ? '/images/wali-os-icon-white.svg?v=3' : '/images/wali-os-icon-black.svg?v=3');
+    ? (variant === 'light' ? '/images/wali-os-logo-white.svg?v=4' : '/images/wali-os-logo-black.svg?v=4')
+    : (variant === 'light' ? '/images/wali-os-icon-white.svg?v=4' : '/images/wali-os-icon-black.svg?v=4');
 
   // If showing full logo with text, use larger dimensions
   const logoWidth = showText ? iconWidth * 4 : iconWidth;
@@ -34,12 +34,13 @@ const Logo = ({
       {showText ? (
         <div className={`flex items-center gap-2`}>
           <Image
-            src={variant === 'light' ? '/images/wali-os-icon-white.svg?v=3' : '/images/wali-os-icon-black.svg?v=3'}
+            src={variant === 'light' ? '/images/wali-os-icon-white.svg?v=4' : '/images/wali-os-icon-black.svg?v=4'}
             alt="WALI-OS Icon"
             width={iconWidth}
             height={iconHeight}
             className="object-contain"
             priority
+            unoptimized
           />
           <span className={`font-bold ${textSize} ${variant === 'light' ? 'text-white' : 'text-slate-900'}`}>
             WALI-OS
@@ -53,6 +54,7 @@ const Logo = ({
           height={logoHeight}
           className="object-contain"
           priority
+          unoptimized
         />
       )}
     </div>

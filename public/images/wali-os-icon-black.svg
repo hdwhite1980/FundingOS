@@ -1,26 +1,10 @@
-<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Outer circle border -->
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="48" stroke="#1F2937" stroke-width="3" fill="white"/>
-  
-  <!-- Shield -->
-  <path d="M30 30 L50 22 L70 30 L70 48 C70 60 60 68 50 75 C40 68 30 60 30 48 Z" 
-        fill="none" stroke="#1F2937" stroke-width="3"/>
-  
-  <!-- Center person head -->
+  <path d="M30 30 L50 22 L70 30 L70 48 C70 60 60 68 50 75 C40 68 30 60 30 48 Z" fill="none" stroke="#1F2937" stroke-width="3"/>
   <circle cx="50" cy="38" r="6" fill="#1F2937"/>
-  
-  <!-- Left person head -->
   <circle cx="35" cy="48" r="5" fill="#1F2937"/>
-  
-  <!-- Right person head -->
   <circle cx="65" cy="48" r="5" fill="#1F2937"/>
-  
-  <!-- Center person body -->
   <path d="M44 44 L50 62 L56 44" stroke="#1F2937" stroke-width="4" stroke-linecap="round"/>
-  
-  <!-- Left person body -->
   <path d="M30 53 L35 70 L40 53" stroke="#1F2937" stroke-width="3" stroke-linecap="round"/>
-  
-  <!-- Right person body -->
   <path d="M60 53 L65 70 L70 53" stroke="#1F2937" stroke-width="3" stroke-linecap="round"/>
 </svg>
