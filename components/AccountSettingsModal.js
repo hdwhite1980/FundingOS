@@ -86,8 +86,9 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     state_incorporated: userProfile?.state_incorporated || '',
     sam_gov_status: userProfile?.sam_gov_status || '',
     grants_gov_status: userProfile?.grants_gov_status || '',
-    duns_uei_number: userProfile?.duns_uei_number || '',
+    duns_uei_number: userProfile?.duns_uei_number || userProfile?.duns_number || '', // Support both field names
     compliance_history: userProfile?.compliance_history || '',
+    cage_code: userProfile?.cage_code || '', // From onboarding
     
     // Address & Contact
     address_line1: userProfile?.address_line1 || '',
@@ -100,8 +101,8 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     service_radius: userProfile?.service_radius || '',
     
     // Organizational Capacity
-    annual_budget: userProfile?.annual_budget || '',
-    full_time_staff: userProfile?.full_time_staff || '',
+    annual_budget: userProfile?.annual_budget || userProfile?.annual_revenue || '', // Support both field names
+    full_time_staff: userProfile?.full_time_staff || userProfile?.employee_count || '', // Support both field names
     board_size: userProfile?.board_size || '',
     years_in_operation: userProfile?.years_in_operation || '',
     grant_experience: userProfile?.grant_experience || '',
@@ -161,8 +162,9 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       state_incorporated: userProfile?.state_incorporated || '',
       sam_gov_status: userProfile?.sam_gov_status || '',
       grants_gov_status: userProfile?.grants_gov_status || '',
-      duns_uei_number: userProfile?.duns_uei_number || '',
+      duns_uei_number: userProfile?.duns_uei_number || userProfile?.duns_number || '', // Support both
       compliance_history: userProfile?.compliance_history || '',
+      cage_code: userProfile?.cage_code || '', // From onboarding
       
       // Address & Contact
       address_line1: userProfile?.address_line1 || '',
@@ -175,8 +177,8 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       service_radius: userProfile?.service_radius || '',
       
       // Organizational Capacity
-      annual_budget: userProfile?.annual_budget || '',
-      full_time_staff: userProfile?.full_time_staff || '',
+      annual_budget: userProfile?.annual_budget || userProfile?.annual_revenue || '', // Support both
+      full_time_staff: userProfile?.full_time_staff || userProfile?.employee_count || '', // Support both
       board_size: userProfile?.board_size || '',
       years_in_operation: userProfile?.years_in_operation || '',
       grant_experience: userProfile?.grant_experience || '',
@@ -283,6 +285,7 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       sam_gov_status: form.sam_gov_status,
       grants_gov_status: form.grants_gov_status,
       duns_uei_number: form.duns_uei_number,
+      cage_code: form.cage_code,
       compliance_history: form.compliance_history,
       
       // Address & Contact
@@ -591,6 +594,16 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
                       onChange={handleChange}
                       className="w-full form-input"
                       placeholder="Unique Entity Identifier"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">CAGE Code</label>
+                    <input
+                      name="cage_code"
+                      value={form.cage_code}
+                      onChange={handleChange}
+                      className="w-full form-input"
+                      placeholder="5-character CAGE Code"
                     />
                   </div>
                   <div>
