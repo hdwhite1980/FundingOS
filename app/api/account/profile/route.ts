@@ -103,7 +103,7 @@ export async function PUT(req: NextRequest) {
       'largest_grant',
       'annual_revenue',
       'employee_count',
-      'service_radius',
+      // 'service_radius', // REMOVED: This is a text field (neighborhood/city/state/national), not numeric
       // Additional fields from database schema
       'incorporation_year',
       'years_operating',
