@@ -2,10 +2,14 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request, { params }) {
   try {
-    // Use service role key for server-side operations
+    // Create a fresh Supabase client for each request (no caching)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        auth: { persistSession: false },
+        db: { schema: 'public' }
+      }
     )
     
     const userId = params.userId
@@ -14,7 +18,9 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'User ID required' }, { status: 400 })
     }
 
-    // Get user profile from database
+    // Get user profile from database (fresh query, no cache)
+    const timestamp = Date.now()
+    console.log(`API /user/profile: Fetching at ${timestamp}`)
     const { data: profile, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -24,6 +30,14 @@ export async function GET(request, { params }) {
     console.log('API /user/profile: userId:', userId)
     console.log('API /user/profile: profile found:', !!profile)
     console.log('API /user/profile: setup_completed:', profile?.setup_completed)
+    console.log('API /user/profile: Address fields:', {
+      address_line1: profile?.address_line1,
+      city: profile?.city,
+      state: profile?.state,
+      zip_code: profile?.zip_code,
+      phone: profile?.phone,
+      website: profile?.website
+    })
     console.log('API /user/profile: Capacity fields:', {
       years_in_operation: profile?.years_in_operation,
       full_time_staff: profile?.full_time_staff,
