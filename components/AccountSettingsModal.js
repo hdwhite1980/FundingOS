@@ -428,6 +428,11 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
         return
       }
 
+      // Cache the updated profile to avoid replica lag on page refresh
+      sessionStorage.setItem('freshProfile', JSON.stringify(updatedProfile))
+      sessionStorage.setItem('freshProfileTimestamp', Date.now().toString())
+      console.log('💾 Cached fresh profile to sessionStorage')
+
       toast.success('Account settings updated')
       onUpdated && onUpdated(updatedProfile)
       onClose && onClose()

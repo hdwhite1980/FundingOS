@@ -53,6 +53,10 @@ export default function HomePage() {
     try {
       console.log('HomePage: Checking user profile for', user.id)
       
+      // Check if we have a cached profile from recent save (to avoid replica lag)
+      const cachedProfile = sessionStorage.getItem('freshProfile')
+      const cachedTimestamp = sessionStorage.getItem('freshProfileTimestamp')
+      
       // Make direct API call to get real profile from database
       // Add cache busting to force fresh data
       const response = await fetch(`/api/user/profile/${user.id}?_=${Date.now()}`, {
@@ -71,6 +75,25 @@ export default function HomePage() {
       if (response.ok) {
         const result = await response.json()
         profile = result.profile
+        
+        // If we have a cached profile that's newer than the API response, use it
+        if (cachedProfile && cachedTimestamp) {
+          const cached = JSON.parse(cachedProfile)
+          const cacheAge = Date.now() - parseInt(cachedTimestamp)
+          const apiUpdatedAt = new Date(profile?.updated_at).getTime()
+          const cachedUpdatedAt = new Date(cached?.updated_at).getTime()
+          
+          // Use cached profile if it's less than 60 seconds old and newer than API response
+          if (cacheAge < 60000 && cachedUpdatedAt > apiUpdatedAt) {
+            console.log('🔄 Using cached profile (fresher than API response)')
+            console.log('  Cache age:', cacheAge, 'ms')
+            console.log('  Cached updated_at:', cached.updated_at)
+            console.log('  API updated_at:', profile.updated_at)
+            profile = cached
+            sessionStorage.removeItem('freshProfile')
+            sessionStorage.removeItem('freshProfileTimestamp')
+          }
+        }
         console.log('HomePage: API returned profile:', profile)
         console.log('HomePage: Address fields from API:', {
           address_line1: profile?.address_line1,
