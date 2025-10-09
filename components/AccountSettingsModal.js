@@ -357,7 +357,9 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
   const handleSave = async () => {
     try {
       setSaving(true)
+      console.log('💾 Modified fields:', Array.from(modifiedFields))
       const updates = prepareUpdates()
+      console.log('💾 Updates to send:', Object.keys(updates))
       
       console.log('💾 Account Settings - Preparing to save')
       console.log('📋 All updates:', updates)
