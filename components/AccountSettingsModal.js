@@ -56,6 +56,7 @@ const TARGET_DEMOGRAPHICS = [
 export default function AccountSettingsModal({ user, userProfile, onUpdated, onClose }) {
   const [activeTab, setActiveTab] = useState('profile') // 'profile' | 'preferences' | 'notifications' | 'security'
   const [saving, setSaving] = useState(false)
+  const [modifiedFields, setModifiedFields] = useState(new Set()) // Track which fields user has actually changed
 
   const existingKeys = useMemo(() => Object.keys(userProfile || {}), [userProfile])
   // Always return true for standard fields, only check for special fields like notification_preferences
@@ -221,10 +222,12 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     const newValue = type === 'checkbox' ? checked : value
     console.log(`📝 Field changed: ${name} = ${newValue}`)
     setForm((prev) => ({ ...prev, [name]: newValue }))
+    setModifiedFields((prev) => new Set(prev).add(name))
   }
 
   const handleArrayChange = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }))
+    setModifiedFields((prev) => new Set(prev).add(name))
   }
 
   const toggleArray = (fieldName, value) => {
@@ -315,10 +318,10 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
       disadvantaged_business: form.disadvantaged_business,
     }
     
-    // Include all fields that have changed, regardless of whether they exist in current profile
-    // The API will handle fields that don't exist in the schema
+    // CRITICAL FIX: Only include fields that the user has actually modified
+    // This prevents sending empty/null values for fields the user didn't touch
     for (const [k, v] of Object.entries(candidates)) {
-      if (v !== userProfile?.[k]) {
+      if (modifiedFields.has(k)) {
         updates[k] = v
       }
     }
@@ -372,12 +375,15 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
         }
         const j = await res.json()
         updatedProfile = j.profile
-        console.log('✅ Received from API:', {
+        console.log('✅ Received from API - ALL FIELDS:', Object.keys(updatedProfile || {}))
+        console.log('✅ Received from API - Sample values:', {
           tax_id: updatedProfile?.tax_id,
-          date_incorporated: updatedProfile?.date_incorporated,
-          state_incorporated: updatedProfile?.state_incorporated,
-          duns_uei_number: updatedProfile?.duns_uei_number
+          city: updatedProfile?.city,
+          years_in_operation: updatedProfile?.years_in_operation,
+          grant_experience: updatedProfile?.grant_experience,
+          full_time_staff: updatedProfile?.full_time_staff
         })
+        console.log('✅ Full updatedProfile object:', updatedProfile)
       }
 
       if (hasNotif) {
