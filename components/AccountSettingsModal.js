@@ -218,7 +218,9 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    const newValue = type === 'checkbox' ? checked : value
+    console.log(`📝 Field changed: ${name} = ${newValue}`)
+    setForm((prev) => ({ ...prev, [name]: newValue }))
   }
 
   const handleArrayChange = (name, value) => {
@@ -340,9 +342,20 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
     try {
       setSaving(true)
       const updates = prepareUpdates()
+      
+      console.log('💾 Account Settings - Preparing to save')
+      console.log('📋 All updates:', updates)
+      console.log('📋 Legal Foundation in updates:', {
+        tax_id: updates.tax_id,
+        date_incorporated: updates.date_incorporated,
+        state_incorporated: updates.state_incorporated,
+        duns_uei_number: updates.duns_uei_number
+      })
 
       const hasNotif = hasColumn('notification_preferences')
       const { notification_preferences, ...profileUpdates } = updates
+      
+      console.log('📤 Sending to API:', Object.keys(profileUpdates))
 
       let updatedProfile = null
 
@@ -354,10 +367,17 @@ export default function AccountSettingsModal({ user, userProfile, onUpdated, onC
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
+          console.error('❌ API error:', j)
           throw new Error(j.error || 'Profile update failed')
         }
         const j = await res.json()
         updatedProfile = j.profile
+        console.log('✅ Received from API:', {
+          tax_id: updatedProfile?.tax_id,
+          date_incorporated: updatedProfile?.date_incorporated,
+          state_incorporated: updatedProfile?.state_incorporated,
+          duns_uei_number: updatedProfile?.duns_uei_number
+        })
       }
 
       if (hasNotif) {
