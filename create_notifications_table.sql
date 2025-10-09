@@ -56,33 +56,6 @@ CREATE TRIGGER update_notifications_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
--- Insert sample notifications for testing
-INSERT INTO public.notifications (user_id, type, title, message, metadata)
-VALUES 
-    (
-        '187c155b-b079-4d5c-bd68-0ce36b99cd2b',
-        'grant_match',
-        'New grant matches found',
-        '3 new opportunities match your projects',
-        jsonb_build_object(
-            'count', 3,
-            'total_funding', 2500000,
-            'grant_ids', ARRAY['grant-1', 'grant-2', 'grant-3']
-        )
-    ),
-    (
-        '187c155b-b079-4d5c-bd68-0ce36b99cd2b',
-        'deadline_reminder',
-        'Application deadline reminder',
-        'CDBG Community Development Grant',
-        jsonb_build_object(
-            'days_remaining', 5,
-            'application_id', 'app-123',
-            'grant_name', 'CDBG Community Development Grant',
-            'deadline', (NOW() + INTERVAL '5 days')::text
-        )
-    );
-
 -- Verify the table was created
 SELECT 
     column_name,

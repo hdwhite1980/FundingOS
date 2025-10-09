@@ -3,6 +3,7 @@ import aiProviderService from '../../../../lib/aiProviderService'
 import { buildOrgContext, classifyAssistantIntent, generateAssistantResponse, getCachedOrgContext } from '../../../../lib/ai/contextBuilder'
 import { summarizeSessionIfNeeded, getSessionContextSummary } from '../../../../lib/ai/conversationSummarizer'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { sendAssistantNotification, AssistantNotificationTemplates } from '../../../../lib/assistantNotifications'
 
 export async function POST(request: NextRequest) {
   try {
