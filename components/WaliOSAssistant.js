@@ -1797,8 +1797,7 @@ QUESTIONS: [What you need to know to help better, if anything]`
 									{!expanded && (
 										<GripHorizontal className="w-3 h-3 text-gray-400" />
 									)}
-									<Logo variant="dark" size="sm" showText={false} className="w-4 h-4" />
-									WALI-OS Assistant
+									<Logo variant="dark" size="sm" showText={true} />
 									{isDragging && !expanded && (
 										<span className="text-emerald-500 text-xs">Moving...</span>
 									)}
