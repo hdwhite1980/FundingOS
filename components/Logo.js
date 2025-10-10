@@ -36,7 +36,8 @@ const Logo = ({
         alt="WALI-OS"
         width={logoWidth}
         height={logoHeight}
-        className="object-contain"
+        className={showText ? "object-contain" : "object-cover object-left"}
+        style={showText ? {} : { objectPosition: '0% 50%' }}
         priority
       />
     </div>
