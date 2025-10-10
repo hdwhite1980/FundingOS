@@ -332,7 +332,7 @@ export default function OpportunityList({
       const isAIResource = (opp) => {
         const aiFlag = opp?.ai_analysis?.isNonMonetaryResource
         const categories = Array.isArray(opp?.ai_categories) ? opp.ai_categories.map(c => String(c).toLowerCase()) : []
-        const resourceTags = ['resources','non_monetary','in_kind','software_grant','cloud_credits','data_credits','ad_credits','services','mentorship','training','equipment','facility_access','incubator','accelerator']
+        const resourceTags = ['resources','non_monetary','in_kind','software_grant','cloud_credits','data_credits','ad_credits','mentorship','equipment','facility_access','incubator','accelerator']
         return aiFlag === true || aiFlag === 'true' || categories.some(c => resourceTags.includes(c))
       }
       const hasResourceCues = (opp) => {
