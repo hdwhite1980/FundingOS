@@ -146,7 +146,8 @@ async function runDiscovery(params: SearchParams) {
     const cached = await queryExistingFromDB({
       projectType,
       organizationType: organizationType || profile?.organization_type || undefined,
-      freshnessDays: params.freshnessDays || 30
+      freshnessDays: params.freshnessDays || 30,
+      resourceOnly: params.resourceOnly === true
     })
     if (cached.length > 0) {
       return NextResponse.json({
