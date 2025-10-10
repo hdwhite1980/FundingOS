@@ -86,12 +86,24 @@ async function runDiscovery(params: SearchParams) {
   const { userId, projectType, organizationType } = params
   const { profile, projects } = await resolveUserContext(userId)
 
-  // If no explicit search query, derive a reasonable default from profile
+  // If no explicit search query, derive a reasonable default from profile and first project
   let searchQuery = params.searchQuery?.trim()
   if (!searchQuery) {
     const parts = [] as string[]
     if (profile?.industry) parts.push(profile.industry)
     if (projectType) parts.push(projectType)
+
+    // Pull first project to prime the query with concrete context
+    const primaryProject = (projects || [])[0]
+    if (primaryProject) {
+      if (primaryProject.name || primaryProject.title) {
+        parts.push(primaryProject.name || primaryProject.title)
+      }
+      if (primaryProject.project_type) {
+        parts.push(primaryProject.project_type)
+      }
+    }
+
     // Fallback generic if nothing provided
     searchQuery = parts.length ? `${parts.join(' ')} funding opportunities` : 'grant funding opportunities'
   }
