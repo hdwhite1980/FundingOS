@@ -37,7 +37,21 @@ async function resolveUserContext(userId?: string) {
     supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle(),
     supabase
       .from('projects')
-      .select('id,name,title,project_type,description,user_id')
+      .select(`
+        id,
+        name,
+        title,
+        project_type,
+        description,
+        location,
+        project_categories,
+        primary_goals,
+        preferred_funding_types,
+        funding_needed,
+        total_project_budget,
+        funding_request_amount,
+        user_id
+      `)
       .eq('user_id', userId)
       .limit(50)
   ])
