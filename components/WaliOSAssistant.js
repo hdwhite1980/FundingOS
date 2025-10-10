@@ -1910,10 +1910,10 @@ QUESTIONS: [What you need to know to help better, if anything]`
 							userInitiatedOpen.current = true
 							setIsOpen(true)
 						}}
-						className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+						className="fixed bottom-6 right-6 w-16 h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg flex items-center justify-center z-50"
 						title="Open WALI-OS Assistant"
 					>
-						<Logo variant="light" size="md" showText={false} />
+						<Logo variant="light" size="lg" showText={false} />
 					</motion.button>
 				)}
 			</AnimatePresence>

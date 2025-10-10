@@ -14,7 +14,8 @@ const Logo = ({
     md: { iconWidth: 40, iconHeight: 40, textSize: 'text-xl' },
     lg: { iconWidth: 48, iconHeight: 48, textSize: 'text-2xl' },
     xl: { iconWidth: 56, iconHeight: 56, textSize: 'text-3xl' },
-    xxl: { iconWidth: 96, iconHeight: 96, textSize: 'text-5xl' }
+    xxl: { iconWidth: 96, iconHeight: 96, textSize: 'text-5xl' },
+    xxxl: { iconWidth: 192, iconHeight: 192, textSize: 'text-7xl' }
   };
 
   const { iconWidth, iconHeight, textSize } = sizeConfig[size];
