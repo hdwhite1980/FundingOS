@@ -10,6 +10,7 @@ type SearchParams = {
   excludeIngestedSources?: boolean
   dbFirst?: boolean
   freshnessDays?: number
+  resourceOnly?: boolean
 }
 
 const EXCLUSION_DOMAINS_DEFAULT = [
@@ -77,6 +78,9 @@ async function queryExistingFromDB(params: SearchParams) {
   if (params.projectType) {
     query = query.overlaps('project_types', [params.projectType])
   }
+  if (params.resourceOnly) {
+    query = query.overlaps('ai_categories', ['resources', 'non_monetary', 'in_kind', 'software_grant', 'cloud_credits'])
+  }
   const freshnessDays = typeof params.freshnessDays === 'number' && params.freshnessDays > 0 ? params.freshnessDays : 30
   query = query.gte('created_at', daysAgoIso(freshnessDays))
 
@@ -119,7 +123,13 @@ async function runDiscovery(params: SearchParams) {
     }
 
     // Fallback generic if nothing provided
-    searchQuery = parts.length ? `${parts.join(' ')} funding opportunities` : 'grant funding opportunities'
+    if (params.resourceOnly) {
+      searchQuery = parts.length 
+        ? `${parts.join(' ')} non-monetary resources software grants in-kind donations cloud credits`
+        : 'nonprofit resources software grants in-kind donations cloud credits'
+    } else {
+      searchQuery = parts.length ? `${parts.join(' ')} funding opportunities` : 'grant funding opportunities'
+    }
   }
 
   const agent = new AIEnhancedOpportunityDiscovery()
@@ -171,7 +181,8 @@ async function runDiscovery(params: SearchParams) {
     organizationType: organizationType || profile?.organization_type || null,
     userProjects: projects,
     searchDepth: 'comprehensive',
-    conversationHistory: []
+    conversationHistory: [],
+    resourceOnly: params.resourceOnly === true
   })
 
   return NextResponse.json({
@@ -209,7 +220,8 @@ export async function GET(req: Request) {
       organizationType: url.searchParams.get('organizationType') || undefined,
       excludeIngestedSources: url.searchParams.get('excludeIngestedSources') !== 'false',
       dbFirst: url.searchParams.get('dbFirst') !== 'false',
-      freshnessDays: url.searchParams.get('freshnessDays') ? Number(url.searchParams.get('freshnessDays')) : undefined
+      freshnessDays: url.searchParams.get('freshnessDays') ? Number(url.searchParams.get('freshnessDays')) : undefined,
+      resourceOnly: url.searchParams.get('resourceOnly') === 'true'
     }
     return await runDiscovery(params)
   } catch (e: any) {

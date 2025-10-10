@@ -1178,6 +1178,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     <div className="flex space-x-2 overflow-x-auto pb-2" style={{scrollbarWidth: 'none'}}>
                       {[
                         { id: 'grants', label: 'Grants', icon: FileText },
+                        { id: 'resources', label: 'Resources', icon: Zap },
                         { id: 'campaigns', label: 'Campaigns', icon: Heart },
                         { id: 'angels', label: 'Angels', icon: Users },
                         { id: 'reits', label: 'REITs', icon: TrendingUp },
@@ -1207,6 +1208,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                     <nav className="flex space-x-6 lg:space-x-8 overflow-x-auto">
                       {[
                         { id: 'grants', label: 'Grants', icon: FileText },
+                        { id: 'resources', label: 'Resources', icon: Zap },
                         { id: 'campaigns', label: 'Campaigns', icon: Heart },
                         { id: 'angels', label: 'Angel Investors', icon: Users },
                         { id: 'reits', label: 'REITs', icon: TrendingUp },
@@ -1241,6 +1243,17 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
                       opportunities={opportunities}
                       selectedProject={selectedProject}
                       userProfile={userProfile}
+                      onCompleteProfile={() => setShowAccountSettings(true)}
+                    />
+                  )}
+
+                  {activeFundingTab === 'resources' && (
+                    <OpportunityList
+                      opportunities={opportunities}
+                      selectedProject={selectedProject}
+                      userProfile={userProfile}
+                      enableEligibilityCheck={false}
+                      resourceOnly={true}
                       onCompleteProfile={() => setShowAccountSettings(true)}
                     />
                   )}

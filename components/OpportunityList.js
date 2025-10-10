@@ -31,6 +31,7 @@ export default function OpportunityList({
   opportunities: initialOpportunities, 
   selectedProject, 
   userProfile,
+  resourceOnly = false,
   enableEligibilityCheck = true, // Flag to enable/disable eligibility features
   onCompleteProfile // Callback to open profile completion modal
 }) {
@@ -157,7 +158,7 @@ export default function OpportunityList({
       
       let loadedOpportunities
       
-      if (enableEligibilityCheck) {
+      if (enableEligibilityCheck && !resourceOnly) {
         // Use enhanced opportunity service with eligibility filtering
         const projectTypes = selectedProject.project_type ? [selectedProject.project_type] : []
         console.log('🎯 Project types for search:', projectTypes)
@@ -203,11 +204,17 @@ export default function OpportunityList({
         const projectTypes = selectedProject.project_type ? [selectedProject.project_type] : []
         console.log('🎯 Basic project types for search:', projectTypes)
         
-        loadedOpportunities = await opportunityService.getOpportunities({
+        const baseFilters = {
           projectTypes: projectTypes,
           // organizationType: userProfile.organization_type, // Removed - too restrictive
           state: userProfile.state
-        })
+        }
+        // When resourceOnly is true, constrain to AI-categorized resources
+        const filtersWithResources = resourceOnly 
+          ? { ...baseFilters, aiCategories: ['resources', 'non_monetary', 'in_kind', 'software_grant', 'cloud_credits'] }
+          : baseFilters
+
+        loadedOpportunities = await opportunityService.getOpportunities(filtersWithResources)
         
         console.log('✅ Loaded basic opportunities:', {
           total: loadedOpportunities?.length || 0,
@@ -244,8 +251,9 @@ export default function OpportunityList({
     params.set('freshnessDays', '30')
     params.set('excludeIngestedSources', 'true')
 
-    const toastId = toast.loading('Discovering opportunities (DB-first)...')
+    const toastId = toast.loading(resourceOnly ? 'Discovering resource programs (DB-first)...' : 'Discovering opportunities (DB-first)...')
     try {
+      if (resourceOnly) params.set('resourceOnly', 'true')
       const resp = await fetch(`/api/sync/ai-discovery?${params.toString()}`)
       const json = await resp.json()
       toast.dismiss(toastId)
@@ -253,10 +261,10 @@ export default function OpportunityList({
         const imported = json.imported || 0
         const usedCache = !!json.usedCache
         if (imported > 0 || usedCache) {
-          const aiNote = usedCache ? 'served from DB cache' : 'via AI discovery'
-          toast.success(`Found ${imported} new opportunities (${aiNote}). Reloading list...`)
+          const aiNote = usedCache ? 'served from DB cache' : (resourceOnly ? 'via AI resource discovery' : 'via AI discovery')
+          toast.success(`Found ${imported} new ${resourceOnly ? 'resources' : 'opportunities'} (${aiNote}). Reloading list...`)
         } else {
-          toast('No new opportunities found')
+          toast(resourceOnly ? 'No new resources found' : 'No new opportunities found')
         }
         await loadOpportunities()
       } else {
