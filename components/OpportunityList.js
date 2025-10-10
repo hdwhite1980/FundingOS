@@ -977,6 +977,26 @@ export default function OpportunityList({
               </h2>
             </div>
             <div className="mt-4 sm:mt-0 flex items-center space-x-2">
+              {resourceOnly && (
+                <button
+                  onClick={handleDiscoverOpportunities}
+                  disabled={discovering}
+                  className={`btn-secondary btn-sm flex items-center ${discovering ? 'opacity-70' : ''}`}
+                  title="Refresh resource programs"
+                >
+                  {discovering ? (
+                    <>
+                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Refresh Resources
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
