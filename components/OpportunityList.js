@@ -335,7 +335,14 @@ export default function OpportunityList({
         const resourceTags = ['resources','non_monetary','in_kind','software_grant','cloud_credits','data_credits','ad_credits','services','mentorship','training','equipment','facility_access','incubator','accelerator']
         return aiFlag === true || aiFlag === 'true' || categories.some(c => resourceTags.includes(c))
       }
-      filtered = filtered.filter(opp => !isAIResource(opp))
+      const hasResourceCues = (opp) => {
+        const t = (opp?.title || '').toLowerCase()
+        const d = (opp?.description || '').toLowerCase()
+        const titleCues = ['ad grant', 'ad grants', 'nonprofit advertising', 'promotional credit', 'cloud credit']
+        const descCues = ['advertising credit', 'ad credit', 'promotional credit', 'cloud credit']
+        return titleCues.some(c => t.includes(c)) || descCues.some(c => d.includes(c))
+      }
+      filtered = filtered.filter(opp => !isAIResource(opp) && !hasResourceCues(opp))
     }
 
     // Resource-only strict guard: exclude anything that looks monetary
