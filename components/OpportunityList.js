@@ -300,8 +300,8 @@ export default function OpportunityList({
       filtered = filtered.filter(opp => !opp.deadline_date || opp.deadline_type === 'rolling')
     }
 
-    // Amount filter
-    if (filters.amountRange !== 'all') {
+    // Amount filter (disabled for Resources view)
+    if (!resourceOnly && filters.amountRange !== 'all') {
       filtered = filtered.filter(opp => {
         if (!opp.amount_max && !opp.amount_min) return true
         
@@ -317,6 +317,22 @@ export default function OpportunityList({
           default:
             return true
         }
+      })
+    }
+
+    // Resource-only strict guard: exclude anything that looks monetary
+    if (resourceOnly) {
+      const hasMoneyCue = (text = '') => {
+        const t = (text || '').toLowerCase()
+        return [
+          '$', ' grant ', ' grants ', 'award', ' stipend ', ' cash ', ' funding opportunity ', ' prize ', ' loan ', ' sbir ', ' sttr '
+        ].some(cue => t.includes(cue))
+      }
+      filtered = filtered.filter(opp => {
+        const hasAmounts = !!opp.amount_min || !!opp.amount_max || !!opp.estimated_funding
+        const moneyLanguage = hasMoneyCue(opp.title) || hasMoneyCue(opp.description)
+        const aiSaysResource = opp?.ai_analysis?.isNonMonetaryResource === true || opp?.ai_analysis?.isNonMonetaryResource === 'true'
+        return !hasAmounts && !moneyLanguage && aiSaysResource
       })
     }
 
@@ -962,16 +978,18 @@ export default function OpportunityList({
               <option value="rolling">Rolling Deadlines</option>
             </select>
             
-            <select
-              className="form-input"
-              value={filters.amountRange}
-              onChange={(e) => setFilters({...filters, amountRange: e.target.value})}
-            >
-              <option value="all">All Amounts</option>
-              <option value="small">Small Grants</option>
-              <option value="medium">Medium Grants</option>
-              <option value="large">Large Grants</option>
-            </select>
+            {!resourceOnly && (
+              <select
+                className="form-input"
+                value={filters.amountRange}
+                onChange={(e) => setFilters({...filters, amountRange: e.target.value})}
+              >
+                <option value="all">All Amounts</option>
+                <option value="small">Small Grants</option>
+                <option value="medium">Medium Grants</option>
+                <option value="large">Large Grants</option>
+              </select>
+            )}
 
             <select
               className="form-input"
