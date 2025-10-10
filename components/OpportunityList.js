@@ -325,7 +325,7 @@ export default function OpportunityList({
       const hasMoneyCue = (text = '') => {
         const t = (text || '').toLowerCase()
         return [
-          '$', ' grant ', ' grants ', 'award', ' stipend ', ' cash ', ' funding opportunity ', ' prize ', ' loan ', ' sbir ', ' sttr '
+          '$', ' grant of ', 'award', ' stipend ', ' cash ', ' funding opportunity ', ' prize ', ' loan ', ' sbir ', ' sttr '
         ].some(cue => t.includes(cue))
       }
       filtered = filtered.filter(opp => {
