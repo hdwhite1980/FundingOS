@@ -211,7 +211,7 @@ export default function OpportunityList({
         }
         // When resourceOnly is true, constrain to AI-categorized resources
         const filtersWithResources = resourceOnly 
-          ? { ...baseFilters, aiCategories: ['resources', 'non_monetary', 'in_kind', 'software_grant', 'cloud_credits'] }
+          ? { ...baseFilters, aiCategories: ['resources', 'non_monetary', 'in_kind', 'software_grant', 'cloud_credits'], nonMonetaryOnly: true }
           : baseFilters
 
         loadedOpportunities = await opportunityService.getOpportunities(filtersWithResources)
@@ -1075,9 +1075,11 @@ export default function OpportunityList({
                 <div className="flex-1 mx-6">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Opportunity</span>
                 </div>
-                <div className="text-right w-32">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</span>
-                </div>
+                {!resourceOnly && (
+                  <div className="text-right w-32">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</span>
+                  </div>
+                )}
                 <div className="w-24 text-center">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</span>
                 </div>
@@ -1098,6 +1100,7 @@ export default function OpportunityList({
                   fitScore={opportunity.fitScore}
                   deadlineStatus={getDeadlineStatus(opportunity.deadline_date)}
                   index={index}
+                  resourceOnly={resourceOnly}
                 />
               ))}
             </div>

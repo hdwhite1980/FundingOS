@@ -9,7 +9,8 @@ const OpportunityCard = ({
   onRowClick,
   fitScore,
   deadlineStatus,
-  index 
+  index,
+  resourceOnly = false
 }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -66,11 +67,13 @@ const OpportunityCard = ({
         </div>
 
         {/* Amount */}
-        <div className="col-span-2 text-gray-600">
-          {opportunity.amount_min && opportunity.amount_max 
-            ? `$${opportunity.amount_min.toLocaleString()} - $${opportunity.amount_max.toLocaleString()}`
-            : formatAmount(opportunity.amount)}
-        </div>
+        {!resourceOnly && (
+          <div className="col-span-2 text-gray-600">
+            {opportunity.amount_min && opportunity.amount_max 
+              ? `$${opportunity.amount_min.toLocaleString()} - $${opportunity.amount_max.toLocaleString()}`
+              : formatAmount(opportunity.amount)}
+          </div>
+        )}
 
         {/* Deadline */}
         <div className="col-span-2">
