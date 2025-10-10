@@ -40,6 +40,7 @@ export default function OpportunityList({
   const [showAIModal, setShowAIModal] = useState(false)
   const [showOpportunityModal, setShowOpportunityModal] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [discovering, setDiscovering] = useState(false)
   const [showEligibilitySettings, setShowEligibilitySettings] = useState(false)
   const [opportunityScores, setOpportunityScores] = useState({}) // Added missing state for opportunity scores
   
@@ -225,6 +226,47 @@ export default function OpportunityList({
       toast.error('Failed to load opportunities')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDiscoverOpportunities = async () => {
+    if (!selectedProject || !userProfile) {
+      toast.error('Select a project and ensure your profile is set up')
+      return
+    }
+    setDiscovering(true)
+    const params = new URLSearchParams()
+    if (userProfile.user_id) params.set('userId', userProfile.user_id)
+    else if (userProfile.id) params.set('userId', userProfile.id)
+    if (userProfile.organization_type) params.set('organizationType', userProfile.organization_type)
+    if (selectedProject.project_type) params.set('projectType', selectedProject.project_type)
+    params.set('dbFirst', 'true')
+    params.set('freshnessDays', '30')
+    params.set('excludeIngestedSources', 'true')
+
+    const toastId = toast.loading('Discovering opportunities (DB-first)...')
+    try {
+      const resp = await fetch(`/api/sync/ai-discovery?${params.toString()}`)
+      const json = await resp.json()
+      toast.dismiss(toastId)
+      if (resp.ok && json.success) {
+        const imported = json.imported || 0
+        const usedCache = !!json.usedCache
+        if (imported > 0 || usedCache) {
+          const aiNote = usedCache ? 'served from DB cache' : 'via AI discovery'
+          toast.success(`Found ${imported} new opportunities (${aiNote}). Reloading list...`)
+        } else {
+          toast('No new opportunities found')
+        }
+        await loadOpportunities()
+      } else {
+        toast.error(json.error || 'Discovery failed')
+      }
+    } catch (e) {
+      toast.error('Network error during discovery')
+      console.error('AI discovery error:', e)
+    } finally {
+      setDiscovering(false)
     }
   }
 
@@ -979,6 +1021,23 @@ export default function OpportunityList({
                       Show All Opportunities
                     </button>
                     <button 
+                      onClick={handleDiscoverOpportunities}
+                      disabled={discovering}
+                      className={`btn-primary btn-sm flex items-center ${discovering ? 'opacity-70' : ''}`}
+                    >
+                      {discovering ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                          Discovering...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Discover New Opportunities
+                        </>
+                      )}
+                    </button>
+                    <button 
                       onClick={() => onCompleteProfile && onCompleteProfile()}
                       className="btn-primary btn-sm"
                     >
@@ -987,10 +1046,11 @@ export default function OpportunityList({
                   </>
                 ) : (
                   <button 
-                    onClick={loadOpportunities}
-                    className="btn-secondary btn-sm"
+                    onClick={handleDiscoverOpportunities}
+                    disabled={discovering}
+                    className={`btn-secondary btn-sm ${discovering ? 'opacity-70' : ''}`}
                   >
-                    Refresh Opportunities
+                    {discovering ? 'Refreshing...' : 'Refresh Opportunities'}
                   </button>
                 )}
               </div>

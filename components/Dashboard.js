@@ -339,7 +339,7 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
     const startTime = Date.now()
     
     try {
-      const toastId = toast.loading('Syncing from multiple funding sources...', {
+      const toastId = toast.loading('Refreshing opportunities (DB + AI + sources)...', {
         style: {
           background: '#1e293b',
           color: '#f8fafc',
@@ -347,7 +347,33 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
         },
       })
       
-      // Sync from all available sources
+      // 1) Try AI discovery with DB-first cache to avoid repeated AI calls
+      let aiImported = 0
+      let usedCache = false
+      try {
+        const aiParams = new URLSearchParams()
+        if (user?.id) aiParams.set('userId', user.id)
+        if (userProfile?.organization_type) aiParams.set('organizationType', userProfile.organization_type)
+  const projectType = (selectedProject && selectedProject.project_type) ? selectedProject.project_type : (projects?.[0]?.project_type)
+  if (projectType) aiParams.set('projectType', projectType)
+        aiParams.set('dbFirst', 'true') // Prefer DB over fresh AI calls
+        aiParams.set('freshnessDays', '30')
+        aiParams.set('excludeIngestedSources', 'true')
+
+        const aiResp = await fetch(`/api/sync/ai-discovery?${aiParams.toString()}`)
+        const aiJson = await aiResp.json()
+        if (aiResp.ok && aiJson.success) {
+          aiImported = aiJson.imported || 0
+          usedCache = !!aiJson.usedCache
+          console.log('AI discovery:', { usedCache, aiImported, summary: aiJson.summary })
+        } else {
+          console.warn('AI discovery failed or returned no data:', aiJson?.error || 'unknown error')
+        }
+      } catch (aiErr) {
+        console.warn('AI discovery step failed:', aiErr)
+      }
+
+      // 2) Sync from all available official sources
       const syncEndpoints = [
         '/api/sync/grants-gov',
         '/api/sync/candid',
@@ -382,8 +408,10 @@ export default function Dashboard({ user, userProfile: initialUserProfile, onPro
       
       toast.dismiss(toastId)
       
-      if (successfulSyncs > 0) {
-        toast.success(`Sync Complete! ${totalImported} new opportunities from ${successfulSyncs} sources in ${syncTime}s`, {
+      const overallImported = totalImported + aiImported
+      if (successfulSyncs > 0 || aiImported > 0 || usedCache) {
+        const aiNote = usedCache ? ' (served from DB cache)' : (aiImported > 0 ? ` (+${aiImported} via AI discovery)` : '')
+        toast.success(`Refresh complete! ${overallImported} new from ${successfulSyncs} sources${aiNote} in ${syncTime}s`, {
           duration: 6000,
           style: {
             background: '#f0fdf4',
