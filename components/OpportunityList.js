@@ -44,6 +44,8 @@ export default function OpportunityList({
   const [discovering, setDiscovering] = useState(false)
   const [showEligibilitySettings, setShowEligibilitySettings] = useState(false)
   const [opportunityScores, setOpportunityScores] = useState({}) // Added missing state for opportunity scores
+  // Resource program type filters (chips)
+  const [resourceTypeFilters, setResourceTypeFilters] = useState([])
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -334,6 +336,20 @@ export default function OpportunityList({
         const aiSaysResource = opp?.ai_analysis?.isNonMonetaryResource === true || opp?.ai_analysis?.isNonMonetaryResource === 'true'
         return !hasAmounts && !moneyLanguage && aiSaysResource
       })
+
+      // Apply resource type chip filters if any selected
+      if (resourceTypeFilters.length > 0) {
+        const hasOverlap = (arrA = [], arrB = []) => arrA.some(a => arrB.includes(String(a).toLowerCase()))
+        filtered = filtered.filter(opp => {
+          const types = Array.isArray(opp?.ai_analysis?.resourceTypes)
+            ? opp.ai_analysis.resourceTypes
+            : Array.isArray(opp?.ai_categories)
+              ? opp.ai_categories
+              : []
+          const normalized = (types || []).map(t => String(t || '').toLowerCase())
+          return hasOverlap(normalized, resourceTypeFilters)
+        })
+      }
     }
 
     // Organization type filter
@@ -1003,6 +1019,54 @@ export default function OpportunityList({
               <option value="government">Government</option>
             </select>
           </div>
+
+          {/* Resource program type chips */}
+          {resourceOnly && (
+            <div className="mt-4">
+              <div className="text-xs font-medium text-gray-700 mb-2">Filter by resource type:</div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'mentorship', label: 'Mentorship' },
+                  { key: 'training', label: 'Training' },
+                  { key: 'facility_access', label: 'Facility Access' },
+                  { key: 'equipment', label: 'Equipment' },
+                  { key: 'services', label: 'Services' },
+                  { key: 'in_kind', label: 'In‑Kind' },
+                  { key: 'software_grant', label: 'Software Grant' },
+                  { key: 'cloud_credits', label: 'Cloud Credits' },
+                  { key: 'data_credits', label: 'Data Credits' },
+                  { key: 'ad_credits', label: 'Ad Credits' },
+                  { key: 'incubator', label: 'Incubator' },
+                  { key: 'accelerator', label: 'Accelerator' }
+                ].map(({ key, label }) => {
+                  const active = resourceTypeFilters.includes(key)
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setResourceTypeFilters(prev => (
+                          prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+                        ))
+                      }}
+                      className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                        active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+                {resourceTypeFilters.length > 0 && (
+                  <button
+                    onClick={() => setResourceTypeFilters([])}
+                    className="text-xs px-3 py-1 rounded-full border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Simplified Status Display */}
           {filteredOpportunities.length > 0 && enableEligibilityCheck && (

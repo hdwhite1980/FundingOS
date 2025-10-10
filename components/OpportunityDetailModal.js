@@ -36,6 +36,47 @@ export default function OpportunityDetailModal({
   
   if (!isOpen || !opportunity) return null
 
+  const isResource = opportunity?.ai_analysis?.isNonMonetaryResource === true || opportunity?.ai_analysis?.isNonMonetaryResource === 'true'
+  const resourceTypes = Array.isArray(opportunity?.ai_analysis?.resourceTypes)
+    ? opportunity.ai_analysis.resourceTypes
+    : Array.isArray(opportunity?.ai_categories)
+      ? opportunity.ai_categories
+      : []
+  const normalizedTypes = Array.from(new Set((resourceTypes || []).map(t => String(t || '').toLowerCase())))
+  const labelMap = {
+    software_grant: 'Software Grant',
+    cloud_credits: 'Cloud Credits',
+    data_credits: 'Data Credits',
+    ad_credits: 'Ad Credits',
+    in_kind: 'In‑Kind',
+    services: 'Services',
+    mentorship: 'Mentorship',
+    training: 'Training',
+    equipment: 'Equipment',
+    facility_access: 'Facility Access',
+    incubator: 'Incubator',
+    accelerator: 'Accelerator',
+    resources: null,
+    non_monetary: null
+  }
+  const colorMap = {
+    mentorship: 'bg-indigo-100 text-indigo-800',
+    training: 'bg-amber-100 text-amber-800',
+    facility_access: 'bg-teal-100 text-teal-800',
+    cloud_credits: 'bg-blue-100 text-blue-800',
+    software_grant: 'bg-purple-100 text-purple-800',
+    in_kind: 'bg-emerald-100 text-emerald-800',
+    services: 'bg-slate-100 text-slate-800',
+    equipment: 'bg-orange-100 text-orange-800',
+    incubator: 'bg-pink-100 text-pink-800',
+    accelerator: 'bg-fuchsia-100 text-fuchsia-800',
+    data_credits: 'bg-cyan-100 text-cyan-800',
+    ad_credits: 'bg-lime-100 text-lime-800'
+  }
+  const resourceBadges = normalizedTypes
+    .map(t => ({ key: t, label: labelMap[t] || (t.charAt(0).toUpperCase() + t.slice(1).replace('_',' ')), color: colorMap[t] || 'bg-gray-100 text-gray-700' }))
+    .filter(b => b.label)
+
   const handleSaveForLater = async () => {
     if (!selectedProject || !userProfile) {
       toast.error('Please select a project first')
@@ -154,13 +195,15 @@ export default function OpportunityDetailModal({
               {/* Key Information Bar */}
               <div className="bg-gray-50 px-6 py-4 border-b">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center">
-                    <DollarSign className="w-5 h-5 text-green-600 mr-2" />
-                    <div>
-                      <div className="text-sm text-gray-600">Funding Amount</div>
-                      <div className="font-semibold">{formatAmount(opportunity.amount_min, opportunity.amount_max)}</div>
+                  {!isResource && (
+                    <div className="flex items-center">
+                      <DollarSign className="w-5 h-5 text-green-600 mr-2" />
+                      <div>
+                        <div className="text-sm text-gray-600">Funding Amount</div>
+                        <div className="font-semibold">{formatAmount(opportunity.amount_min, opportunity.amount_max)}</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
                   <div className="flex items-center">
                     <Calendar className="w-5 h-5 text-blue-600 mr-2" />
@@ -177,7 +220,23 @@ export default function OpportunityDetailModal({
                     <Award className="w-5 h-5 text-purple-600 mr-2" />
                     <div>
                       <div className="text-sm text-gray-600">Program Type</div>
-                      <div className="font-semibold">{opportunity.opportunity_type || 'Grant'}</div>
+                      <div className="font-semibold flex flex-wrap gap-1 items-center">
+                        {isResource ? 'Resource' : (opportunity.opportunity_type || 'Grant')}
+                        {isResource && resourceBadges.length > 0 && (
+                          <div className="ml-2 flex flex-wrap gap-1">
+                            {resourceBadges.slice(0, 4).map(b => (
+                              <span key={b.key} className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${b.color}`}>
+                                {b.label}
+                              </span>
+                            ))}
+                            {resourceBadges.length > 4 && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-700">
+                                +{resourceBadges.length - 4} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -196,6 +255,24 @@ export default function OpportunityDetailModal({
                     </p>
                   </div>
                 </div>
+
+                {isResource && resourceBadges.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 flex items-center">
+                      <Award className="w-5 h-5 mr-2 text-purple-600" />
+                      Resource Types
+                    </h3>
+                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                      <div className="flex flex-wrap gap-2">
+                        {resourceBadges.map(b => (
+                          <span key={`modal-${b.key}`} className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${b.color}`}>
+                            {b.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Project Match Analysis */}
                 {selectedProject && fitScore && (

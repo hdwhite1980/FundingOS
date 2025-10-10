@@ -119,13 +119,16 @@ const OpportunityCard = ({
 
   const handleReclassify = async (makeNonMonetary) => {
     try {
+      const reason = makeNonMonetary ? 'Admin marked as non‑monetary resource' : 'Admin marked as monetary grant'
       const resp = await fetch('/api/opportunities/reclassify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           opportunityId: opportunity.id,
           makeNonMonetary,
-          userRole: userProfile?.user_role || 'company'
+          userRole: userProfile?.user_role || 'company',
+          adminUserId: userProfile?.user_id || userProfile?.id || null,
+          reason
         })
       })
       const json = await resp.json()
