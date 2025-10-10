@@ -19,7 +19,7 @@ import {
   Target, 
   Sparkles 
 } from 'lucide-react'
-import { format, isAfter, differenceInDays } from 'date-fns'
+import { format, isAfter, differenceInDays, formatDistanceToNow } from 'date-fns'
 import OpportunityCard from './OpportunityCard'
 import OpportunityDetailModal from './OpportunityDetailModal'
 import AIAnalysisModal from './AIAnalysisModal'
@@ -46,6 +46,8 @@ export default function OpportunityList({
   const [opportunityScores, setOpportunityScores] = useState({}) // Added missing state for opportunity scores
   // Resource program type filters (chips)
   const [resourceTypeFilters, setResourceTypeFilters] = useState([])
+  // Track last refresh timestamp for Resources view
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -229,6 +231,8 @@ export default function OpportunityList({
       }
       
       setOpportunities(loadedOpportunities)
+      // Update last refreshed time after successful load
+      setLastRefreshedAt(new Date())
       
     } catch (error) {
       console.error('Error loading opportunities:', error)
@@ -269,6 +273,7 @@ export default function OpportunityList({
           toast(resourceOnly ? 'No new resources found' : 'No new opportunities found')
         }
         await loadOpportunities()
+        setLastRefreshedAt(new Date())
       } else {
         toast.error(json.error || 'Discovery failed')
       }
@@ -996,6 +1001,11 @@ export default function OpportunityList({
                     </>
                   )}
                 </button>
+              )}
+              {resourceOnly && lastRefreshedAt && (
+                <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700" title={format(lastRefreshedAt, 'PPpp')}>
+                  Last refreshed {formatDistanceToNow(lastRefreshedAt, { addSuffix: true })}
+                </span>
               )}
             </div>
           </div>
