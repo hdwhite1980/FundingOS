@@ -79,7 +79,22 @@ async function queryExistingFromDB(params: SearchParams) {
     query = query.overlaps('project_types', [params.projectType])
   }
   if (params.resourceOnly) {
-    query = query.overlaps('ai_categories', ['resources', 'non_monetary', 'in_kind', 'software_grant', 'cloud_credits'])
+    query = query.overlaps('ai_categories', [
+      'resources',
+      'non_monetary',
+      'in_kind',
+      'software_grant',
+      'cloud_credits',
+      'data_credits',
+      'ad_credits',
+      'mentorship',
+      'training',
+      'facility_access',
+      'equipment',
+      'services',
+      'incubator',
+      'accelerator'
+    ])
   }
   const freshnessDays = typeof params.freshnessDays === 'number' && params.freshnessDays > 0 ? params.freshnessDays : 30
   query = query.gte('created_at', daysAgoIso(freshnessDays))
