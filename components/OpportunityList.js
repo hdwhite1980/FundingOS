@@ -64,7 +64,7 @@ export default function OpportunityList({
     // Eligibility filters (when enabled) - Make these more permissive by default
     onlyEligible: false, // Changed from enableEligibilityCheck to false
     excludeWarnings: false,
-    minConfidence: 50, // Lowered from 70 to 50
+    minConfidence: 0, // Default to 0 to avoid hiding items by confidence
     showIneligible: true, // Changed to true to show all opportunities
     smallBusinessOnly: false
   })
@@ -843,10 +843,11 @@ export default function OpportunityList({
           <button
             onClick={() => setFilters({
               ...filters,
-              onlyEligible: enableEligibilityCheck,
+              // Restore permissive defaults: show all with annotations
+              onlyEligible: false,
               excludeWarnings: false,
-              minConfidence: 70,
-              showIneligible: false,
+              minConfidence: 0,
+              showIneligible: true,
               smallBusinessOnly: false
             })}
             className="text-sm text-blue-600 hover:text-blue-800"
