@@ -214,8 +214,9 @@ export default function OpportunityList({
           state: userProfile.state
         }
         // When resourceOnly is true, constrain to AI-categorized resources
+        // NOTE: Resources are universal - don't filter by project type
         const filtersWithResources = resourceOnly 
-          ? { ...baseFilters, aiCategories: ['resources', 'non_monetary', 'in_kind', 'software_grant', 'cloud_credits'], nonMonetaryOnly: true }
+          ? { aiCategories: ['resources', 'non_monetary', 'in_kind', 'software_grant', 'cloud_credits'], nonMonetaryOnly: true, state: userProfile.state }
           : baseFilters
 
         loadedOpportunities = await opportunityService.getOpportunities(filtersWithResources)
