@@ -1,16 +1,6 @@
 // app/api/ai/extract-compliance/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import OpenAI from 'openai';
 
 /**
  * Extract compliance requirements, deadlines, and reporting obligations from application documents
@@ -18,6 +8,35 @@ const supabase = createClient(
  */
 export async function POST(request: NextRequest) {
   try {
+    // Validate API key
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY not configured');
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'AI service not configured. Please contact support.',
+          complianceData: {
+            compliance_tracking_items: [],
+            compliance_documents: [],
+            compliance_recurring: [],
+            critical_deadlines: [],
+            special_conditions: [],
+            summary: {
+              total_requirements: 0,
+              reporting_frequency: 'unknown',
+              audit_required: false,
+              complexity_level: 'unknown'
+            }
+          }
+        },
+        { status: 500 }
+      );
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
     const body = await request.json();
     const {
       documentText,
@@ -143,34 +162,30 @@ Return your analysis in the following JSON format:
 
 Be thorough and extract every compliance requirement mentioned. If specific dates aren't mentioned, note the timing relative to award (e.g., "30 days after award", "quarterly"). For priorities, use: low, medium, high, or critical based on consequences of missing the requirement.`;
 
-    // Call Claude API
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      temperature: 0.3, // Lower temperature for more consistent extraction
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
       messages: [
+        {
+          role: 'system',
+          content: 'You are a compliance expert who extracts and categorizes compliance requirements from grant application documents. Always respond with valid JSON.'
+        },
         {
           role: 'user',
           content: analysisPrompt,
         },
       ],
+      temperature: 0.3, // Lower temperature for more consistent extraction
+      response_format: { type: "json_object" }
     });
 
     // Extract the response text
-    const responseText = message.content
-      .filter((block: any) => block.type === 'text')
-      .map((block: any) => block.text)
-      .join('\n');
+    const responseText = completion.choices[0]?.message?.content || '{}';
 
     // Parse JSON response
     let complianceData;
     try {
-      // Try to extract JSON from markdown code blocks if present
-      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
-                       responseText.match(/```\n([\s\S]*?)\n```/);
-      
-      const jsonText = jsonMatch ? jsonMatch[1] : responseText;
-      complianceData = JSON.parse(jsonText);
+      complianceData = JSON.parse(responseText);
     } catch (parseError) {
       console.error('Failed to parse compliance JSON:', parseError);
       console.error('Response text:', responseText);
@@ -200,8 +215,9 @@ Be thorough and extract every compliance requirement mentioned. If specific date
       success: true,
       complianceData,
       usage: {
-        input_tokens: message.usage.input_tokens,
-        output_tokens: message.usage.output_tokens,
+        prompt_tokens: completion.usage?.prompt_tokens || 0,
+        completion_tokens: completion.usage?.completion_tokens || 0,
+        total_tokens: completion.usage?.total_tokens || 0,
       },
     });
 
