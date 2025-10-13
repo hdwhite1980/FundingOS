@@ -388,8 +388,21 @@ export default function ComplianceDashboard({ userId, userProfile }) {
               <div key={item.id} className="border border-slate-200 rounded-md p-4 space-y-2">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
-                    <h4 className="font-semibold text-slate-900">{item.title}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-slate-900">{item.title}</h4>
+                      {item.metadata?.source === 'application' && item.metadata?.auto_generated && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 border border-blue-200">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          AI-Extracted
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-500">{item.description || 'No description provided'}</p>
+                    {item.metadata?.opportunity_title && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        From: {item.metadata.opportunity_title}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={cx('px-2 py-1 rounded-full text-xs uppercase', priorityBadge[item.priority] || priorityBadge.medium)}>
@@ -515,8 +528,21 @@ export default function ComplianceDashboard({ userId, userProfile }) {
               <div key={doc.id} className="border border-slate-200 rounded-md p-4 space-y-2">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
-                    <h4 className="font-semibold text-slate-900">{doc.document_name}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-slate-900">{doc.document_name}</h4>
+                      {doc.metadata?.source === 'application' && doc.metadata?.auto_generated && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 border border-blue-200">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          AI-Extracted
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-500">{doc.document_type}</p>
+                    {doc.metadata?.opportunity_title && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        From: {doc.metadata.opportunity_title}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {doc.is_required && <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700">Required</span>}

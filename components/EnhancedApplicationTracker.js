@@ -764,6 +764,11 @@ export default function EnhancedApplicationTracker({
   const [applicationDeadline, setApplicationDeadline] = useState(null)
   const [completionPercentage, setCompletionPercentage] = useState(0)
 
+  // Compliance Tracking State
+  const [complianceData, setComplianceData] = useState(initialState?.complianceData || null)
+  const [extractingCompliance, setExtractingCompliance] = useState(false)
+  const [complianceError, setComplianceError] = useState(null)
+
   // Debug assistant state changes
   useEffect(() => {
     console.log('🔄 Assistant state changed:', {
@@ -904,6 +909,74 @@ export default function EnhancedApplicationTracker({
       debouncedAutoSave(filledForm)
     }
   }, [filledForm, debouncedAutoSave])
+
+  // Extract compliance requirements from application documents
+  const extractComplianceRequirements = async (analyses) => {
+    setExtractingCompliance(true)
+    setComplianceError(null)
+    
+    try {
+      console.log('🔍 Extracting compliance requirements from documents...')
+      
+      // Combine all document text and form structure
+      const documentText = analyses
+        .filter(a => !a.analysis.error)
+        .map(a => {
+          const fields = [
+            ...Object.entries(a.formStructure?.dataFields || {}),
+            ...Object.entries(a.formStructure?.narrativeFields || {})
+          ]
+          return fields.map(([id, field]) => 
+            `${field.label || field.question || id}: ${field.helpText || ''}`
+          ).join('\n')
+        })
+        .join('\n\n')
+      
+      const project = projects.find(p => p.id === selectedProject)
+      
+      // Call compliance extraction API
+      const response = await fetch('/api/ai/extract-compliance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentText,
+          formStructure: enhancedFormStructure,
+          applicationData: filledForm,
+          opportunityInfo: {
+            title: analyses[0]?.analysis?.title || 'Unknown',
+            funder: analyses[0]?.analysis?.detectedFormType || 'Unknown',
+            project: project?.name || project?.title
+          }
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Compliance extraction failed')
+      }
+      
+      const result = await response.json()
+      
+      if (result.success && result.complianceData) {
+        setComplianceData(result.complianceData)
+        console.log('✅ Compliance requirements extracted:', {
+          trackingItems: result.complianceData.compliance_tracking_items?.length || 0,
+          documents: result.complianceData.compliance_documents?.length || 0,
+          recurring: result.complianceData.compliance_recurring?.length || 0,
+          deadlines: result.complianceData.critical_deadlines?.length || 0
+        })
+        
+        toast.success(`Extracted ${result.complianceData.summary?.total_requirements || 0} compliance requirements`)
+      } else {
+        console.warn('No compliance data extracted')
+      }
+    } catch (error) {
+      console.error('Compliance extraction error:', error)
+      setComplianceError(error.message)
+      toast.error('Failed to extract compliance requirements: ' + error.message)
+    } finally {
+      setExtractingCompliance(false)
+    }
+  }
 
   // Enhanced file upload and analysis with better error handling and structure parsing
   const handleFileUpload = async (files) => {
@@ -1160,6 +1233,9 @@ export default function EnhancedApplicationTracker({
       const successfulAnalyses = analyses.filter(a => !a.analysis.error)
       if (successfulAnalyses.length > 0) {
         toast.success(`Successfully analyzed ${successfulAnalyses.length} of ${fileArray.length} document(s)`)
+        
+        // Extract compliance requirements from the documents
+        await extractComplianceRequirements(analyses)
       } else {
         toast.error('All document analyses failed. Please try different files.')
       }
@@ -2158,6 +2234,85 @@ export default function EnhancedApplicationTracker({
             </div>
           </div>
         )}
+
+        {/* Compliance Requirements Summary */}
+        {complianceData && (
+          <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+            <h5 className="font-medium text-slate-900 mb-3 flex items-center">
+              <ShieldCheck className="w-4 h-4 mr-2 text-blue-600" />
+              Extracted Compliance Requirements
+            </h5>
+            
+            {extractingCompliance ? (
+              <div className="text-center py-4">
+                <Loader className="w-6 h-6 animate-spin text-blue-600 mx-auto mb-2" />
+                <p className="text-sm text-slate-600">Analyzing compliance requirements...</p>
+              </div>
+            ) : complianceError ? (
+              <div className="text-center py-4">
+                <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
+                <p className="text-sm text-slate-600">Could not extract compliance requirements</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                  <div className="bg-white rounded p-3">
+                    <div className="text-xl font-bold text-blue-600">
+                      {complianceData.compliance_tracking_items?.length || 0}
+                    </div>
+                    <div className="text-xs text-slate-600">Tracking Items</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-xl font-bold text-purple-600">
+                      {complianceData.compliance_documents?.length || 0}
+                    </div>
+                    <div className="text-xs text-slate-600">Documents</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-xl font-bold text-emerald-600">
+                      {complianceData.compliance_recurring?.length || 0}
+                    </div>
+                    <div className="text-xs text-slate-600">Recurring</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-xl font-bold text-amber-600">
+                      {complianceData.critical_deadlines?.length || 0}
+                    </div>
+                    <div className="text-xs text-slate-600">Deadlines</div>
+                  </div>
+                </div>
+
+                {/* Detailed Requirements */}
+                {complianceData.compliance_tracking_items?.length > 0 && (
+                  <div>
+                    <h6 className="text-sm font-medium text-slate-700 mb-2">Sample Requirements:</h6>
+                    <div className="space-y-2">
+                      {complianceData.compliance_tracking_items.slice(0, 3).map((item, idx) => (
+                        <div key={idx} className="bg-white rounded p-2 text-xs">
+                          <div className="font-medium text-slate-900">{item.title}</div>
+                          <div className="text-slate-600 truncate">{item.description}</div>
+                          {item.deadline_date && (
+                            <div className="text-blue-600 mt-1">Due: {new Date(item.deadline_date).toLocaleDateString()}</div>
+                          )}
+                        </div>
+                      ))}
+                      {complianceData.compliance_tracking_items.length > 3 && (
+                        <div className="text-xs text-slate-500 text-center">
+                          +{complianceData.compliance_tracking_items.length - 3} more will be added to Compliance Command Center
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-blue-100 rounded p-3 text-xs text-blue-800">
+                  <strong>Note:</strong> These compliance requirements will be automatically added to your Compliance Command Center when you submit this application.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex space-x-4">
@@ -2394,7 +2549,142 @@ export default function EnhancedApplicationTracker({
     setAnalysisData(null)
   }
 
-  const handleFinalSubmit = () => {
+  // Create compliance tracking items in the database
+  const createComplianceTrackingItems = async (submissionData) => {
+    if (!complianceData || !userProfile?.id) {
+      return
+    }
+
+    console.log('📋 Creating compliance tracking items from extracted data...')
+    
+    const submissionId = submissionData.id // Will be set after submission is created
+    const userId = userProfile.id
+    const projectName = projects.find(p => p.id === selectedProject)?.name || 'Unknown Project'
+    const opportunityTitle = submissionData.opportunity_title
+
+    try {
+      // Create tracking items
+      if (complianceData.compliance_tracking_items?.length > 0) {
+        for (const item of complianceData.compliance_tracking_items) {
+          await fetch('/api/compliance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'create_tracking_item',
+              userId: userId,
+              title: item.title,
+              compliance_type: item.compliance_type,
+              description: `${item.description}\n\nSource: ${opportunityTitle} - ${projectName}`,
+              priority: item.priority || 'medium',
+              deadline_date: item.deadline_date,
+              estimated_hours: item.estimated_hours,
+              notes: item.notes,
+              metadata: {
+                source: 'application',
+                submission_id: submissionId,
+                opportunity_title: opportunityTitle,
+                project_id: selectedProject,
+                frequency: item.frequency,
+                auto_generated: true
+              }
+            })
+          })
+        }
+        console.log(`✅ Created ${complianceData.compliance_tracking_items.length} tracking items`)
+      }
+
+      // Create document requirements
+      if (complianceData.compliance_documents?.length > 0) {
+        for (const doc of complianceData.compliance_documents) {
+          await fetch('/api/compliance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'create_document',
+              userId: userId,
+              document_name: doc.document_name,
+              document_type: doc.document_type,
+              is_required: doc.is_required,
+              expiration_date: doc.expiration_date,
+              metadata: {
+                source: 'application',
+                submission_id: submissionId,
+                opportunity_title: opportunityTitle,
+                project_id: selectedProject,
+                notes: doc.notes,
+                auto_generated: true
+              }
+            })
+          })
+        }
+        console.log(`✅ Created ${complianceData.compliance_documents.length} document requirements`)
+      }
+
+      // Create recurring obligations
+      if (complianceData.compliance_recurring?.length > 0) {
+        for (const recurring of complianceData.compliance_recurring) {
+          // Calculate next due date based on frequency
+          const nextDueDate = new Date()
+          switch (recurring.frequency) {
+            case 'monthly':
+              nextDueDate.setMonth(nextDueDate.getMonth() + (recurring.frequency_interval || 1))
+              break
+            case 'quarterly':
+              nextDueDate.setMonth(nextDueDate.getMonth() + 3 * (recurring.frequency_interval || 1))
+              break
+            case 'annually':
+              nextDueDate.setFullYear(nextDueDate.getFullYear() + (recurring.frequency_interval || 1))
+              break
+            case 'weekly':
+              nextDueDate.setDate(nextDueDate.getDate() + 7 * (recurring.frequency_interval || 1))
+              break
+          }
+
+          await fetch('/api/compliance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'create_recurring',
+              userId: userId,
+              name: recurring.name,
+              compliance_type: recurring.compliance_type,
+              description: `${recurring.description}\n\nSource: ${opportunityTitle} - ${projectName}`,
+              frequency: recurring.frequency,
+              frequency_interval: recurring.frequency_interval || 1,
+              next_due_date: nextDueDate.toISOString(),
+              reminder_days: recurring.reminder_days || 7,
+              is_active: true,
+              auto_create_tasks: true,
+              template_data: {
+                source: 'application',
+                submission_id: submissionId,
+                opportunity_title: opportunityTitle,
+                project_id: selectedProject,
+                estimated_hours: recurring.estimated_hours,
+                auto_generated: true
+              }
+            })
+          })
+        }
+        console.log(`✅ Created ${complianceData.compliance_recurring.length} recurring obligations`)
+      }
+
+      const totalCreated = 
+        (complianceData.compliance_tracking_items?.length || 0) +
+        (complianceData.compliance_documents?.length || 0) +
+        (complianceData.compliance_recurring?.length || 0)
+
+      if (totalCreated > 0) {
+        toast.success(`Created ${totalCreated} compliance items in Compliance Command Center`)
+      }
+
+    } catch (error) {
+      console.error('Error creating compliance tracking items:', error)
+      throw error
+    }
+  }
+
+  const handleFinalSubmit = async () => {
     const fundingAmount = formatFundingAmount().replace(/,/g, '')
     
     const finalData = {
@@ -2416,6 +2706,17 @@ export default function EnhancedApplicationTracker({
           fieldCategorization: true,
           narrativeExtraction: Object.keys(formCompletion?.narrativeFieldCompletions || {}).length > 0
         }
+      },
+      compliance_data: complianceData // Include extracted compliance requirements
+    }
+
+    // Create compliance tracking items if compliance data was extracted
+    if (complianceData && userProfile?.id) {
+      try {
+        await createComplianceTrackingItems(finalData)
+      } catch (error) {
+        console.error('Failed to create compliance tracking items:', error)
+        toast.error('Application submitted but compliance tracking creation failed')
       }
     }
 
