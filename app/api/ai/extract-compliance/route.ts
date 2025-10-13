@@ -52,8 +52,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('📝 Processing compliance extraction...');
+    console.log('Document text length:', documentText?.length || 0);
+    console.log('Form structure provided:', !!formStructure);
+
     // Construct the analysis prompt
     const analysisPrompt = `You are a compliance expert analyzing grant/funding application documents. Extract ALL compliance requirements, deadlines, and reporting obligations from this application.
+
+IMPORTANT: If the document is a blank application form or template with no specific compliance requirements mentioned, still look for:
+- Common grant reporting requirements (progress reports, financial reports)
+- Standard document requirements (SAM.gov registration, EIN, etc.)
+- Typical post-award obligations for government grants
 
 APPLICATION INFORMATION:
 ${opportunityInfo ? `
@@ -168,7 +177,7 @@ Be thorough and extract every compliance requirement mentioned. If specific date
       messages: [
         {
           role: 'system',
-          content: 'You are a compliance expert who extracts and categorizes compliance requirements from grant application documents. Always respond with valid JSON.'
+          content: 'You are a compliance expert who extracts and categorizes compliance requirements from grant application documents. Always respond with valid JSON. If no specific compliance requirements are found, infer common requirements based on typical grant post-award obligations.'
         },
         {
           role: 'user',
@@ -181,13 +190,22 @@ Be thorough and extract every compliance requirement mentioned. If specific date
 
     // Extract the response text
     const responseText = completion.choices[0]?.message?.content || '{}';
+    
+    console.log('🤖 AI Response length:', responseText.length);
+    console.log('📊 First 500 chars of response:', responseText.substring(0, 500));
 
     // Parse JSON response
     let complianceData;
     try {
       complianceData = JSON.parse(responseText);
+      console.log('✅ Parsed compliance data:', {
+        trackingItems: complianceData.compliance_tracking_items?.length || 0,
+        documents: complianceData.compliance_documents?.length || 0,
+        recurring: complianceData.compliance_recurring?.length || 0,
+        deadlines: complianceData.critical_deadlines?.length || 0,
+      });
     } catch (parseError) {
-      console.error('Failed to parse compliance JSON:', parseError);
+      console.error('❌ Failed to parse compliance JSON:', parseError);
       console.error('Response text:', responseText);
       
       // Return a structured error response
@@ -211,9 +229,26 @@ Be thorough and extract every compliance requirement mentioned. If specific date
       });
     }
 
+    // Ensure all required fields exist
+    const normalizedData = {
+      compliance_tracking_items: complianceData.compliance_tracking_items || [],
+      compliance_documents: complianceData.compliance_documents || [],
+      compliance_recurring: complianceData.compliance_recurring || [],
+      critical_deadlines: complianceData.critical_deadlines || [],
+      special_conditions: complianceData.special_conditions || [],
+      summary: complianceData.summary || {
+        total_requirements: (complianceData.compliance_tracking_items?.length || 0) +
+                           (complianceData.compliance_documents?.length || 0) +
+                           (complianceData.compliance_recurring?.length || 0),
+        reporting_frequency: 'unknown',
+        audit_required: false,
+        complexity_level: 'unknown'
+      }
+    };
+
     return NextResponse.json({
       success: true,
-      complianceData,
+      complianceData: normalizedData,
       usage: {
         prompt_tokens: completion.usage?.prompt_tokens || 0,
         completion_tokens: completion.usage?.completion_tokens || 0,

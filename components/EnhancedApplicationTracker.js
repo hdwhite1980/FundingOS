@@ -917,20 +917,63 @@ export default function EnhancedApplicationTracker({
     
     try {
       console.log('🔍 Extracting compliance requirements from documents...')
+      console.log('📊 Analysis data:', analyses)
       
-      // Combine all document text and form structure
-      const documentText = analyses
+      // Combine all document text and form structure - include more comprehensive data
+      const documentSections = analyses
         .filter(a => !a.analysis.error)
         .map(a => {
-          const fields = [
-            ...Object.entries(a.formStructure?.dataFields || {}),
-            ...Object.entries(a.formStructure?.narrativeFields || {})
-          ]
-          return fields.map(([id, field]) => 
-            `${field.label || field.question || id}: ${field.helpText || ''}`
-          ).join('\n')
+          const sections = []
+          
+          // Add form metadata
+          if (a.analysis?.title) {
+            sections.push(`Form Title: ${a.analysis.title}`)
+          }
+          if (a.analysis?.detectedFormType) {
+            sections.push(`Form Type: ${a.analysis.detectedFormType}`)
+          }
+          
+          // Add all data fields
+          const dataFields = Object.entries(a.formStructure?.dataFields || {})
+          if (dataFields.length > 0) {
+            sections.push('\nData Fields:')
+            dataFields.forEach(([id, field]) => {
+              sections.push(`- ${field.label || id}: ${field.helpText || field.placeholder || 'No description'}`)
+            })
+          }
+          
+          // Add all narrative fields
+          const narrativeFields = Object.entries(a.formStructure?.narrativeFields || {})
+          if (narrativeFields.length > 0) {
+            sections.push('\nNarrative Fields:')
+            narrativeFields.forEach(([id, field]) => {
+              sections.push(`- ${field.question || id}: ${field.helpText || 'No description'}`)
+            })
+          }
+          
+          // Add requirements if available
+          if (a.analysis?.requirements?.length > 0) {
+            sections.push('\nRequirements:')
+            a.analysis.requirements.forEach(req => {
+              sections.push(`- ${req}`)
+            })
+          }
+          
+          // Add attachments if available
+          if (a.analysis?.attachments?.length > 0) {
+            sections.push('\nRequired Attachments:')
+            a.analysis.attachments.forEach(att => {
+              sections.push(`- ${att}`)
+            })
+          }
+          
+          return sections.join('\n')
         })
-        .join('\n\n')
+      
+      const documentText = documentSections.join('\n\n---\n\n')
+      
+      console.log('📝 Document text length:', documentText.length)
+      console.log('📄 First 500 chars:', documentText.substring(0, 500))
       
       const project = projects.find(p => p.id === selectedProject)
       
@@ -951,10 +994,13 @@ export default function EnhancedApplicationTracker({
       })
       
       if (!response.ok) {
-        throw new Error('Compliance extraction failed')
+        const errorData = await response.json()
+        console.error('❌ API Error:', errorData)
+        throw new Error(errorData.error || 'Compliance extraction failed')
       }
       
       const result = await response.json()
+      console.log('🎯 Extraction result:', result)
       
       if (result.success && result.complianceData) {
         setComplianceData(result.complianceData)
@@ -965,12 +1011,21 @@ export default function EnhancedApplicationTracker({
           deadlines: result.complianceData.critical_deadlines?.length || 0
         })
         
-        toast.success(`Extracted ${result.complianceData.summary?.total_requirements || 0} compliance requirements`)
+        const totalRequirements = (result.complianceData.compliance_tracking_items?.length || 0) +
+                                 (result.complianceData.compliance_documents?.length || 0) +
+                                 (result.complianceData.compliance_recurring?.length || 0)
+        
+        if (totalRequirements > 0) {
+          toast.success(`Extracted ${totalRequirements} compliance requirements`)
+        } else {
+          toast.info('No compliance requirements found in this application')
+        }
       } else {
-        console.warn('No compliance data extracted')
+        console.warn('⚠️ No compliance data extracted:', result)
+        toast.info('No specific compliance requirements detected in this application')
       }
     } catch (error) {
-      console.error('Compliance extraction error:', error)
+      console.error('❌ Compliance extraction error:', error)
       setComplianceError(error.message)
       toast.error('Failed to extract compliance requirements: ' + error.message)
     } finally {
