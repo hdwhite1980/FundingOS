@@ -34,7 +34,8 @@ import {
   Loader,
   AlertTriangle,
   Star,
-  Eye
+  Eye,
+  ShieldCheck
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import smartFormCompletionService from '../lib/smartFormCompletionService'
