@@ -927,6 +927,13 @@ export default function EnhancedApplicationTracker({
         .map(a => {
           const sections = []
           
+          // PRIORITY: Use full extracted PDF text if available
+          if (a.analysis?.extractedText) {
+            sections.push('=== FULL DOCUMENT TEXT ===')
+            sections.push(a.analysis.extractedText)
+            sections.push('\n=== EXTRACTED FORM STRUCTURE ===')
+          }
+          
           // Add form metadata
           if (a.analysis?.title) {
             sections.push(`Form Title: ${a.analysis.title}`)
@@ -1155,6 +1162,7 @@ export default function EnhancedApplicationTracker({
             totalPages: formAnalysis.totalPages,
             confidence: formAnalysis.confidence,
             extractionConfidence: formAnalysis.confidence,
+            extractedText: formAnalysis.extractedText, // Include full PDF text for compliance extraction
             // Convert fields to dataFields and narrativeFields
             dataFields: {},
             narrativeFields: {},
