@@ -37,40 +37,38 @@ export async function POST(request) {
     let finalOpportunityId = applicationFields.opportunity_id
     
     if (!finalOpportunityId) {
-      console.log('🔍 No opportunity_id provided, finding or creating default opportunity')
+      console.log('🔍 No opportunity_id provided, finding or creating opportunity')
       
-      // Try to find existing default opportunity
-      const { data: defaultOpportunity, error: findError } = await supabase
-        .from('opportunities')
-        .select('id')
-        .eq('title', 'Manual Entry - Default Opportunity')
-        .single()
+      // Check if this is an AI-Enhanced application with opportunity details
+      const isAIEnhanced = applicationFields.opportunity_title?.includes('AI-') || 
+                          applicationFields.ai_completion_data
       
-      if (defaultOpportunity && !findError) {
-        finalOpportunityId = defaultOpportunity.id
-        console.log(`✅ Using existing default opportunity: ${finalOpportunityId}`)
-      } else {
-        // Create default opportunity
-        console.log('➕ Creating default opportunity for manual entries')
+      if (isAIEnhanced && applicationFields.opportunity_title && 
+          applicationFields.opportunity_title !== 'Manual Entry') {
+        // Create opportunity from AI-Enhanced application data
+        console.log('🤖 Creating opportunity from AI-Enhanced application:', applicationFields.opportunity_title)
+        
         const { data: newOpportunity, error: createError } = await supabase
           .from('opportunities')
           .insert([{
-            title: 'Manual Entry - Default Opportunity',
-            sponsor: 'Manual Entry',
-            source: 'manual',
-            amount_min: 0,
-            amount_max: 1000000,
-            description: 'Default opportunity for manually tracked applications',
+            title: applicationFields.opportunity_title,
+            sponsor: applicationFields.sponsor || 'Unknown Sponsor',
+            source: 'ai_enhanced_tracker',
+            external_id: `ai-enhanced-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            amount_min: applicationFields.submitted_amount ? applicationFields.submitted_amount * 0.8 : 0,
+            amount_max: applicationFields.submitted_amount || 1000000,
+            description: `AI-Enhanced application tracker submission: ${applicationFields.opportunity_title}`,
+            category: 'grant',
             created_at: new Date().toISOString()
           }])
           .select('id')
           .single()
         
         if (createError) {
-          console.error('❌ Failed to create default opportunity:', createError)
+          console.error('❌ Failed to create AI opportunity:', createError)
           return NextResponse.json(
             { 
-              error: 'Failed to create default opportunity', 
+              error: 'Failed to create opportunity from application', 
               details: createError.message 
             },
             { status: 500 }
@@ -78,7 +76,51 @@ export async function POST(request) {
         }
         
         finalOpportunityId = newOpportunity.id
-        console.log(`✅ Created default opportunity: ${finalOpportunityId}`)
+        console.log(`✅ Created AI-Enhanced opportunity: ${finalOpportunityId}`)
+      } else {
+        // Try to find existing default opportunity
+        const { data: defaultOpportunity, error: findError } = await supabase
+          .from('opportunities')
+          .select('id')
+          .eq('title', 'Manual Entry - Default Opportunity')
+          .eq('external_id', 'manual-default-opportunity')
+          .single()
+        
+        if (defaultOpportunity && !findError) {
+          finalOpportunityId = defaultOpportunity.id
+          console.log(`✅ Using existing default opportunity: ${finalOpportunityId}`)
+        } else {
+          // Create default opportunity
+          console.log('➕ Creating default opportunity for manual entries')
+          const { data: newOpportunity, error: createError } = await supabase
+            .from('opportunities')
+            .insert([{
+              title: 'Manual Entry - Default Opportunity',
+              sponsor: 'Manual Entry',
+              source: 'manual',
+              external_id: 'manual-default-opportunity', // Use consistent external_id
+              amount_min: 0,
+              amount_max: 1000000,
+              description: 'Default opportunity for manually tracked applications',
+              created_at: new Date().toISOString()
+            }])
+            .select('id')
+            .single()
+          
+          if (createError) {
+            console.error('❌ Failed to create default opportunity:', createError)
+            return NextResponse.json(
+              { 
+                error: 'Failed to create default opportunity', 
+                details: createError.message 
+              },
+              { status: 500 }
+            )
+          }
+          
+          finalOpportunityId = newOpportunity.id
+          console.log(`✅ Created default opportunity: ${finalOpportunityId}`)
+        }
       }
     }
     
