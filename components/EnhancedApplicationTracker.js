@@ -912,6 +912,8 @@ export default function EnhancedApplicationTracker({
 
   // Extract compliance requirements from application documents
   const extractComplianceRequirements = async (analyses) => {
+    console.log('🚀 COMPLIANCE EXTRACTION STARTED')
+    toast.loading('Extracting compliance requirements...', { id: 'compliance-extraction' })
     setExtractingCompliance(true)
     setComplianceError(null)
     
@@ -1015,6 +1017,7 @@ export default function EnhancedApplicationTracker({
                                  (result.complianceData.compliance_documents?.length || 0) +
                                  (result.complianceData.compliance_recurring?.length || 0)
         
+        toast.dismiss('compliance-extraction')
         if (totalRequirements > 0) {
           toast.success(`Extracted ${totalRequirements} compliance requirements`)
         } else {
@@ -1022,11 +1025,13 @@ export default function EnhancedApplicationTracker({
         }
       } else {
         console.warn('⚠️ No compliance data extracted:', result)
+        toast.dismiss('compliance-extraction')
         toast.info('No specific compliance requirements detected in this application')
       }
     } catch (error) {
       console.error('❌ Compliance extraction error:', error)
       setComplianceError(error.message)
+      toast.dismiss('compliance-extraction')
       toast.error('Failed to extract compliance requirements: ' + error.message)
     } finally {
       setExtractingCompliance(false)
@@ -1286,11 +1291,14 @@ export default function EnhancedApplicationTracker({
       setStep('analyze')
       
       const successfulAnalyses = analyses.filter(a => !a.analysis.error)
+      console.log('📋 Successful analyses:', successfulAnalyses.length)
       if (successfulAnalyses.length > 0) {
         toast.success(`Successfully analyzed ${successfulAnalyses.length} of ${fileArray.length} document(s)`)
         
         // Extract compliance requirements from the documents
+        console.log('🔄 About to call extractComplianceRequirements...')
         await extractComplianceRequirements(analyses)
+        console.log('✅ extractComplianceRequirements completed')
       } else {
         toast.error('All document analyses failed. Please try different files.')
       }
