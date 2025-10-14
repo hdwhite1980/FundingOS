@@ -388,12 +388,22 @@ export default function ComplianceDashboard({ userId, userProfile }) {
               <div key={item.id} className="border border-slate-200 rounded-md p-4 space-y-2">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-semibold text-slate-900">{item.title}</h4>
                       {item.metadata?.source === 'application' && item.metadata?.auto_generated && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 border border-blue-200">
                           <Sparkles className="h-3 w-3 mr-1" />
                           AI-Extracted
+                        </span>
+                      )}
+                      {item.is_required !== undefined && (
+                        <span className={cx(
+                          'px-2 py-0.5 rounded text-xs',
+                          item.is_required 
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        )}>
+                          {item.is_required ? 'Required' : 'Optional'}
                         </span>
                       )}
                     </div>
@@ -528,12 +538,22 @@ export default function ComplianceDashboard({ userId, userProfile }) {
               <div key={doc.id} className="border border-slate-200 rounded-md p-4 space-y-2">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-semibold text-slate-900">{doc.document_name}</h4>
                       {doc.metadata?.source === 'application' && doc.metadata?.auto_generated && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 border border-blue-200">
                           <Sparkles className="h-3 w-3 mr-1" />
                           AI-Extracted
+                        </span>
+                      )}
+                      {doc.is_required !== undefined && (
+                        <span className={cx(
+                          'px-2 py-0.5 rounded text-xs',
+                          doc.is_required 
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        )}>
+                          {doc.is_required ? 'Required' : 'Optional'}
                         </span>
                       )}
                     </div>
@@ -545,7 +565,6 @@ export default function ComplianceDashboard({ userId, userProfile }) {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {doc.is_required && <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700">Required</span>}
                     <span className={cx('px-2 py-1 rounded-full text-xs capitalize', statusColors[doc.status] || statusColors.pending)}>
                       {doc.status}
                     </span>
