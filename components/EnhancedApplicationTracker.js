@@ -2337,24 +2337,33 @@ export default function EnhancedApplicationTracker({
             ) : (
               <div className="space-y-4">
                 {/* Summary Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                   <div className="bg-white rounded p-3">
                     <div className="text-xl font-bold text-blue-600">
-                      {complianceData.compliance_tracking_items?.length || 0}
+                      {complianceData.summary?.total_requirements || 
+                       ((complianceData.compliance_tracking_items?.length || 0) +
+                        (complianceData.compliance_documents?.length || 0) +
+                        (complianceData.compliance_recurring?.length || 0))}
                     </div>
-                    <div className="text-xs text-slate-600">Tracking Items</div>
+                    <div className="text-xs text-slate-600">Total Items</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-xl font-bold text-emerald-600">
+                      {complianceData.summary?.required_items || 0}
+                    </div>
+                    <div className="text-xs text-slate-600">Required</div>
+                  </div>
+                  <div className="bg-white rounded p-3">
+                    <div className="text-xl font-bold text-slate-400">
+                      {complianceData.summary?.optional_items || 0}
+                    </div>
+                    <div className="text-xs text-slate-600">Optional</div>
                   </div>
                   <div className="bg-white rounded p-3">
                     <div className="text-xl font-bold text-purple-600">
                       {complianceData.compliance_documents?.length || 0}
                     </div>
                     <div className="text-xs text-slate-600">Documents</div>
-                  </div>
-                  <div className="bg-white rounded p-3">
-                    <div className="text-xl font-bold text-emerald-600">
-                      {complianceData.compliance_recurring?.length || 0}
-                    </div>
-                    <div className="text-xs text-slate-600">Recurring</div>
                   </div>
                   <div className="bg-white rounded p-3">
                     <div className="text-xl font-bold text-amber-600">
@@ -2370,8 +2379,19 @@ export default function EnhancedApplicationTracker({
                     <h6 className="text-sm font-medium text-slate-700 mb-2">Sample Requirements:</h6>
                     <div className="space-y-2">
                       {complianceData.compliance_tracking_items.slice(0, 3).map((item, idx) => (
-                        <div key={idx} className="bg-white rounded p-2 text-xs">
-                          <div className="font-medium text-slate-900">{item.title}</div>
+                        <div key={idx} className="bg-white rounded p-2 text-xs border-l-2 border-emerald-500">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-medium text-slate-900">{item.title}</div>
+                            {item.is_required !== undefined && (
+                              <span className={`text-xs px-2 py-0.5 rounded ${
+                                item.is_required 
+                                  ? 'bg-emerald-100 text-emerald-700' 
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {item.is_required ? 'Required' : 'Optional'}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-slate-600 truncate">{item.description}</div>
                           {item.deadline_date && (
                             <div className="text-blue-600 mt-1">Due: {new Date(item.deadline_date).toLocaleDateString()}</div>
@@ -2381,6 +2401,39 @@ export default function EnhancedApplicationTracker({
                       {complianceData.compliance_tracking_items.length > 3 && (
                         <div className="text-xs text-slate-500 text-center">
                           +{complianceData.compliance_tracking_items.length - 3} more will be added to Compliance Command Center
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Document Requirements */}
+                {complianceData.compliance_documents?.length > 0 && (
+                  <div>
+                    <h6 className="text-sm font-medium text-slate-700 mb-2">Document Requirements:</h6>
+                    <div className="space-y-2">
+                      {complianceData.compliance_documents.slice(0, 5).map((doc, idx) => (
+                        <div key={idx} className="bg-white rounded p-2 text-xs border-l-2 border-purple-500">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-medium text-slate-900">{doc.document_name}</div>
+                            {doc.is_required !== undefined && (
+                              <span className={`text-xs px-2 py-0.5 rounded ${
+                                doc.is_required 
+                                  ? 'bg-emerald-100 text-emerald-700' 
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {doc.is_required ? 'Required' : 'Optional'}
+                              </span>
+                            )}
+                          </div>
+                          {doc.notes && (
+                            <div className="text-slate-600 text-xs">{doc.notes}</div>
+                          )}
+                        </div>
+                      ))}
+                      {complianceData.compliance_documents.length > 5 && (
+                        <div className="text-xs text-slate-500 text-center">
+                          +{complianceData.compliance_documents.length - 5} more documents
                         </div>
                       )}
                     </div>

@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
             special_conditions: [],
             summary: {
               total_requirements: 0,
+              required_items: 0,
+              optional_items: 0,
               reporting_frequency: 'unknown',
               audit_required: false,
               complexity_level: 'unknown'
@@ -57,12 +59,14 @@ export async function POST(request: NextRequest) {
     console.log('Form structure provided:', !!formStructure);
 
     // Construct the analysis prompt
-    const analysisPrompt = `You are a compliance expert analyzing grant/funding application documents. Extract ALL compliance requirements, deadlines, and reporting obligations from this application.
+    const analysisPrompt = `You are a compliance expert analyzing grant/funding application documents. Extract EVERY compliance requirement, document, deadline, and reporting obligation from this application.
 
-IMPORTANT: If the document is a blank application form or template with no specific compliance requirements mentioned, still look for:
-- Common grant reporting requirements (progress reports, financial reports)
-- Standard document requirements (SAM.gov registration, EIN, etc.)
-- Typical post-award obligations for government grants
+🎯 EXTRACTION STRATEGY:
+- Extract ALL items mentioned, whether explicitly required or optional
+- Include items from "Required Attachments", "Supporting Documents", "Optional Materials" sections
+- Capture conditional requirements (e.g., "if applicable", "as needed by grantmaker")
+- Note requirements that may vary by grantmaker
+- Include both pre-award (application) and post-award (grant management) requirements
 
 APPLICATION INFORMATION:
 ${opportunityInfo ? `
@@ -79,39 +83,55 @@ SUBMITTED APPLICATION DATA:
 ${JSON.stringify(applicationData, null, 2)}
 ` : ''}
 
-Please analyze this document and extract:
+📋 COMPREHENSIVE EXTRACTION CHECKLIST:
 
-1. POST-AWARD COMPLIANCE REQUIREMENTS
-   - Report types required (progress reports, financial reports, etc.)
-   - Reporting frequency (monthly, quarterly, annually)
-   - Specific deadlines or due dates
-   - Required documentation
-   - Performance metrics that must be tracked
+1. DOCUMENT REQUIREMENTS - Extract ALL mentioned documents:
+   ✅ Tax-exempt status letters (IRS determination letters)
+   ✅ Board lists and governance documents
+   ✅ Financial statements (audited, unaudited, Form 990)
+   ✅ Budget documents (organizational, project, line-item)
+   ✅ Annual reports and organizational materials
+   ✅ Letters of support/commitment/collaboration
+   ✅ Certificates of insurance
+   ✅ Audit reports (A-133, single audit, etc.)
+   ✅ Registration documents (SAM.gov, state registrations)
+   ✅ Grant agreements and contracts
+   ✅ Other attachments (as specified by grantmaker)
+   
+   CATEGORIZATION:
+   - Mark as "required: true" if explicitly required or marked with asterisk/*
+   - Mark as "required: false" if labeled optional, "if available", "if applicable", or "as requested"
+   - For conditional items, set required: false and note the condition
 
-2. DOCUMENT REQUIREMENTS
-   - Required certificates or registrations (SAM.gov, DUNS, etc.)
-   - Insurance requirements
-   - Audit requirements
-   - Licenses or permits needed
-   - Expiration dates for any documents
+2. POST-AWARD COMPLIANCE & REPORTING:
+   ✅ Progress reports (frequency, format, content requirements)
+   ✅ Financial reports (expense reports, reimbursement requests)
+   ✅ Performance/outcome reports
+   ✅ Site visits or monitoring requirements
+   ✅ Grant agreement compliance
+   ✅ Record retention requirements
+   ✅ Final reports or closeout requirements
 
-3. RECURRING OBLIGATIONS
-   - Regular reporting schedules
-   - Review meetings or check-ins
-   - Site visits or monitoring requirements
-   - Renewal requirements
+3. RECURRING OBLIGATIONS:
+   ✅ Monthly, quarterly, or annual reporting schedules
+   ✅ Financial reconciliations
+   ✅ Review meetings or check-ins
+   ✅ License or registration renewals
 
-4. CRITICAL DEADLINES
-   - Application submission deadlines
-   - Project start/end dates
-   - Report submission dates
-   - Any other time-sensitive requirements
+4. CRITICAL DEADLINES:
+   ✅ Application submission deadlines
+   ✅ Project period start/end dates
+   ✅ Report submission deadlines
+   ✅ Document expiration dates
+   ✅ Renewal deadlines
 
-5. SPECIAL CONDITIONS OR RESTRICTIONS
-   - Spending restrictions
-   - Procurement requirements
-   - Record retention requirements
-   - Matching fund requirements
+5. SPECIAL CONDITIONS:
+   ✅ Matching fund requirements
+   ✅ Spending restrictions or allowable costs
+   ✅ Anti-terrorism compliance
+   ✅ Procurement requirements
+   ✅ Audit thresholds
+   ✅ Legal or regulatory compliance
 
 Return your analysis in the following JSON format:
 {
@@ -121,6 +141,7 @@ Return your analysis in the following JSON format:
       "compliance_type": "grant_reporting",
       "description": "Submit detailed progress report covering project milestones and outcomes",
       "priority": "high",
+      "is_required": true,
       "deadline_date": "2025-12-31",
       "frequency": "quarterly",
       "estimated_hours": 8,
@@ -129,11 +150,18 @@ Return your analysis in the following JSON format:
   ],
   "compliance_documents": [
     {
-      "document_type": "sam_registration",
-      "document_name": "SAM.gov Active Registration",
+      "document_type": "tax_exempt_status",
+      "document_name": "IRS Letter of Determination",
       "is_required": true,
-      "expiration_date": "2026-06-30",
-      "notes": "Must maintain active registration throughout grant period"
+      "expiration_date": "N/A",
+      "notes": "Copy of current IRS determination letter"
+    },
+    {
+      "document_type": "organizational_budget",
+      "document_name": "Current Year Organizational Operating Budget",
+      "is_required": false,
+      "expiration_date": "Annual",
+      "notes": "Optional - may be requested by some grantmakers"
     }
   ],
   "compliance_recurring": [
@@ -141,6 +169,7 @@ Return your analysis in the following JSON format:
       "name": "Monthly Financial Report",
       "compliance_type": "grant_reporting",
       "description": "Monthly financial reconciliation and expense report",
+      "is_required": true,
       "frequency": "monthly",
       "frequency_interval": 1,
       "reminder_days": 7,
@@ -163,13 +192,23 @@ Return your analysis in the following JSON format:
   ],
   "summary": {
     "total_requirements": 15,
+    "required_items": 10,
+    "optional_items": 5,
     "reporting_frequency": "quarterly",
     "audit_required": true,
     "complexity_level": "moderate"
   }
 }
 
-Be thorough and extract every compliance requirement mentioned. If specific dates aren't mentioned, note the timing relative to award (e.g., "30 days after award", "quarterly"). For priorities, use: low, medium, high, or critical based on consequences of missing the requirement.`;
+IMPORTANT NOTES:
+- Set "is_required": true for explicitly required items (marked with asterisk, labeled "required", or critical for grant eligibility)
+- Set "is_required": false for optional items (labeled "if available", "optional", "as requested by grantmaker", or conditional)
+- For document_type, use snake_case identifiers like: tax_exempt_status, board_list, financial_statements, organizational_budget, project_budget, annual_report, letters_of_support, insurance_certificate, audit_report, grant_agreement, other
+- For priority, use: critical (must have), high (strongly recommended), medium (recommended), low (nice to have)
+- Extract EVERY document mentioned in sections like "Required Attachments", "Supporting Documents", "Optional Materials", etc.
+- Include items that vary by grantmaker - mark them as optional with notes about conditions
+
+Be thorough and extract every compliance requirement mentioned. If specific dates aren't mentioned, note the timing relative to award (e.g., "30 days after award", "quarterly").`;
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
@@ -221,6 +260,8 @@ Be thorough and extract every compliance requirement mentioned. If specific date
           special_conditions: [],
           summary: {
             total_requirements: 0,
+            required_items: 0,
+            optional_items: 0,
             reporting_frequency: 'unknown',
             audit_required: false,
             complexity_level: 'unknown'
@@ -229,7 +270,16 @@ Be thorough and extract every compliance requirement mentioned. If specific date
       });
     }
 
-    // Ensure all required fields exist
+    // Ensure all required fields exist and calculate summary
+    const allItems = [
+      ...(complianceData.compliance_tracking_items || []),
+      ...(complianceData.compliance_documents || []),
+      ...(complianceData.compliance_recurring || [])
+    ];
+    
+    const requiredCount = allItems.filter(item => item.is_required === true).length;
+    const optionalCount = allItems.filter(item => item.is_required === false).length;
+    
     const normalizedData = {
       compliance_tracking_items: complianceData.compliance_tracking_items || [],
       compliance_documents: complianceData.compliance_documents || [],
@@ -237,9 +287,9 @@ Be thorough and extract every compliance requirement mentioned. If specific date
       critical_deadlines: complianceData.critical_deadlines || [],
       special_conditions: complianceData.special_conditions || [],
       summary: complianceData.summary || {
-        total_requirements: (complianceData.compliance_tracking_items?.length || 0) +
-                           (complianceData.compliance_documents?.length || 0) +
-                           (complianceData.compliance_recurring?.length || 0),
+        total_requirements: allItems.length,
+        required_items: requiredCount,
+        optional_items: optionalCount,
         reporting_frequency: 'unknown',
         audit_required: false,
         complexity_level: 'unknown'
