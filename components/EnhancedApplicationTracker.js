@@ -921,6 +921,16 @@ export default function EnhancedApplicationTracker({
       console.log('🔍 Extracting compliance requirements from documents...')
       console.log('📊 Analysis data:', analyses)
       
+      // Check if we have extractedText
+      const hasExtractedText = analyses.some(a => a.analysis?.extractedText)
+      console.log('📄 Has extracted text?', hasExtractedText)
+      if (hasExtractedText) {
+        console.log('📏 Extracted text length:', analyses[0].analysis?.extractedText?.length || 0)
+      } else {
+        console.warn('⚠️ NO EXTRACTED TEXT FOUND - May be using cached analysis from before this feature was added')
+        console.warn('💡 Try clearing cache or re-uploading document to get full text extraction')
+      }
+      
       // Combine all document text and form structure - include more comprehensive data
       const documentSections = analyses
         .filter(a => !a.analysis.error)
